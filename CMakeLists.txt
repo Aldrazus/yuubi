@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.26)
-project("vulkan_template")
+project("yuubi")
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -46,7 +46,7 @@ add_custom_target(
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-    # Set 'vulkan_template' as the startup project in VS
+    # Set 'yuubi' as the startup project in VS
     set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT ${CMAKE_PROJECT_NAME})
     
     set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:$<PROJECT_NAME>>")
