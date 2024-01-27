@@ -1,0 +1,5 @@
+BasedOnStyle: Google
+IncludeBlocks: Merge
+SortIncludes: false
+FixNamespaceComments: false
+IndentWidth: 4

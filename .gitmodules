@@ -1,0 +1,21 @@
+[submodule "external/imgui"]
+	path = external/imgui
+	url = https://github.com/ocornut/imgui
+[submodule "external/spdlog"]
+	path = external/spdlog
+	url = https://github.com/gabime/spdlog
+[submodule "external/glm"]
+	path = external/glm
+	url = https://github.com/g-truc/glm
+[submodule "external/vk-bootstrap"]
+	path = external/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap
+[submodule "external/VulkanMemoryAllocator"]
+	path = external/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "external/glfw"]
+	path = external/glfw
+	url = https://github.com/glfw/glfw
+[submodule "external/assimp"]
+	path = external/assimp
+	url = https://github.com/assimp/assimp
