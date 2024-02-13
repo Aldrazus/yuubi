@@ -1,11 +1,19 @@
 target_sources(
     ${PROJECT_NAME}
     PRIVATE
+    "event/event.h"
+    "event/key_event.h"
+    "event/mouse_event.h"
+    "event/window_event.h"
     "application.h"
     "application.cpp"
+    "key_codes.h"
     "log.h"
     "log.cpp"
     "main.cpp"
+    "mouse_codes.h"
+    "window.h"
+    "window.cpp"
 )
 
 target_include_directories(

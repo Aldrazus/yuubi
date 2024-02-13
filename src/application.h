@@ -1,14 +1,29 @@
 #pragma once
 
+#include "pch.h"
+#include "window.h"
+#include "event/window_event.h"
+
 struct GLFWwindow;
 class Application {
    public:
     Application();
+
     ~Application();
+
+    void OnEvent(Event& e);
 
     void Run();
 
+    Window& GetWindow() { return window_; };
+
    private:
+    bool OnWindowClose(WindowCloseEvent& e);
+    
+    bool OnWindowResize(WindowResizeEvent& e);
+
     static Application* instance_;
-    GLFWwindow* window_ = nullptr;
+    bool running_ = false;
+    bool minimized_ = false;
+    Window window_;
 };

@@ -1,8 +1,8 @@
 #include "application.h"
+#include "event/event.h"
 #include "pch.h"
-#include <vulkan/vulkan_core.h>
 
-#define GLFW_INCLUDE_VULKAN
+#include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
@@ -10,36 +10,60 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 
+#define UB_BIND_EVENT_FN(fn)                                   \
+    [this](auto&&... args) -> decltype(auto) {                  \
+        return this->fn(std::forward<decltype(args)>(args)...); \
+    }
+#if 0
+#define UB_BIND_EVENT_FN(fn) [this](Event& e) { fn(e); }
+#endif
+
 Application* Application::instance_ = nullptr;
 
-Application::Application() {
+Application::Application() 
+    : window_(800, 600, "Yuubi") {
     if (instance_ != nullptr) {
-        VKT_ERROR("Application already exists");
+        UB_ERROR("Application already exists");
         exit(1);
     }
     instance_ = this;
     Log::Init();
-    VKT_INFO("Starting application");
-
-    glfwInit();
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    window_ = glfwCreateWindow(800, 600, "Vulkan Template", nullptr, nullptr);
+    window_.SetEventCallback(UB_BIND_EVENT_FN(OnEvent));
+    UB_INFO("Starting application");
 }
 
-Application::~Application() {
-    glfwDestroyWindow(window_);
-    glfwTerminate();
-    instance_ = nullptr;
+Application::~Application() {}
+
+bool Application::OnWindowClose(WindowCloseEvent& e) {
+    running_ = false;
+    UB_INFO("Closing application");
+    return true;
+}
+
+bool Application::OnWindowResize(WindowResizeEvent& e) {
+    if (e.getWidth() == 0 && e.getHeight() == 0) {
+        minimized_ = true;
+        return false;
+    }
+    minimized_ = false;
+    // TODO: let renderer resize
+    return false;
+}
+
+void Application::OnEvent(Event& e) {
+    EventDispatcher dispatcher(e);
+    dispatcher.dispatch<WindowCloseEvent>(
+        UB_BIND_EVENT_FN(Application::OnWindowClose)
+    );
+    dispatcher.dispatch<WindowResizeEvent>(
+        UB_BIND_EVENT_FN(Application::OnWindowResize)
+    );
 }
 
 void Application::Run() {
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-    std::cout << extensionCount << " extensions supported\n";
-
-    while (!glfwWindowShouldClose(window_)) {
-        glfwPollEvents();
+    running_ = true;
+    UB_INFO("Running application");
+    while (running_) {
+        window_.OnUpdate();
     }
 }
