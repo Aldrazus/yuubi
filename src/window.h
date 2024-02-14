@@ -6,23 +6,22 @@
 struct GLFWwindow;
 
 class Window {
-    public:
-        using EventCallbackFn = std::function<void(Event&)>;
-        Window(uint32_t width, uint32_t height, std::string_view title);
+public:
+    using EventCallbackFn = std::function<void(Event&)>;
+    Window(uint32_t width, uint32_t height, std::string_view title);
 
-        ~Window();
+    ~Window();
 
-        void OnUpdate();
-        
-        void SetEventCallback(EventCallbackFn);
+    void OnUpdate();
 
-    private:
-        void InitCallbacks();
+    void SetEventCallback(EventCallbackFn);
 
+private:
+    void InitCallbacks();
 
-        uint32_t width_;
-        uint32_t height_;
-        std::string title_;
-        EventCallbackFn event_callback_;
-        GLFWwindow* window_ = nullptr;
+    uint32_t width_;
+    uint32_t height_;
+    std::string title_;
+    EventCallbackFn event_callback_;
+    GLFWwindow* window_ = nullptr;
 };

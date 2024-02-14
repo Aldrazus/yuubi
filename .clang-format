@@ -3,3 +3,5 @@ IncludeBlocks: Merge
 SortIncludes: false
 FixNamespaceComments: false
 IndentWidth: 4
+IndentAccessModifiers: false
+AccessModifierOffset: -4

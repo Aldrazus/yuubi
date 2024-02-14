@@ -6,7 +6,7 @@
 
 struct GLFWwindow;
 class Application {
-   public:
+public:
     Application();
 
     ~Application();
@@ -17,9 +17,9 @@ class Application {
 
     Window& GetWindow() { return window_; };
 
-   private:
+private:
     bool OnWindowClose(WindowCloseEvent& e);
-    
+
     bool OnWindowResize(WindowResizeEvent& e);
 
     static Application* instance_;

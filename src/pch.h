@@ -9,4 +9,5 @@
 #include <memory>
 #include <cstdint>
 #include <algorithm>
+#include <ranges>
 #include "log.h"

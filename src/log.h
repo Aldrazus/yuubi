@@ -6,12 +6,12 @@
 #pragma warning(pop)
 
 class Log {
-   public:
+public:
     static void Init();
 
     static std::shared_ptr<spdlog::logger>& GetLogger() { return logger_; }
 
-   private:
+private:
     static std::shared_ptr<spdlog::logger> logger_;
 };
 
