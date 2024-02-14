@@ -10,7 +10,7 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 
-#define UB_BIND_EVENT_FN(fn)                                   \
+#define UB_BIND_EVENT_FN(fn)                                    \
     [this](auto&&... args) -> decltype(auto) {                  \
         return this->fn(std::forward<decltype(args)>(args)...); \
     }
@@ -20,8 +20,7 @@
 
 Application* Application::instance_ = nullptr;
 
-Application::Application() 
-    : window_(800, 600, "Yuubi") {
+Application::Application() : window_(800, 600, "Yuubi") {
     if (instance_ != nullptr) {
         UB_ERROR("Application already exists");
         exit(1);
@@ -53,11 +52,9 @@ bool Application::OnWindowResize(WindowResizeEvent& e) {
 void Application::OnEvent(Event& e) {
     EventDispatcher dispatcher(e);
     dispatcher.dispatch<WindowCloseEvent>(
-        UB_BIND_EVENT_FN(Application::OnWindowClose)
-    );
+        UB_BIND_EVENT_FN(Application::OnWindowClose));
     dispatcher.dispatch<WindowResizeEvent>(
-        UB_BIND_EVENT_FN(Application::OnWindowResize)
-    );
+        UB_BIND_EVENT_FN(Application::OnWindowResize));
 }
 
 void Application::Run() {
