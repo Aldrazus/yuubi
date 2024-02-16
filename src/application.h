@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pch.h"
+#include "renderer/renderer.h"
 #include "window.h"
 #include "event/window_event.h"
 
@@ -26,4 +27,5 @@ private:
     bool running_ = false;
     bool minimized_ = false;
     Window window_;
+    Renderer renderer_;
 };

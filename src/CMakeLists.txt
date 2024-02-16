@@ -5,6 +5,8 @@ target_sources(
     "event/key_event.h"
     "event/mouse_event.h"
     "event/window_event.h"
+    "renderer/renderer.h"
+    "renderer/renderer.cpp"
     "application.h"
     "application.cpp"
     "key_codes.h"
@@ -111,3 +113,9 @@ else()
         )
     endif()
 endif()
+
+target_compile_definitions(
+    ${PROJECT_NAME}
+    PUBLIC
+    $<$<CONFIG:Debug>:UB_DEBUG>
+)
