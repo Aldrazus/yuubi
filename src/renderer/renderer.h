@@ -32,6 +32,7 @@ private:
 
     vk::Instance instance_;
     vk::DebugUtilsMessengerEXT debugMessenger_;
+    vk::DispatchLoaderDynamic dldi_;
     static std::vector<const char*> validationLayers_;
 #if UB_DEBUG
     const bool enableValidationLayers_ = true;

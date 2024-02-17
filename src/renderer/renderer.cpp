@@ -1,13 +1,23 @@
+#include <cstring>
 #include "GLFW/glfw3.h"
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
 
 #include "renderer/renderer.h"
+#include "pch.h"
 
-Renderer::Renderer() { createInstance(); }
+Renderer::Renderer() { 
+    createInstance();
+    setupDebugMessenger();
+}
 
-Renderer::~Renderer() { instance_.destroy(); }
+Renderer::~Renderer() { 
+    if (enableValidationLayers_) {
+        instance_.destroyDebugUtilsMessengerEXT(debugMessenger_, nullptr, dldi_);
+    }
+    instance_.destroy(); 
+}
 
 void Renderer::createInstance() {
     if (enableValidationLayers_ && !checkValidationLayerSupport()) {
@@ -32,6 +42,18 @@ void Renderer::createInstance() {
     if (enableValidationLayers_) {
         createInfo.enabledLayerCount = validationLayers_.size();
         createInfo.ppEnabledLayerNames = validationLayers_.data();
+
+        vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
+            .messageSeverity =
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning,
+            .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+                           vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+                           vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+            .pfnUserCallback = debugCallback,
+            .pUserData = nullptr};
+        createInfo.pNext = &debugCreateInfo;
     }
 
     instance_ = vk::createInstance(createInfo);
@@ -42,13 +64,11 @@ bool Renderer::checkValidationLayerSupport() {
         vk::enumerateInstanceLayerProperties();
 
     // TODO: find cleaner approach
-    return std::ranges::all_of(
-        validationLayers_, [&availableLayers](const std::string& layer) {
-            return std::ranges::contains(
-                availableLayers, layer,
-                [](const vk::LayerProperties& availableLayer) {
-                    return availableLayer.layerName;
-                });
+    return std::all_of(
+        validationLayers_.begin(), validationLayers_.end(), [&availableLayers](const std::string& layer) {
+            return std::find_if(availableLayers.begin(), availableLayers.end(), [&layer](const vk::LayerProperties& availableLayer){
+                return std::strcmp(availableLayer.layerName.data(), layer.data());
+            }) != availableLayers.end();
         });
 }
 
@@ -83,10 +103,8 @@ void Renderer::setupDebugMessenger() {
         .pUserData = nullptr
     };
     
-    vk::DispatchLoaderDynamic dldy;
-    dldy.init(instance_);
-
-    debugMessenger_ = instance_.createDebugUtilsMessengerEXT(createInfo, nullptr, dldy);
+    dldi_.init(instance_, vkGetInstanceProcAddr);
+    debugMessenger_ = instance_.createDebugUtilsMessengerEXT(createInfo, nullptr, dldi_);
     // TODO: 
     /*
     device = physicalDevice.createDevice(..., allocator, dldy);
