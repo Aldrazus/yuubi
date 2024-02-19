@@ -22,6 +22,8 @@ private:
 
     void pickPhysicalDevice();
 
+    void createLogicalDevice();
+
     QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice physicalDevice);
 
     bool isDeviceSuitable(vk::PhysicalDevice device);
@@ -55,4 +57,5 @@ private:
 
     vk::PhysicalDevice physicalDevice_;
     vk::Device device_;
+    vk::Queue graphicsQueue_;
 };

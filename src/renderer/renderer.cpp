@@ -11,14 +11,43 @@ Renderer::Renderer() {
     createInstance();
     setupDebugMessenger();
     pickPhysicalDevice();
+    createLogicalDevice();
 }
 
 Renderer::~Renderer() {
+    device_.destroy();
     if (enableValidationLayers_) {
         instance_.destroyDebugUtilsMessengerEXT(debugMessenger_, nullptr,
                                                 dldi_);
     }
     instance_.destroy();
+}
+
+void Renderer::createLogicalDevice() {
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice_);
+
+    float priority = 1.0f;
+    vk::DeviceQueueCreateInfo queueCreateInfo {
+        .queueFamilyIndex = indices.graphicsFamily.value(),
+        .queueCount = 1,
+        .pQueuePriorities = &priority,
+    };
+
+    vk::PhysicalDeviceFeatures deviceFeatures {};
+
+    vk::DeviceCreateInfo createInfo {
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &queueCreateInfo,
+        .enabledLayerCount = 0,
+        .pEnabledFeatures = &deviceFeatures,
+    };
+
+    if (enableValidationLayers_) {
+        createInfo.enabledLayerCount = validationLayers_.size();
+        createInfo.ppEnabledLayerNames = validationLayers_.data();
+    }
+    device_ = physicalDevice_.createDevice(createInfo);
+    graphicsQueue_ = device_.getQueue(indices.graphicsFamily.value(), 0);
 }
 
 void Renderer::createInstance() {
