@@ -4,6 +4,13 @@
 
 #include "pch.h"
 
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily;
+
+    inline bool isComplete() {
+        return graphicsFamily.has_value();
+    }
+};
 class Renderer {
 public:
     Renderer();
@@ -12,6 +19,12 @@ public:
 
 private:
     void createInstance();
+
+    void pickPhysicalDevice();
+
+    QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice physicalDevice);
+
+    bool isDeviceSuitable(vk::PhysicalDevice device);
 
     void setupDebugMessenger();
 
@@ -39,4 +52,7 @@ private:
 #else
     const bool enableValidationLayers_ = false;
 #endif
+
+    vk::PhysicalDevice physicalDevice_;
+    vk::Device device_;
 };

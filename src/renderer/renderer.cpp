@@ -7,16 +7,18 @@
 #include "renderer/renderer.h"
 #include "pch.h"
 
-Renderer::Renderer() { 
+Renderer::Renderer() {
     createInstance();
     setupDebugMessenger();
+    pickPhysicalDevice();
 }
 
-Renderer::~Renderer() { 
+Renderer::~Renderer() {
     if (enableValidationLayers_) {
-        instance_.destroyDebugUtilsMessengerEXT(debugMessenger_, nullptr, dldi_);
+        instance_.destroyDebugUtilsMessengerEXT(debugMessenger_, nullptr,
+                                                dldi_);
     }
-    instance_.destroy(); 
+    instance_.destroy();
 }
 
 void Renderer::createInstance() {
@@ -59,16 +61,57 @@ void Renderer::createInstance() {
     instance_ = vk::createInstance(createInfo);
 }
 
+void Renderer::pickPhysicalDevice() {
+    std::vector<vk::PhysicalDevice> physicalDevices =
+        instance_.enumeratePhysicalDevices();
+
+    auto suitableDeviceIter = std::find_if(
+        physicalDevices.begin(), physicalDevices.end(),
+        [this](vk::PhysicalDevice device) { return isDeviceSuitable(device); });
+
+    if (suitableDeviceIter == physicalDevices.end()) {
+        UB_ERROR("Failed to find a suitable GPU!");
+    }
+
+    physicalDevice_ = *suitableDeviceIter;
+}
+
+QueueFamilyIndices Renderer::findQueueFamilies(vk::PhysicalDevice physicalDevice) {
+    QueueFamilyIndices indices;
+
+    std::vector<vk::QueueFamilyProperties> properties = physicalDevice.getQueueFamilyProperties();
+
+    auto graphicsQueueIter = std::find_if(properties.begin(), properties.end(), [](vk::QueueFamilyProperties p){
+        return p.queueFlags & vk::QueueFlagBits::eGraphics;
+    });
+
+    if (graphicsQueueIter != properties.end()) {
+        indices.graphicsFamily = std::distance(properties.begin(), graphicsQueueIter);
+    }
+
+    return indices;
+}
+
+bool Renderer::isDeviceSuitable(vk::PhysicalDevice physicalDevice) {
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+    return indices.isComplete();
+}
+
 bool Renderer::checkValidationLayerSupport() {
     std::vector<vk::LayerProperties> availableLayers =
         vk::enumerateInstanceLayerProperties();
 
     // TODO: find cleaner approach
     return std::all_of(
-        validationLayers_.begin(), validationLayers_.end(), [&availableLayers](const std::string& layer) {
-            return std::find_if(availableLayers.begin(), availableLayers.end(), [&layer](const vk::LayerProperties& availableLayer){
-                return std::strcmp(availableLayer.layerName.data(), layer.data());
-            }) != availableLayers.end();
+        validationLayers_.begin(), validationLayers_.end(),
+        [&availableLayers](const std::string& layer) {
+            return std::find_if(
+                       availableLayers.begin(), availableLayers.end(),
+                       [&layer](const vk::LayerProperties& availableLayer) {
+                           return std::strcmp(availableLayer.layerName.data(),
+                                              layer.data());
+                       }) != availableLayers.end();
         });
 }
 
@@ -100,12 +143,12 @@ void Renderer::setupDebugMessenger() {
                        vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
                        vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
         .pfnUserCallback = debugCallback,
-        .pUserData = nullptr
-    };
-    
+        .pUserData = nullptr};
+
     dldi_.init(instance_, vkGetInstanceProcAddr);
-    debugMessenger_ = instance_.createDebugUtilsMessengerEXT(createInfo, nullptr, dldi_);
-    // TODO: 
+    debugMessenger_ =
+        instance_.createDebugUtilsMessengerEXT(createInfo, nullptr, dldi_);
+    // TODO:
     /*
     device = physicalDevice.createDevice(..., allocator, dldy);
     dldy.init(device);
