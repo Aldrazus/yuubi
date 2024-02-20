@@ -26,7 +26,6 @@ Application::Application() : window_(800, 600, "Yuubi"), renderer_(window_) {
         exit(1);
     }
     instance_ = this;
-    Log::Init();
     window_.SetEventCallback(UB_BIND_EVENT_FN(OnEvent));
     UB_INFO("Starting application");
 }

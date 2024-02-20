@@ -62,6 +62,7 @@ void Renderer::createLogicalDevice() {
     }
     device_ = physicalDevice_.createDevice(createInfo);
     graphicsQueue_ = device_.getQueue(indices.graphicsFamily.value(), 0);
+    presentQueue_ = device_.getQueue(indices.presentFamily.value(), 0);
 }
 
 void Renderer::createInstance() {
@@ -124,12 +125,26 @@ QueueFamilyIndices Renderer::findQueueFamilies(vk::PhysicalDevice physicalDevice
 
     std::vector<vk::QueueFamilyProperties> properties = physicalDevice.getQueueFamilyProperties();
 
-    auto graphicsQueueIter = std::find_if(properties.begin(), properties.end(), [](vk::QueueFamilyProperties p){
-        return p.queueFlags & vk::QueueFlagBits::eGraphics;
-    });
+    for (const auto [i, p] : std::views::enumerate(properties)) {
+        if (p.queueFlags & vk::QueueFlagBits::eGraphics && physicalDevice.getSurfaceSupportKHR(i, surface_)) {
+            indices.graphicsFamily = indices.presentFamily = i;
+        }
+    }
 
-    if (graphicsQueueIter != properties.end()) {
-        indices.graphicsFamily = std::distance(properties.begin(), graphicsQueueIter);
+    if (indices.isComplete()) {
+        return indices;
+    }
+
+    for (const auto [i, p] : std::views::enumerate(properties)) {
+        if (p.queueFlags & vk::QueueFlagBits::eGraphics) {
+            indices.graphicsFamily = i;
+        }
+    }
+
+    for (const auto [i, p] : std::views::enumerate(properties)) {
+        if (physicalDevice.getSurfaceSupportKHR(i, surface_)) {
+            indices.presentFamily = i;
+        }
     }
 
     return indices;
