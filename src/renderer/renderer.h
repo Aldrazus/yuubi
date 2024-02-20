@@ -13,6 +13,13 @@ struct QueueFamilyIndices {
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
+
+struct SwapChainSupportDetails {
+    vk::SurfaceCapabilitiesKHR capabilities;
+    std::vector<vk::SurfaceFormatKHR> formats;
+    std::vector<vk::PresentModeKHR> presentModes;
+};
+
 class Renderer {
 public:
     Renderer(const Window& window);
@@ -31,6 +38,20 @@ private:
     QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice physicalDevice);
 
     bool isDeviceSuitable(vk::PhysicalDevice device);
+
+    bool checkDeviceExtensionSupport(vk::PhysicalDevice device);
+
+    SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice physicalDevice);
+
+    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+
+    vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+
+    vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+
+    void createSwapChain();
+
+    void createImageViews();
 
     void setupDebugMessenger();
 
@@ -52,7 +73,7 @@ private:
     vk::Instance instance_;
     vk::DebugUtilsMessengerEXT debugMessenger_;
     vk::DispatchLoaderDynamic dldi_;
-    static std::vector<const char*> validationLayers_;
+    static const std::vector<const char*> validationLayers_;
 #if UB_DEBUG
     const bool enableValidationLayers_ = true;
 #else
@@ -65,4 +86,12 @@ private:
     vk::Queue presentQueue_;
     const Window& window_;
     vk::SurfaceKHR surface_;
+
+    static const std::vector<const char*> deviceExtensions_;
+
+    vk::SwapchainKHR swapChain_;
+    std::vector<vk::Image> swapChainImages_;
+    vk::Format swapChainImageFormat_;
+    vk::Extent2D swapChainExtent_;
+    std::vector<vk::ImageView> swapChainImageViews_;
 };
