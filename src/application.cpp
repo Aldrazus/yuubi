@@ -20,7 +20,7 @@
 
 Application* Application::instance_ = nullptr;
 
-Application::Application() : window_(800, 600, "Yuubi") {
+Application::Application() : window_(800, 600, "Yuubi"), renderer_(window_) {
     if (instance_ != nullptr) {
         UB_ERROR("Application already exists");
         exit(1);

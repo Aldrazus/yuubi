@@ -1,15 +1,18 @@
 #include <cstring>
-#include "GLFW/glfw3.h"
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
 
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
 #include "renderer/renderer.h"
 #include "pch.h"
 
-Renderer::Renderer() {
+Renderer::Renderer(const Window& window) : window_(window) {
     createInstance();
     setupDebugMessenger();
+    createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
 }
@@ -20,7 +23,18 @@ Renderer::~Renderer() {
         instance_.destroyDebugUtilsMessengerEXT(debugMessenger_, nullptr,
                                                 dldi_);
     }
+    instance_.destroySurfaceKHR(surface_);
     instance_.destroy();
+}
+
+void Renderer::createSurface() {
+    VkSurfaceKHR tmp;
+
+    if (glfwCreateWindowSurface(static_cast<VkInstance>(instance_), window_.getWindow(), nullptr, &tmp) != VK_SUCCESS) {
+        UB_ERROR("Unable to create window surface!");
+    }
+
+    surface_ = vk::SurfaceKHR(tmp);
 }
 
 void Renderer::createLogicalDevice() {

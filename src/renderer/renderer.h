@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "pch.h"
+#include "window.h"
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -13,12 +14,14 @@ struct QueueFamilyIndices {
 };
 class Renderer {
 public:
-    Renderer();
+    Renderer(const Window& window);
 
     ~Renderer();
 
 private:
     void createInstance();
+
+    void createSurface();
 
     void pickPhysicalDevice();
 
@@ -58,4 +61,6 @@ private:
     vk::PhysicalDevice physicalDevice_;
     vk::Device device_;
     vk::Queue graphicsQueue_;
+    const Window& window_;
+    vk::SurfaceKHR surface_;
 };

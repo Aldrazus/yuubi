@@ -16,6 +16,8 @@ public:
 
     void SetEventCallback(EventCallbackFn);
 
+    GLFWwindow* getWindow() const;
+
 private:
     void InitCallbacks();
 

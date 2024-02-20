@@ -35,6 +35,8 @@ void Window::InitCallbacks() {
 // TODO: move this to constructor?
 void Window::SetEventCallback(EventCallbackFn fn) { event_callback_ = fn; }
 
+GLFWwindow* Window::getWindow() const { return window_; }
+
 Window::~Window() {
     glfwDestroyWindow(window_);
     glfwTerminate();
