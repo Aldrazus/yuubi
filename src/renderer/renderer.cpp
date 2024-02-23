@@ -18,6 +18,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     createLogicalDevice();
     createSwapChain();
     createImageViews();
+    createGraphicsPipeline();
 }
 
 Renderer::~Renderer() {
@@ -356,6 +357,57 @@ void Renderer::createImageViews() {
     }
 }
 
+void Renderer::createGraphicsPipeline() {
+    auto vertShaderCode = readFile("shaders/vert.spv");
+    auto fragShaderCode = readFile("shaders/frag.spv");
+
+    vk::ShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+    vk::ShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
+        .stage = vk::ShaderStageFlagBits::eVertex,
+        .module = vertShaderModule,
+        .pName = "main"
+    };
+
+    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{
+        .stage = vk::ShaderStageFlagBits::eFragment,
+        .module = fragShaderModule,
+        .pName = "main"
+    };
+
+    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+    device_.destroyShaderModule(vertShaderModule);
+    device_.destroyShaderModule(fragShaderModule);
+}
+
+std::vector<char> Renderer::readFile(const std::string& filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open()) {
+        throw std::runtime_error("failed to open file!");
+    }
+
+    size_t fileSize = (size_t) file.tellg();
+    std::vector<char> buffer(fileSize);
+
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+
+    file.close();
+
+    return buffer;
+}
+
+vk::ShaderModule Renderer::createShaderModule(const std::vector<char>& code) {
+    vk::ShaderModuleCreateInfo createInfo{
+        .codeSize = code.size(),
+        .pCode = reinterpret_cast<const uint32_t*>(code.data())
+    };
+
+    return device_.createShaderModule(createInfo, nullptr);
+}
 const std::vector<const char*> Renderer::validationLayers_ = {
     "VK_LAYER_KHRONOS_validation"};
 

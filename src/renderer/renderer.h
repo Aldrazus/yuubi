@@ -53,6 +53,12 @@ private:
 
     void createImageViews();
 
+    void createGraphicsPipeline();
+
+    static std::vector<char> readFile(const std::string& filename);
+
+    vk::ShaderModule createShaderModule(const std::vector<char>& code);
+
     void setupDebugMessenger();
 
     bool checkValidationLayerSupport();
