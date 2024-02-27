@@ -53,6 +53,8 @@ private:
 
     void createImageViews();
 
+    void createRenderPass();
+
     void createGraphicsPipeline();
 
     static std::vector<char> readFile(const std::string& filename);
@@ -100,4 +102,7 @@ private:
     vk::Format swapChainImageFormat_;
     vk::Extent2D swapChainExtent_;
     std::vector<vk::ImageView> swapChainImageViews_;
+    vk::RenderPass renderPass_;
+    vk::PipelineLayout pipelineLayout_;
+    vk::Pipeline graphicsPipeline_;
 };

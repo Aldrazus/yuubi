@@ -18,12 +18,16 @@ Renderer::Renderer(const Window& window) : window_(window) {
     createLogicalDevice();
     createSwapChain();
     createImageViews();
+    createRenderPass();
     createGraphicsPipeline();
 }
 
 Renderer::~Renderer() {
+    device_.destroyRenderPass(renderPass_);
+    device_.destroyPipeline(graphicsPipeline_);
+    device_.destroyPipelineLayout(pipelineLayout_);
     for (auto imageView : swapChainImageViews_) {
-        vkDestroyImageView(device_, imageView, nullptr);
+        device_.destroyImageView(imageView);
     }
     device_.destroySwapchainKHR(swapChain_);
     device_.destroy();
@@ -357,6 +361,39 @@ void Renderer::createImageViews() {
     }
 }
 
+void Renderer::createRenderPass() {
+    vk::AttachmentDescription colorAttachment{
+        .format = swapChainImageFormat_,
+        .samples = vk::SampleCountFlagBits::e1,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .finalLayout = vk::ImageLayout::ePresentSrcKHR
+    };
+
+    vk::AttachmentReference colorAttachmentRef{
+        .attachment = 0,
+        .layout = vk::ImageLayout::eColorAttachmentOptimal,
+    };
+
+    vk::SubpassDescription subpass{
+        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachmentRef
+    };
+
+    vk::RenderPassCreateInfo renderPassInfo{
+        .attachmentCount = 1,
+        .pAttachments = &colorAttachment,
+        .subpassCount = 1,
+        .pSubpasses = &subpass
+    };
+
+    renderPass_ = device_.createRenderPass(renderPassInfo);
+}
+
 void Renderer::createGraphicsPipeline() {
     auto vertShaderCode = readFile("shaders/vert.spv");
     auto fragShaderCode = readFile("shaders/frag.spv");
@@ -377,6 +414,106 @@ void Renderer::createGraphicsPipeline() {
     };
 
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+        .vertexBindingDescriptionCount = 0,
+        .vertexAttributeDescriptionCount = 0
+    };
+
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .primitiveRestartEnable = vk::False
+    };
+
+    vk::Viewport viewport{
+        .x = 0,
+        .y = 0,
+        .width = static_cast<float>(swapChainExtent_.width),
+        .height = static_cast<float>(swapChainExtent_.height),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
+
+    vk::Rect2D scissor{
+        .offset = {0, 0},
+        .extent = swapChainExtent_
+    };
+
+    std::vector<vk::DynamicState> dynamicStates = {
+        vk::DynamicState::eViewport,
+        vk::DynamicState::eScissor,
+    };
+
+    vk::PipelineDynamicStateCreateInfo dynamicState{
+        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+        .pDynamicStates = dynamicStates.data()
+    };
+
+    vk::PipelineViewportStateCreateInfo viewportState{
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
+
+    vk::PipelineRasterizationStateCreateInfo rasterizer{
+        .depthClampEnable = vk::False,
+        .rasterizerDiscardEnable = vk::False,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullMode = vk::CullModeFlagBits::eBack,
+        .frontFace = vk::FrontFace::eClockwise,
+        .depthBiasEnable = vk::False,
+        .lineWidth = 1.0f,
+    };
+
+    vk::PipelineMultisampleStateCreateInfo multisampling{
+        .rasterizationSamples = vk::SampleCountFlagBits::e1,
+        .sampleShadingEnable = vk::False,
+        .minSampleShading = 1.0f,
+    };
+
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+        .blendEnable = vk::False,
+        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+    };
+
+    vk::PipelineColorBlendStateCreateInfo colorBlending{
+        .logicOpEnable = vk::False,
+        .attachmentCount = 1,
+        .pAttachments = &colorBlendAttachment
+    };
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo {
+
+    };
+
+    pipelineLayout_ = device_.createPipelineLayout(pipelineLayoutInfo);
+
+    vk::GraphicsPipelineCreateInfo pipelineInfo{
+        .stageCount = 2,
+        .pStages = shaderStages,
+        .pVertexInputState = &vertexInputInfo,
+        .pInputAssemblyState = &inputAssembly,
+        .pViewportState = &viewportState,
+        .pRasterizationState = &rasterizer,
+        .pMultisampleState = &multisampling,
+        .pDepthStencilState = nullptr,
+        .pColorBlendState = &colorBlending,
+        .pDynamicState = &dynamicState,
+        .layout = pipelineLayout_,
+        .renderPass = renderPass_,
+        .subpass = 0
+    };
+
+    auto [result, pipeline] = device_.createGraphicsPipeline(nullptr, pipelineInfo);
+    switch ( result )
+    {
+      case vk::Result::eSuccess:
+            graphicsPipeline_ = pipeline;
+            break;
+      case vk::Result::ePipelineCompileRequiredEXT:
+            // TODO: handle error
+        break;
+      default: assert( false );  // should never happen
+    }
 
     device_.destroyShaderModule(vertShaderModule);
     device_.destroyShaderModule(fragShaderModule);
