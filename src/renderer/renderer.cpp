@@ -20,9 +20,22 @@ Renderer::Renderer(const Window& window) : window_(window) {
     createImageViews();
     createRenderPass();
     createGraphicsPipeline();
+    createFramebuffers();
+    createCommandPool();
+    createCommandBuffer();
+    createSyncObjects();
 }
 
 Renderer::~Renderer() {
+    device_.waitIdle();
+    device_.destroySemaphore(imageAvailableSemaphore_);
+    device_.destroySemaphore(renderFinishedSemaphore_);
+    device_.destroyFence(inFlightFence_);
+
+    device_.destroyCommandPool(commandPool_);
+    for (auto framebuffer : swapChainFramebuffers_) {
+        device_.destroyFramebuffer(framebuffer);
+    }
     device_.destroyRenderPass(renderPass_);
     device_.destroyPipeline(graphicsPipeline_);
     device_.destroyPipelineLayout(pipelineLayout_);
@@ -384,11 +397,22 @@ void Renderer::createRenderPass() {
         .pColorAttachments = &colorAttachmentRef
     };
 
+    vk::SubpassDependency dependency{
+        .srcSubpass = vk::SubpassExternal,
+        .dstSubpass = 0,
+        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .srcAccessMask = vk::AccessFlagBits::eNone,
+        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
+    };
+
     vk::RenderPassCreateInfo renderPassInfo{
         .attachmentCount = 1,
         .pAttachments = &colorAttachment,
         .subpassCount = 1,
-        .pSubpasses = &subpass
+        .pSubpasses = &subpass,
+        .dependencyCount = 1,
+        .pDependencies = &dependency
     };
 
     renderPass_ = device_.createRenderPass(renderPassInfo);
@@ -423,20 +447,6 @@ void Renderer::createGraphicsPipeline() {
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
         .topology = vk::PrimitiveTopology::eTriangleList,
         .primitiveRestartEnable = vk::False
-    };
-
-    vk::Viewport viewport{
-        .x = 0,
-        .y = 0,
-        .width = static_cast<float>(swapChainExtent_.width),
-        .height = static_cast<float>(swapChainExtent_.height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f,
-    };
-
-    vk::Rect2D scissor{
-        .offset = {0, 0},
-        .extent = swapChainExtent_
     };
 
     std::vector<vk::DynamicState> dynamicStates = {
@@ -517,6 +527,140 @@ void Renderer::createGraphicsPipeline() {
 
     device_.destroyShaderModule(vertShaderModule);
     device_.destroyShaderModule(fragShaderModule);
+}
+
+void Renderer::createFramebuffers() {
+    for (const vk::ImageView& view : swapChainImageViews_) {
+        vk::ImageView attachments[] = {
+            view
+        };
+
+        vk::FramebufferCreateInfo framebufferInfo{
+            .renderPass = renderPass_,
+            .attachmentCount = 1,
+            .pAttachments = attachments,
+            .width = swapChainExtent_.width,
+            .height = swapChainExtent_.height,
+            .layers = 1,
+        };
+
+        swapChainFramebuffers_.push_back(device_.createFramebuffer(framebufferInfo));
+    }
+}
+
+void Renderer::createCommandPool() {
+    QueueFamilyIndices queueFamilyIndicies = findQueueFamilies(physicalDevice_);
+
+    vk::CommandPoolCreateInfo poolInfo{
+        .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+        .queueFamilyIndex = queueFamilyIndicies.graphicsFamily.value(),
+    };
+
+    commandPool_ = device_.createCommandPool(poolInfo);
+}
+
+void Renderer::createCommandBuffer() {
+    vk::CommandBufferAllocateInfo allocInfo{
+        .commandPool = commandPool_,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1
+    };
+
+    commandBuffer_ = device_.allocateCommandBuffers(allocInfo)[0];
+}
+
+void Renderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) {
+    vk::CommandBufferBeginInfo beginInfo{};
+    commandBuffer.begin(beginInfo);
+
+    vk::ClearValue clearColor = { {std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}} };
+    vk::RenderPassBeginInfo renderPassInfo{
+        .renderPass = renderPass_,
+        .framebuffer = swapChainFramebuffers_[imageIndex],
+        .renderArea = {
+            .offset = {0, 0},
+            .extent = swapChainExtent_,
+        },
+        .clearValueCount = 1,
+        .pClearValues = &clearColor 
+    };
+
+    commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+    {
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline_);
+        
+        vk::Viewport viewport{
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(swapChainExtent_.width),
+            .height = static_cast<float>(swapChainExtent_.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        };
+
+        commandBuffer.setViewport(0, 1, &viewport);
+        
+        vk::Rect2D scissor{
+            .offset = {0, 0},
+            .extent = swapChainExtent_
+        };
+
+        commandBuffer.setScissor(0, 1, &scissor);
+
+        commandBuffer.draw(3, 1, 0, 0);
+    }
+    commandBuffer.endRenderPass();
+
+    commandBuffer.end();
+}
+
+void Renderer::createSyncObjects() {
+    imageAvailableSemaphore_ = device_.createSemaphore({});
+    renderFinishedSemaphore_ = device_.createSemaphore({});
+    inFlightFence_ = device_.createFence({
+        .flags = vk::FenceCreateFlagBits::eSignaled
+    });
+}
+
+void Renderer::drawFrame() {
+    auto waitResult = device_.waitForFences(1, &inFlightFence_, vk::True, std::numeric_limits<uint64_t>::max());
+    auto resetFenceResult = device_.resetFences(1, &inFlightFence_);
+    
+    // This line gets immediately gets the index of the next image in the swapchain.
+    // This image may not be available for immediate use, so a semaphore is used to synchronize commands that require this image
+    auto [result, imageIndex] = device_.acquireNextImageKHR(swapChain_, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore_);
+
+    commandBuffer_.reset();
+    recordCommandBuffer(commandBuffer_, imageIndex);
+
+    vk::Semaphore waitSemaphores[] = {imageAvailableSemaphore_};
+    vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+
+    vk::Semaphore signalSemaphores[] = {renderFinishedSemaphore_};
+
+    vk::SubmitInfo submitInfo{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = waitSemaphores,
+        .pWaitDstStageMask = waitStages,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffer_,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = signalSemaphores
+    };
+
+    auto submitResult = graphicsQueue_.submit(1, &submitInfo, inFlightFence_);
+
+    vk::SwapchainKHR swapchains[] = {swapChain_};
+
+    vk::PresentInfoKHR presentInfo{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = signalSemaphores,
+        .swapchainCount = 1,
+        .pSwapchains = swapchains,
+        .pImageIndices = &imageIndex,
+    };
+
+    auto presentResult = presentQueue_.presentKHR(presentInfo);
 }
 
 std::vector<char> Renderer::readFile(const std::string& filename) {

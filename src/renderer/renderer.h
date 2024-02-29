@@ -26,6 +26,8 @@ public:
 
     ~Renderer();
 
+    void drawFrame();
+
 private:
     void createInstance();
 
@@ -56,6 +58,16 @@ private:
     void createRenderPass();
 
     void createGraphicsPipeline();
+
+    void createFramebuffers();
+
+    void createCommandPool();
+
+    void createCommandBuffer();
+
+    void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
+
+    void createSyncObjects();
 
     static std::vector<char> readFile(const std::string& filename);
 
@@ -105,4 +117,12 @@ private:
     vk::RenderPass renderPass_;
     vk::PipelineLayout pipelineLayout_;
     vk::Pipeline graphicsPipeline_;
+
+    std::vector<vk::Framebuffer> swapChainFramebuffers_;
+    vk::CommandPool commandPool_;
+    vk::CommandBuffer commandBuffer_;
+    
+    vk::Semaphore imageAvailableSemaphore_;
+    vk::Semaphore renderFinishedSemaphore_;
+    vk::Fence inFlightFence_;
 };
