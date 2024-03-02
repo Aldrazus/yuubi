@@ -29,6 +29,8 @@ public:
     void drawFrame();
 
 private:
+    static const uint32_t maxFramesInFlight_ = 2;
+
     void createInstance();
 
     void createSurface();
@@ -63,7 +65,7 @@ private:
 
     void createCommandPool();
 
-    void createCommandBuffer();
+    void createCommandBuffers();
 
     void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
 
@@ -120,9 +122,11 @@ private:
 
     std::vector<vk::Framebuffer> swapChainFramebuffers_;
     vk::CommandPool commandPool_;
-    vk::CommandBuffer commandBuffer_;
+    std::vector<vk::CommandBuffer> commandBuffers_;
     
-    vk::Semaphore imageAvailableSemaphore_;
-    vk::Semaphore renderFinishedSemaphore_;
-    vk::Fence inFlightFence_;
+    std::vector<vk::Semaphore> imageAvailableSemaphores_;
+    std::vector<vk::Semaphore> renderFinishedSemaphores_;
+    std::vector<vk::Fence> inFlightFences_;
+
+    uint32_t currentFrame_ = 0;
 };

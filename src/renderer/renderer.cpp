@@ -22,15 +22,17 @@ Renderer::Renderer(const Window& window) : window_(window) {
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
-    createCommandBuffer();
+    createCommandBuffers();
     createSyncObjects();
 }
 
 Renderer::~Renderer() {
     device_.waitIdle();
-    device_.destroySemaphore(imageAvailableSemaphore_);
-    device_.destroySemaphore(renderFinishedSemaphore_);
-    device_.destroyFence(inFlightFence_);
+    for (uint32_t i = 0; i < maxFramesInFlight_; i++) {
+        device_.destroySemaphore(imageAvailableSemaphores_[i]);
+        device_.destroySemaphore(renderFinishedSemaphores_[i]);
+        device_.destroyFence(inFlightFences_[i]);
+    }
 
     device_.destroyCommandPool(commandPool_);
     for (auto framebuffer : swapChainFramebuffers_) {
@@ -559,14 +561,14 @@ void Renderer::createCommandPool() {
     commandPool_ = device_.createCommandPool(poolInfo);
 }
 
-void Renderer::createCommandBuffer() {
+void Renderer::createCommandBuffers() {
     vk::CommandBufferAllocateInfo allocInfo{
         .commandPool = commandPool_,
         .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1
+        .commandBufferCount = maxFramesInFlight_
     };
 
-    commandBuffer_ = device_.allocateCommandBuffers(allocInfo)[0];
+    commandBuffers_ = device_.allocateCommandBuffers(allocInfo);
 }
 
 void Renderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -615,40 +617,42 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t ima
 }
 
 void Renderer::createSyncObjects() {
-    imageAvailableSemaphore_ = device_.createSemaphore({});
-    renderFinishedSemaphore_ = device_.createSemaphore({});
-    inFlightFence_ = device_.createFence({
-        .flags = vk::FenceCreateFlagBits::eSignaled
-    });
+    for (uint32_t i = 0; i < maxFramesInFlight_; i++) {
+        imageAvailableSemaphores_.push_back(device_.createSemaphore({}));
+        renderFinishedSemaphores_.push_back(device_.createSemaphore({}));
+        inFlightFences_.push_back(device_.createFence({
+            .flags = vk::FenceCreateFlagBits::eSignaled
+        }));
+    }
 }
 
 void Renderer::drawFrame() {
-    auto waitResult = device_.waitForFences(1, &inFlightFence_, vk::True, std::numeric_limits<uint64_t>::max());
-    auto resetFenceResult = device_.resetFences(1, &inFlightFence_);
+    auto waitResult = device_.waitForFences(1, &inFlightFences_[currentFrame_], vk::True, std::numeric_limits<uint64_t>::max());
+    auto resetFenceResult = device_.resetFences(1, &inFlightFences_[currentFrame_]);
     
     // This line gets immediately gets the index of the next image in the swapchain.
     // This image may not be available for immediate use, so a semaphore is used to synchronize commands that require this image
-    auto [result, imageIndex] = device_.acquireNextImageKHR(swapChain_, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore_);
+    auto [result, imageIndex] = device_.acquireNextImageKHR(swapChain_, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores_[currentFrame_]);
 
-    commandBuffer_.reset();
-    recordCommandBuffer(commandBuffer_, imageIndex);
+    commandBuffers_[currentFrame_].reset();
+    recordCommandBuffer(commandBuffers_[currentFrame_], imageIndex);
 
-    vk::Semaphore waitSemaphores[] = {imageAvailableSemaphore_};
+    vk::Semaphore waitSemaphores[] = {imageAvailableSemaphores_[currentFrame_]};
     vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
-    vk::Semaphore signalSemaphores[] = {renderFinishedSemaphore_};
+    vk::Semaphore signalSemaphores[] = {renderFinishedSemaphores_[currentFrame_]};
 
     vk::SubmitInfo submitInfo{
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = waitSemaphores,
         .pWaitDstStageMask = waitStages,
         .commandBufferCount = 1,
-        .pCommandBuffers = &commandBuffer_,
+        .pCommandBuffers = &commandBuffers_[currentFrame_],
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = signalSemaphores
     };
 
-    auto submitResult = graphicsQueue_.submit(1, &submitInfo, inFlightFence_);
+    auto submitResult = graphicsQueue_.submit(1, &submitInfo, inFlightFences_[currentFrame_]);
 
     vk::SwapchainKHR swapchains[] = {swapChain_};
 
@@ -661,6 +665,8 @@ void Renderer::drawFrame() {
     };
 
     auto presentResult = presentQueue_.presentKHR(presentInfo);
+
+    currentFrame_ = (currentFrame_ + 1) % maxFramesInFlight_;
 }
 
 std::vector<char> Renderer::readFile(const std::string& filename) {
