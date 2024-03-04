@@ -1,5 +1,6 @@
 #include <cstring>
 #include <limits>
+#include "log.h"
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
@@ -28,6 +29,13 @@ Renderer::Renderer(const Window& window) : window_(window) {
 
 Renderer::~Renderer() {
     device_.waitIdle();
+
+    cleanupSwapChain();
+
+    device_.destroyPipeline(graphicsPipeline_);
+    device_.destroyPipelineLayout(pipelineLayout_);
+    device_.destroyRenderPass(renderPass_);
+
     for (uint32_t i = 0; i < maxFramesInFlight_; i++) {
         device_.destroySemaphore(imageAvailableSemaphores_[i]);
         device_.destroySemaphore(renderFinishedSemaphores_[i]);
@@ -35,16 +43,6 @@ Renderer::~Renderer() {
     }
 
     device_.destroyCommandPool(commandPool_);
-    for (auto framebuffer : swapChainFramebuffers_) {
-        device_.destroyFramebuffer(framebuffer);
-    }
-    device_.destroyRenderPass(renderPass_);
-    device_.destroyPipeline(graphicsPipeline_);
-    device_.destroyPipelineLayout(pipelineLayout_);
-    for (auto imageView : swapChainImageViews_) {
-        device_.destroyImageView(imageView);
-    }
-    device_.destroySwapchainKHR(swapChain_);
     device_.destroy();
     if (enableValidationLayers_) {
         instance_.destroyDebugUtilsMessengerEXT(debugMessenger_, nullptr,
@@ -352,6 +350,36 @@ void Renderer::createSwapChain() {
     swapChainExtent_ = swapExtent;
 }
 
+void Renderer::cleanupSwapChain() {
+    for (uint32_t i = 0; i < swapChainFramebuffers_.size(); i++) {
+        device_.destroyFramebuffer(swapChainFramebuffers_[i]);
+    }
+    swapChainFramebuffers_.clear();
+
+    for (uint32_t i = 0; i < swapChainImageViews_.size(); i++) {
+        device_.destroyImageView(swapChainImageViews_[i]);
+    }
+    swapChainImageViews_.clear();
+
+    device_.destroySwapchainKHR(swapChain_);
+}
+
+void Renderer::recreateSwapChain() {
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window_.getWindow(), &width, &height);
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(window_.getWindow(), &width, &height);
+        glfwWaitEvents();
+    }
+    device_.waitIdle();
+
+    cleanupSwapChain();
+
+    createSwapChain();
+    createImageViews();
+    createFramebuffers();
+}
+
 void Renderer::createImageViews() {
     for (const auto& image : swapChainImages_) {
         vk::ImageViewCreateInfo createInfo {
@@ -628,11 +656,20 @@ void Renderer::createSyncObjects() {
 
 void Renderer::drawFrame() {
     auto waitResult = device_.waitForFences(1, &inFlightFences_[currentFrame_], vk::True, std::numeric_limits<uint64_t>::max());
+
+    uint32_t imageIndex;
+    // TODO: remove exceptions
+    try {
+        // This line gets immediately gets the index of the next image in the swapchain.
+        // This image may not be available for immediate use, so a semaphore is used to synchronize commands that require this image
+        auto [result, idx] = device_.acquireNextImageKHR(swapChain_, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores_[currentFrame_]);
+        imageIndex = idx;
+    } catch (const std::exception& e) {
+        recreateSwapChain();
+        return;
+    }
+
     auto resetFenceResult = device_.resetFences(1, &inFlightFences_[currentFrame_]);
-    
-    // This line gets immediately gets the index of the next image in the swapchain.
-    // This image may not be available for immediate use, so a semaphore is used to synchronize commands that require this image
-    auto [result, imageIndex] = device_.acquireNextImageKHR(swapChain_, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores_[currentFrame_]);
 
     commandBuffers_[currentFrame_].reset();
     recordCommandBuffer(commandBuffers_[currentFrame_], imageIndex);
@@ -664,7 +701,19 @@ void Renderer::drawFrame() {
         .pImageIndices = &imageIndex,
     };
 
-    auto presentResult = presentQueue_.presentKHR(presentInfo);
+    vk::Result presentResult;
+    // TODO: remove exceptions
+    try {
+        presentResult = presentQueue_.presentKHR(presentInfo);
+    } catch (const std::exception& e) {
+        UB_INFO(e.what());
+        framebufferResized_ = true;
+    }
+
+    if (framebufferResized_ || presentResult == vk::Result::eSuboptimalKHR) {
+        framebufferResized_ = false;
+        recreateSwapChain();
+    }
 
     currentFrame_ = (currentFrame_ + 1) % maxFramesInFlight_;
 }

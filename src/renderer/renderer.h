@@ -28,6 +28,9 @@ public:
 
     void drawFrame();
 
+    inline void resize() {
+        framebufferResized_ = true;
+    }
 private:
     static const uint32_t maxFramesInFlight_ = 2;
 
@@ -70,6 +73,10 @@ private:
     void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
 
     void createSyncObjects();
+
+    void cleanupSwapChain();
+
+    void recreateSwapChain();
 
     static std::vector<char> readFile(const std::string& filename);
 
@@ -127,6 +134,8 @@ private:
     std::vector<vk::Semaphore> imageAvailableSemaphores_;
     std::vector<vk::Semaphore> renderFinishedSemaphores_;
     std::vector<vk::Fence> inFlightFences_;
+
+    bool framebufferResized_ = false;
 
     uint32_t currentFrame_ = 0;
 };

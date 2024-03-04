@@ -45,6 +45,7 @@ bool Application::OnWindowResize(WindowResizeEvent& e) {
     }
     minimized_ = false;
     // TODO: let renderer resize
+    renderer_.resize();
     return false;
 }
 

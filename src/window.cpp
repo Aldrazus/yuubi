@@ -8,7 +8,6 @@ Window::Window(uint32_t width, uint32_t height, std::string_view title)
     : width_(width), height_(height), title_(title) {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     window_ =
         glfwCreateWindow(width_, height_, title_.data(), nullptr, nullptr);
     glfwSetWindowUserPointer(window_, this);
