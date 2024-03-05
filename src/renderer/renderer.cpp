@@ -3,6 +3,7 @@
 #include "log.h"
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
 
 #define GLFW_INCLUDE_NONE
@@ -10,6 +11,34 @@
 
 #include "renderer/renderer.h"
 #include "pch.h"
+
+vk::VertexInputBindingDescription Vertex::getBindingDescription() {
+    vk::VertexInputBindingDescription bindingDescription{
+        .binding = 0,
+        .stride = sizeof(Vertex),
+        .inputRate = vk::VertexInputRate::eVertex
+    };
+
+    return bindingDescription;
+}
+
+std::array<vk::VertexInputAttributeDescription, 2> Vertex::getAttributeDescriptions() {
+    std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions;
+    attributeDescriptions[0] = {
+        .location = 0,
+        .binding = 0,
+        .format = vk::Format::eR32G32Sfloat,
+        .offset = offsetof(Vertex, pos)
+    };
+
+    attributeDescriptions[1] = {
+        .location = 1,
+        .binding = 0,
+        .format = vk::Format::eR32G32B32Sfloat,
+        .offset = offsetof(Vertex, color)
+    };
+    return attributeDescriptions;
+}
 
 Renderer::Renderer(const Window& window) : window_(window) {
     createInstance();
@@ -23,6 +52,8 @@ Renderer::Renderer(const Window& window) : window_(window) {
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
+    createVertexBuffer();
+    createIndexBuffer();
     createCommandBuffers();
     createSyncObjects();
 }
@@ -31,6 +62,11 @@ Renderer::~Renderer() {
     device_.waitIdle();
 
     cleanupSwapChain();
+
+    device_.destroyBuffer(vertexBuffer_);
+    device_.freeMemory(vertexBufferMemory_);
+    device_.destroyBuffer(indexBuffer_);
+    device_.freeMemory(indexBufferMemory_);
 
     device_.destroyPipeline(graphicsPipeline_);
     device_.destroyPipelineLayout(pipelineLayout_);
@@ -469,9 +505,14 @@ void Renderer::createGraphicsPipeline() {
 
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
+    auto bindingDescription = Vertex::getBindingDescription();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-        .vertexBindingDescriptionCount = 0,
-        .vertexAttributeDescriptionCount = 0
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()
     };
 
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
@@ -589,6 +630,112 @@ void Renderer::createCommandPool() {
     commandPool_ = device_.createCommandPool(poolInfo);
 }
 
+void Renderer::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory) {
+    vk::BufferCreateInfo bufferInfo{
+        .size = size,
+        .usage = usage,
+        .sharingMode = vk::SharingMode::eExclusive,
+    };
+    buffer = device_.createBuffer(bufferInfo);
+
+    auto memRequirements = device_.getBufferMemoryRequirements(buffer);
+
+    vk::MemoryAllocateInfo allocInfo{
+        .allocationSize = memRequirements.size,
+        .memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties),
+    };
+
+    bufferMemory = device_.allocateMemory(allocInfo);
+    device_.bindBufferMemory(buffer, bufferMemory, 0);
+}
+
+void Renderer::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) {
+    vk::CommandBufferAllocateInfo allocInfo{
+        .commandPool = commandPool_,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1
+    };
+
+    vk::CommandBuffer commandBuffer = device_.allocateCommandBuffers(allocInfo)[0];
+
+    vk::CommandBufferBeginInfo beginInfo{
+        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+    };
+
+    commandBuffer.begin(beginInfo);
+
+    vk::BufferCopy copyRegion{
+        .size = size
+    };
+    commandBuffer.copyBuffer(srcBuffer, dstBuffer, 1, &copyRegion);
+
+    commandBuffer.end();
+
+    vk::SubmitInfo submitInfo{
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffer
+    };
+
+    graphicsQueue_.submit(1, &submitInfo, {});
+    graphicsQueue_.waitIdle();
+    device_.freeCommandBuffers(commandPool_, 1, &commandBuffer);
+}
+
+void Renderer::createVertexBuffer() {
+    vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+    vk::Buffer stagingBuffer;
+    vk::DeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    device_.mapMemory(stagingBufferMemory, 0, bufferSize, vk::MemoryMapFlags{}, &data);
+    std::memcpy(data, vertices.data(), (size_t)bufferSize);
+    device_.unmapMemory(stagingBufferMemory);
+
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal, vertexBuffer_, vertexBufferMemory_);
+    copyBuffer(stagingBuffer, vertexBuffer_, bufferSize);
+
+    device_.destroyBuffer(stagingBuffer);
+    device_.freeMemory(stagingBufferMemory);
+}
+
+// TODO: indices and vertices should be stored in the same buffer
+void Renderer::createIndexBuffer() {
+    vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+    vk::Buffer stagingBuffer;
+    vk::DeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    device_.mapMemory(stagingBufferMemory, 0, bufferSize, vk::MemoryMapFlags{}, &data);
+    std::memcpy(data, indices.data(), (size_t)bufferSize);
+    device_.unmapMemory(stagingBufferMemory);
+
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer_, indexBufferMemory_);
+    copyBuffer(stagingBuffer, indexBuffer_, bufferSize);
+
+    device_.destroyBuffer(stagingBuffer);
+    device_.freeMemory(stagingBufferMemory);
+}
+
+uint32_t Renderer::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+    auto memProperties = physicalDevice_.getMemoryProperties();
+    
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        // Bit i is set if and only if the memory type i in the VkPhysicalDeviceMemoryProperties 
+        // structure for the physical device is supported for the resource.
+        // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkMemoryRequirements.html
+        if (typeFilter & (1 << i) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+
+    UB_ERROR("Unable to find suitable memory type");
+    throw std::runtime_error("Failed to find suitable memory type");
+}
+
 void Renderer::createCommandBuffers() {
     vk::CommandBufferAllocateInfo allocInfo{
         .commandPool = commandPool_,
@@ -618,6 +765,11 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t ima
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
     {
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline_);
+
+        vk::Buffer vertexBuffers[] = {vertexBuffer_};
+        vk::DeviceSize offsets[] = {0};
+        commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
+        commandBuffer.bindIndexBuffer(indexBuffer_, 0, vk::IndexType::eUint16);
         
         vk::Viewport viewport{
             .x = 0.0f,
@@ -637,7 +789,7 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t ima
 
         commandBuffer.setScissor(0, 1, &scissor);
 
-        commandBuffer.draw(3, 1, 0, 0);
+        commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     }
     commandBuffer.endRenderPass();
 

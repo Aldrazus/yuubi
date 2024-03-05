@@ -1,9 +1,29 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
+#include <glm/glm.hpp>
 
 #include "pch.h"
 #include "window.h"
+
+struct Vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+
+    static vk::VertexInputBindingDescription getBindingDescription();
+    static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
+};
+
+const std::vector<Vertex> vertices = {
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+const std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0
+};
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -67,6 +87,16 @@ private:
     void createFramebuffers();
 
     void createCommandPool();
+
+    void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
+
+    void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
+
+    void createVertexBuffer();
+
+    void createIndexBuffer();
+
+    uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 
     void createCommandBuffers();
 
@@ -138,4 +168,9 @@ private:
     bool framebufferResized_ = false;
 
     uint32_t currentFrame_ = 0;
+
+    vk::Buffer vertexBuffer_;
+    vk::DeviceMemory vertexBufferMemory_;
+    vk::Buffer indexBuffer_;
+    vk::DeviceMemory indexBufferMemory_;
 };
