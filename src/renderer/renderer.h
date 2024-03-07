@@ -6,6 +6,12 @@
 #include "pch.h"
 #include "window.h"
 
+struct UniformBufferObject {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
+
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
@@ -82,6 +88,16 @@ private:
 
     void createRenderPass();
 
+    void createDescriptorSetLayout();
+
+    void createUniformBuffers();
+    
+    void updateUniformBuffer(uint32_t currentImage);
+
+    void createDescriptorPool();
+
+    void createDescriptorSets();
+
     void createGraphicsPipeline();
 
     void createFramebuffers();
@@ -154,6 +170,7 @@ private:
     vk::Extent2D swapChainExtent_;
     std::vector<vk::ImageView> swapChainImageViews_;
     vk::RenderPass renderPass_;
+    vk::DescriptorSetLayout descriptorSetLayout_;
     vk::PipelineLayout pipelineLayout_;
     vk::Pipeline graphicsPipeline_;
 
@@ -173,4 +190,11 @@ private:
     vk::DeviceMemory vertexBufferMemory_;
     vk::Buffer indexBuffer_;
     vk::DeviceMemory indexBufferMemory_;
+
+    std::vector<vk::Buffer> uniformBuffers_;
+    std::vector<vk::DeviceMemory> uniformBuffersMemory_;
+    std::vector<void*> uniformBuffersMapped_;
+
+    vk::DescriptorPool descriptorPool_;
+    std::vector<vk::DescriptorSet> descriptorSets_;
 };
