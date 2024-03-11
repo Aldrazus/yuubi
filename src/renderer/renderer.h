@@ -15,21 +15,21 @@ struct UniformBufferObject {
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCoord;
 
     static vk::VertexInputBindingDescription getBindingDescription();
-    static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
+    static std::array<vk::VertexInputAttributeDescription, 3>
+    getAttributeDescriptions();
 };
 
 const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 };
 
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0
-};
+const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -54,9 +54,8 @@ public:
 
     void drawFrame();
 
-    inline void resize() {
-        framebufferResized_ = true;
-    }
+    inline void resize() { framebufferResized_ = true; }
+
 private:
     static const uint32_t maxFramesInFlight_ = 2;
 
@@ -74,13 +73,17 @@ private:
 
     bool checkDeviceExtensionSupport(vk::PhysicalDevice device);
 
-    SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice physicalDevice);
+    SwapChainSupportDetails querySwapChainSupport(
+        vk::PhysicalDevice physicalDevice);
 
-    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(
+        const std::vector<vk::SurfaceFormatKHR>& availableFormats);
 
-    vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+    vk::PresentModeKHR chooseSwapPresentMode(
+        const std::vector<vk::PresentModeKHR>& availablePresentModes);
 
-    vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+    vk::Extent2D chooseSwapExtent(
+        const vk::SurfaceCapabilitiesKHR& capabilities);
 
     void createSwapChain();
 
@@ -91,7 +94,7 @@ private:
     void createDescriptorSetLayout();
 
     void createUniformBuffers();
-    
+
     void updateUniformBuffer(uint32_t currentImage);
 
     void createDescriptorPool();
@@ -104,19 +107,45 @@ private:
 
     void createCommandPool();
 
-    void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
+    void createTextureImage();
 
-    void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
+    void createTextureImageView();
+
+    void createTextureSampler();
+
+    vk::ImageView createImageView(vk::Image image, vk::Format format);
+
+    vk::CommandBuffer beginSingleTimeCommands();
+
+    void endSingleTimeCommands(vk::CommandBuffer commandBuffer);
+
+    void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+
+    void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+
+    void createImage(uint32_t width, uint32_t height, vk::Format format,
+                     vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+                     vk::MemoryPropertyFlags properties, vk::Image& image,
+                     vk::DeviceMemory& imageMemory);
+
+    void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
+                      vk::MemoryPropertyFlags properties, vk::Buffer& buffer,
+                      vk::DeviceMemory& bufferMemory);
+
+    void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer,
+                    vk::DeviceSize size);
 
     void createVertexBuffer();
 
     void createIndexBuffer();
 
-    uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
+    uint32_t findMemoryType(uint32_t typeFilter,
+                            vk::MemoryPropertyFlags properties);
 
     void createCommandBuffers();
 
-    void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
+    void recordCommandBuffer(vk::CommandBuffer commandBuffer,
+                             uint32_t imageIndex);
 
     void createSyncObjects();
 
@@ -177,7 +206,7 @@ private:
     std::vector<vk::Framebuffer> swapChainFramebuffers_;
     vk::CommandPool commandPool_;
     std::vector<vk::CommandBuffer> commandBuffers_;
-    
+
     std::vector<vk::Semaphore> imageAvailableSemaphores_;
     std::vector<vk::Semaphore> renderFinishedSemaphores_;
     std::vector<vk::Fence> inFlightFences_;
@@ -197,4 +226,10 @@ private:
 
     vk::DescriptorPool descriptorPool_;
     std::vector<vk::DescriptorSet> descriptorSets_;
+
+    vk::Image textureImage_;
+    vk::DeviceMemory textureImageMemory_;
+
+    vk::ImageView textureImageView_;
+    vk::Sampler textureSampler_;
 };
