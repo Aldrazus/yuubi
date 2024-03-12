@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
+
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
 #include "pch.h"
@@ -13,7 +15,7 @@ struct UniformBufferObject {
 };
 
 struct Vertex {
-    glm::vec2 pos;
+    glm::vec3 pos;
     glm::vec3 color;
     glm::vec2 texCoord;
 
@@ -23,13 +25,21 @@ struct Vertex {
 };
 
 const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 };
 
-const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+const std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0,
+    4, 5, 6, 6, 7, 4
+};
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -107,13 +117,21 @@ private:
 
     void createCommandPool();
 
+    void createDepthResources();
+
+    vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+
+    vk::Format findDepthFormat();
+
+    bool hasStencilComponent(vk::Format format);
+
     void createTextureImage();
 
     void createTextureImageView();
 
     void createTextureSampler();
 
-    vk::ImageView createImageView(vk::Image image, vk::Format format);
+    vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 
     vk::CommandBuffer beginSingleTimeCommands();
 
@@ -232,4 +250,8 @@ private:
 
     vk::ImageView textureImageView_;
     vk::Sampler textureSampler_;
+
+    vk::Image depthImage_;
+    vk::DeviceMemory depthImageMemory_;
+    vk::ImageView depthImageView_;
 };
