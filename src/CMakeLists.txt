@@ -1,6 +1,9 @@
 target_sources(
     ${PROJECT_NAME}
     PRIVATE
+    "core/log.cpp"
+    "core/log.h"
+    "core/ref.h"
     "event/event.h"
     "event/key_event.h"
     "event/mouse_event.h"

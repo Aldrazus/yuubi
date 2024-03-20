@@ -8,7 +8,7 @@
 namespace yuubi {
 class SwapChain {
 public:
-    SwapChain();
+    SwapChain(vk::Device device);
     ~SwapChain();
 private:
     Device device_;

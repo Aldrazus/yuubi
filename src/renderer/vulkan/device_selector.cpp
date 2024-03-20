@@ -1,26 +1,28 @@
 #include "device_selector.h"
 
+#define VULKAN_HPP_NO_CONSTRUCTORS
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#include <vulkan/vulkan.hpp>
+
 namespace yuubi {
 
-bool DeviceSelector::isDeviceSuitable(vk::PhysicalDevice physicalDevice) {
-    QueueFamilyIndices indices = findQueueFamilyIndices(physicalDevice);
-    bool extensionsSupported = supportsRequiredDeviceExtensions(physicalDevice);
+vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance,
+                                        vk::SurfaceKHR surface) {
+    std::vector<vk::PhysicalDevice> physicalDevices =
+        instance.enumeratePhysicalDevices();
 
-    bool swapChainAdequate = false;
-    if (extensionsSupported) {
-        auto swapChainSupport = querySwapChainSupport(physicalDevice);
-        swapChainAdequate = !swapChainSupport.formats.empty() &&
-                            !swapChainSupport.presentModes.empty();
+    auto suitableDeviceIter = std::find_if(
+        physicalDevices.begin(), physicalDevices.end(),
+        [instance, surface](vk::PhysicalDevice device) { return isDeviceSuitable(instance, surface, device); });
+
+    if (suitableDeviceIter == physicalDevices.end()) {
+        UB_ERROR("Failed to find a suitable GPU!");
     }
 
-    auto supportedFeatures = physicalDevice.getFeatures();
-
-    return indices.isComplete() && extensionsSupported && swapChainAdequate &&
-           supportedFeatures.samplerAnisotropy;
+    return *suitableDeviceIter;
 }
 
-QueueFamilyIndices DeviceSelector::findQueueFamilyIndices(
-    vk::PhysicalDevice physicalDevice) {
+static QueueFamilyIndices findQueueFamilyIndices(vk::SurfaceKHR surface, vk::PhysicalDevice physicalDevice) {
     QueueFamilyIndices indices;
 
     std::vector<vk::QueueFamilyProperties> properties =
@@ -28,7 +30,7 @@ QueueFamilyIndices DeviceSelector::findQueueFamilyIndices(
 
     for (const auto [i, p] : std::views::enumerate(properties)) {
         if (p.queueFlags & vk::QueueFlagBits::eGraphics &&
-            physicalDevice.getSurfaceSupportKHR(i, surface_)) {
+            physicalDevice.getSurfaceSupportKHR(i, surface)) {
             indices.graphicsFamily = indices.presentFamily = i;
         }
     }
@@ -44,13 +46,32 @@ QueueFamilyIndices DeviceSelector::findQueueFamilyIndices(
     }
 
     for (const auto [i, p] : std::views::enumerate(properties)) {
-        if (physicalDevice.getSurfaceSupportKHR(i, surface_)) {
+        if (physicalDevice.getSurfaceSupportKHR(i, surface)) {
             indices.presentFamily = i;
         }
     }
 
     return indices;
 }
+
+static bool isDeviceSuitable(vk::Instance instance, vk::SurfaceKHR surface,
+                             vk::PhysicalDevice physicalDevice) {
+    QueueFamilyIndices indices = findQueueFamilyIndices(surface, physicalDevice);
+    bool extensionsSupported = supportsRequiredDeviceExtensions(physicalDevice);
+
+    bool swapChainAdequate = false;
+    if (extensionsSupported) {
+        auto swapChainSupport = querySwapChainSupport(physicalDevice);
+        swapChainAdequate = !swapChainSupport.formats.empty() &&
+                            !swapChainSupport.presentModes.empty();
+    }
+
+    auto supportedFeatures = physicalDevice.getFeatures();
+
+    return indices.isComplete() && extensionsSupported && swapChainAdequate &&
+           supportedFeatures.samplerAnisotropy;
+}
+
 
 bool DeviceSelector::supportsRequiredDeviceExtensions(
     vk::PhysicalDevice physicalDevice) {

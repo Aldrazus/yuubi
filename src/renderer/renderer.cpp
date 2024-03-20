@@ -1,6 +1,5 @@
 #include <cstring>
 #include <limits>
-#include "log.h"
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
