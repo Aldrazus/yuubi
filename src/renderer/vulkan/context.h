@@ -4,16 +4,35 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
 
+#include "window.h"
+
 namespace yuubi {
+
+class Device;
+
+struct SwapChainSupportDetails {
+    vk::SurfaceCapabilitiesKHR capabilities;
+    std::vector<vk::SurfaceFormatKHR> formats;
+    std::vector<vk::PresentModeKHR> presentModes;
+};
 
 class Context {
 public:
-    Context();
+    Context(const Window& window);
     ~Context();
+
+    Device createDevice();
+    vk::Instance getInstance() const;
+    bool deviceSupportsSurface(vk::PhysicalDevice physicalDevice, uint32_t index) const;
+    SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice physicalDevice);
+    std::vector<vk::PhysicalDevice> enumeratePhysicalDevices() const;
+private:
+    void createInstance();
     void createSurface();
     void initDebugMessenger();
+    bool checkValidationLayerSupport() const;
+    std::vector<const char*> getRequiredExtensions() const;
 
-private:
     static VKAPI_ATTR VkBool32 VKAPI_CALL
     debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                   VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -35,6 +54,7 @@ private:
 #endif
     vk::Instance instance_;
     vk::SurfaceKHR surface_;
+    const Window& window_;
 };
 
 }
