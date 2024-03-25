@@ -1,5 +1,7 @@
 #pragma once
 
+#define VULKAN_HPP_NO_CONSTRUCTORS
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -99,8 +101,6 @@ private:
 
     void createImageViews();
 
-    void createRenderPass();
-
     void createDescriptorSetLayout();
 
     void createUniformBuffers();
@@ -112,8 +112,6 @@ private:
     void createDescriptorSets();
 
     void createGraphicsPipeline();
-
-    void createFramebuffers();
 
     void createCommandPool();
 
@@ -195,6 +193,7 @@ private:
     vk::Instance instance_;
     vk::DebugUtilsMessengerEXT debugMessenger_;
     vk::DispatchLoaderDynamic dldi_;
+    vk::DispatchLoaderDynamic dldy_;
     static const std::vector<const char*> validationLayers_;
 #if UB_DEBUG
     const bool enableValidationLayers_ = true;
@@ -216,12 +215,10 @@ private:
     vk::Format swapChainImageFormat_;
     vk::Extent2D swapChainExtent_;
     std::vector<vk::ImageView> swapChainImageViews_;
-    vk::RenderPass renderPass_;
     vk::DescriptorSetLayout descriptorSetLayout_;
     vk::PipelineLayout pipelineLayout_;
     vk::Pipeline graphicsPipeline_;
 
-    std::vector<vk::Framebuffer> swapChainFramebuffers_;
     vk::CommandPool commandPool_;
     std::vector<vk::CommandBuffer> commandBuffers_;
 
@@ -254,4 +251,5 @@ private:
     vk::Image depthImage_;
     vk::DeviceMemory depthImageMemory_;
     vk::ImageView depthImageView_;
+    vk::Format depthFormat_;
 };

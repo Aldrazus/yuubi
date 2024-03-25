@@ -2,6 +2,8 @@
 
 #include "event/window_event.h"
 #include "pch.h"
+
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 Window::Window(uint32_t width, uint32_t height, std::string_view title)

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <ranges>
+#include <tuple>
 #include <optional>
 #include <print>
 #include "core/log.h"
