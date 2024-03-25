@@ -311,6 +311,8 @@ std::vector<const char*> Renderer::getRequiredExtensions() {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
+    extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
     return extensions;
 }
 
@@ -590,7 +592,7 @@ void Renderer::createGraphicsPipeline() {
     vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo {
         .colorAttachmentCount = 1,
         .pColorAttachmentFormats = &swapChainImageFormat_,
-        .depthAttachmentFormat = depthFormat_,
+        .depthAttachmentFormat = findDepthFormat(),
     };
 
     vk::GraphicsPipelineCreateInfo pipelineInfo{
@@ -649,7 +651,6 @@ void Renderer::createDepthResources() {
                                       vk::ImageAspectFlagBits::eDepth);
 
     transitionImageLayout(depthImage_, depthFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
-    depthFormat_ = depthFormat;
 }
 
 vk::Format Renderer::findSupportedFormat(
@@ -1071,7 +1072,7 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer commandBuffer,
 
     vk::RenderingAttachmentInfo colorAttachmentInfo{
         .imageView = swapChainImageViews_[imageIndex],
-        .imageLayout = vk::ImageLayout::eAttachmentOptimal,
+        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eStore,
         .clearValue = {{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}}}
@@ -1079,7 +1080,7 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer commandBuffer,
 
     vk::RenderingAttachmentInfo depthAttachmentInfo {
         .imageView = depthImageView_,
-        .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+        .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eStore,
         .clearValue = {.depthStencil = {1.0f, 0}}
@@ -1353,6 +1354,9 @@ const std::vector<const char*> Renderer::validationLayers_ = {
 const std::vector<const char*> Renderer::deviceExtensions_ = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+    VK_KHR_MAINTENANCE2_EXTENSION_NAME,
+    VK_KHR_MULTIVIEW_EXTENSION_NAME,
+    VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
     VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
-    VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
+
 };

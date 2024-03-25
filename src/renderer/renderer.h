@@ -251,5 +251,4 @@ private:
     vk::Image depthImage_;
     vk::DeviceMemory depthImageMemory_;
     vk::ImageView depthImageView_;
-    vk::Format depthFormat_;
 };
