@@ -18,7 +18,6 @@ void Viewport::initialize() {
 }
 
 void Viewport::destroySwapChain() {
-    UB_INFO("Destroying swap chain stuff");
     // Destroy depth image
     device_.destroyImageView(depthImageView_);
     device_.destroyImage(depthImage_);
@@ -77,7 +76,6 @@ void Viewport::createSwapChain() {
     createInfo.pQueueFamilyIndices = nullptr;  // Optional
 
     swapChain_ = device_.createSwapchainKHR(createInfo);
-    UB_INFO("Created swapchain");
     swapChainImages_ = device_.getSwapchainImagesKHR(swapChain_);
     swapChainImageFormat_ = surfaceFormat.format;
     swapChainExtent_ = swapExtent;
@@ -270,7 +268,6 @@ void Viewport::createSyncObjects() {
         inFlightFences_.push_back(
             device_.createFence({.flags = vk::FenceCreateFlagBits::eSignaled}));
     }
-    UB_INFO("Created Sync Objects");
 }
 
 bool Viewport::beginFrame() {
