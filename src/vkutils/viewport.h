@@ -1,18 +1,70 @@
 #pragma once
 
-#define VULKAN_HPP_NO_CONSTRUCTORS
-#include <vulkan/vulkan.hpp>
+#include "vkutils/vulkan_usage.h"
+
+#define MAX_FRAMES_IN_FLIGHT 2
 
 namespace yuubi {
+namespace vkutils {
+
 class Viewport {
 public:
     Viewport() {};
-    Viewport(vk::SurfaceKHR surface, vk::PhysicalDevice physicalDevice, vk::Device device);
-    ~Viewport();
+    Viewport(vk::SurfaceKHR surface, vk::PhysicalDevice physicalDevice, vk::Device device, vk::Queue presentQueue);
+
+    void initialize();
+    void destroy();
 
     Viewport& operator=(Viewport&& rhs) = default;
     void recreateSwapChain();
-    inline vk::RenderPass getRenderPass() { return renderPass_; }
+
+    inline vk::Extent2D getExtent() const {
+        return swapChainExtent_;
+    }
+
+    inline vk::ImageView getDepthImageView() const {
+        return depthImageView_;
+    }
+
+    inline vk::Format getDepthFormat() const {
+        return depthFormat_;
+    }
+
+    inline vk::Format getSwapChainImageFormat() const {
+        return swapChainImageFormat_;
+    }
+
+    inline vk::Image getCurrentImage() const {
+        return swapChainImages_[imageIndex_];
+    }
+
+    inline vk::ImageView getCurrentImageView() const {
+        return swapChainImageViews_[imageIndex_];
+    }
+
+    inline vk::Fence getCurrentFrameFence() const {
+        return inFlightFences_[currentFrame_];
+    }
+
+    inline vk::Semaphore getImageAvailableSemaphore() const {
+        return imageAvailableSemaphores_[currentFrame_];
+    }
+
+    inline vk::Semaphore getRenderFinishedSemaphore() const {
+        return renderFinishedSemaphores_[currentFrame_];
+    }
+
+    inline uint32_t getCurrentFrame() const {
+        return currentFrame_;
+    }
+
+    inline void shouldResize() {
+        framebufferResized_ = true;
+    }
+
+    // TODO: find more elegant solution
+    bool beginFrame();
+    bool endFrame();
 
 private:
     struct SwapChainSupportDetails {
@@ -33,6 +85,7 @@ private:
     vk::Extent2D chooseSwapExtent(
         const vk::SurfaceCapabilitiesKHR& capabilities) const;
     void createImageViews();
+    void createSyncObjects();
 
     // --
     void createDepthStencil();
@@ -47,16 +100,11 @@ private:
     uint32_t findMemoryType(uint32_t typeFilter,
                             vk::MemoryPropertyFlags properties);
 
-    // --
-    void createFramebuffers();
-
-    // -- 
-    void createRenderPass();
-    
     // Context
     vk::SurfaceKHR surface_;
     vk::PhysicalDevice physicalDevice_;
     vk::Device device_;
+    vk::Queue presentQueue_;
 
     // Swap chain resources
     vk::SwapchainKHR swapChain_;
@@ -65,17 +113,27 @@ private:
     vk::Format swapChainImageFormat_;
     vk::Extent2D swapChainExtent_;
 
+    // Current frame being rendered
+    uint32_t currentFrame_ = 0;
+
+    // Index of current image being rendered to
+    uint32_t imageIndex_;
+
+    bool framebufferResized_ = false;
+
     // Depth buffer resources
     vk::Image depthImage_;
     vk::DeviceMemory depthImageMemory_;
     vk::ImageView depthImageView_;
+    vk::Format depthFormat_;
     
     // Stencil buffer resources
 
-    // Framebuffer resources
-    std::vector<vk::Framebuffer> swapChainFramebuffers_;
-
-    // Render pass
-    vk::RenderPass renderPass_;
+    // Sync objects
+    std::vector<vk::Semaphore> imageAvailableSemaphores_;
+    std::vector<vk::Semaphore> renderFinishedSemaphores_;
+    std::vector<vk::Fence> inFlightFences_;
 };
-}
+
+} // namespace vkutils
+} // namespace yuubi

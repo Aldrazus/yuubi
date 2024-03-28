@@ -1,13 +1,12 @@
 #pragma once
 
-#define VULKAN_HPP_NO_CONSTRUCTORS
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#include <vulkan/vulkan.hpp>
+#include "vkutils/vulkan_usage.h"
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
 #include "pch.h"
+#include "vkutils/viewport.h"
 #include "window.h"
 
 struct UniformBufferObject {
@@ -66,11 +65,9 @@ public:
 
     void drawFrame();
 
-    inline void resize() { framebufferResized_ = true; }
+    inline void resize() { viewport_.shouldResize(); }
 
 private:
-    static const uint32_t maxFramesInFlight_ = 2;
-
     void createInstance();
 
     void createSurface();
@@ -97,10 +94,6 @@ private:
     vk::Extent2D chooseSwapExtent(
         const vk::SurfaceCapabilitiesKHR& capabilities);
 
-    void createSwapChain();
-
-    void createImageViews();
-
     void createDescriptorSetLayout();
 
     void createUniformBuffers();
@@ -115,11 +108,7 @@ private:
 
     void createCommandPool();
 
-    void createDepthResources();
-
     vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
-
-    vk::Format findDepthFormat();
 
     bool hasStencilComponent(vk::Format format);
 
@@ -160,14 +149,7 @@ private:
 
     void createCommandBuffers();
 
-    void recordCommandBuffer(vk::CommandBuffer commandBuffer,
-                             uint32_t imageIndex);
-
-    void createSyncObjects();
-
-    void cleanupSwapChain();
-
-    void recreateSwapChain();
+    void recordCommandBuffer(vk::CommandBuffer commandBuffer);
 
     static std::vector<char> readFile(const std::string& filename);
 
@@ -207,28 +189,16 @@ private:
     vk::Queue presentQueue_;
     const Window& window_;
     vk::SurfaceKHR surface_;
+    yuubi::vkutils::Viewport viewport_;
 
     static const std::vector<const char*> deviceExtensions_;
 
-    vk::SwapchainKHR swapChain_;
-    std::vector<vk::Image> swapChainImages_;
-    vk::Format swapChainImageFormat_;
-    vk::Extent2D swapChainExtent_;
-    std::vector<vk::ImageView> swapChainImageViews_;
     vk::DescriptorSetLayout descriptorSetLayout_;
     vk::PipelineLayout pipelineLayout_;
     vk::Pipeline graphicsPipeline_;
 
     vk::CommandPool commandPool_;
     std::vector<vk::CommandBuffer> commandBuffers_;
-
-    std::vector<vk::Semaphore> imageAvailableSemaphores_;
-    std::vector<vk::Semaphore> renderFinishedSemaphores_;
-    std::vector<vk::Fence> inFlightFences_;
-
-    bool framebufferResized_ = false;
-
-    uint32_t currentFrame_ = 0;
 
     vk::Buffer vertexBuffer_;
     vk::DeviceMemory vertexBufferMemory_;
@@ -247,8 +217,4 @@ private:
 
     vk::ImageView textureImageView_;
     vk::Sampler textureSampler_;
-
-    vk::Image depthImage_;
-    vk::DeviceMemory depthImageMemory_;
-    vk::ImageView depthImageView_;
 };

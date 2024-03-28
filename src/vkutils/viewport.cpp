@@ -1,31 +1,28 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
-#define VULKAN_HPP_NO_CONSTRUCTORS
-#include <vulkan/vulkan.hpp>
+#include "vkutils/vulkan_usage.h"
 
-#include "renderer/vulkan/viewport.h"
+#include "vkutils/viewport.h"
 
 namespace yuubi {
+namespace vkutils {
 
-Viewport::Viewport(vk::SurfaceKHR surface, vk::PhysicalDevice physicalDevice, vk::Device device) : surface_(surface), physicalDevice_(physicalDevice), device_(device) {
+Viewport::Viewport(vk::SurfaceKHR surface, vk::PhysicalDevice physicalDevice, vk::Device device, vk::Queue presentQueue) : surface_(surface), physicalDevice_(physicalDevice), device_(device), presentQueue_(presentQueue) {}
+
+void Viewport::initialize() {
     createSwapChain();
     createImageViews();
     createDepthStencil();
-    createFramebuffers();
+    createSyncObjects();
 }
 
 void Viewport::destroySwapChain() {
+    UB_INFO("Destroying swap chain stuff");
     // Destroy depth image
     device_.destroyImageView(depthImageView_);
     device_.destroyImage(depthImage_);
     device_.freeMemory(depthImageMemory_);
-
-    // Destroy framebuffers
-    for (uint32_t i = 0; i < swapChainFramebuffers_.size(); i++) {
-        device_.destroyFramebuffer(swapChainFramebuffers_[i]);
-    }
-    swapChainFramebuffers_.clear();
 
     // Destroy swap chain image views
     for (uint32_t i = 0; i < swapChainImageViews_.size(); i++) {
@@ -35,12 +32,16 @@ void Viewport::destroySwapChain() {
 
     // Destroy swap chain
     device_.destroySwapchainKHR(swapChain_);
-
-    device_.destroyRenderPass(renderPass_);
 }
 
-Viewport::~Viewport() {
+void Viewport::destroy() {
     destroySwapChain();
+
+    for (uint32_t i = 0; i < imageAvailableSemaphores_.size(); i++) {
+        device_.destroySemaphore(imageAvailableSemaphores_[i]);
+        device_.destroySemaphore(renderFinishedSemaphores_[i]);
+        device_.destroyFence(inFlightFences_[i]);
+    }
 }
 
 void Viewport::createSwapChain() {
@@ -76,6 +77,7 @@ void Viewport::createSwapChain() {
     createInfo.pQueueFamilyIndices = nullptr;  // Optional
 
     swapChain_ = device_.createSwapchainKHR(createInfo);
+    UB_INFO("Created swapchain");
     swapChainImages_ = device_.getSwapchainImagesKHR(swapChain_);
     swapChainImageFormat_ = surfaceFormat.format;
     swapChainExtent_ = swapExtent;
@@ -92,15 +94,15 @@ void Viewport::recreateSwapChain() {
 }
 
 void Viewport::createDepthStencil() {
-    vk::Format depthFormat = findDepthFormat();
+    depthFormat_ = findDepthFormat();
 
-    createImage(swapChainExtent_.width, swapChainExtent_.height, depthFormat,
+    createImage(swapChainExtent_.width, swapChainExtent_.height, depthFormat_,
                 vk::ImageTiling::eOptimal,
                 vk::ImageUsageFlagBits::eDepthStencilAttachment,
                 vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage_,
                 depthImageMemory_);
 
-    depthImageView_ = createImageView(depthImage_, depthFormat,
+    depthImageView_ = createImageView(depthImage_, depthFormat_,
                                       vk::ImageAspectFlagBits::eDepth);
 }
 
@@ -241,84 +243,6 @@ void Viewport::createImage(uint32_t width, uint32_t height, vk::Format format,
     device_.bindImageMemory(image, imageMemory, 0);
 }
 
-void Viewport::createRenderPass() {
-    vk::AttachmentDescription colorAttachment{
-        .format = swapChainImageFormat_,
-        .samples = vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = vk::ImageLayout::ePresentSrcKHR};
-
-    vk::AttachmentReference colorAttachmentRef{
-        .attachment = 0,
-        .layout = vk::ImageLayout::eColorAttachmentOptimal,
-    };
-
-    vk::AttachmentDescription depthAttachment{
-        .format = findDepthFormat(),
-        .samples = vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eDontCare,
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal};
-
-    vk::AttachmentReference depthAttachmentRef{
-        .attachment = 1,
-        .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal};
-
-    vk::SubpassDescription subpass{
-        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachmentRef,
-        .pDepthStencilAttachment = &depthAttachmentRef};
-
-    vk::SubpassDependency dependency{
-        .srcSubpass = vk::SubpassExternal,
-        .dstSubpass = 0,
-        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                        vk::PipelineStageFlagBits::eEarlyFragmentTests,
-        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                        vk::PipelineStageFlagBits::eEarlyFragmentTests,
-        .srcAccessMask = vk::AccessFlagBits::eNone,
-        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite |
-                         vk::AccessFlagBits::eDepthStencilAttachmentWrite};
-
-    std::array<vk::AttachmentDescription, 2> attachments = {colorAttachment,
-                                                            depthAttachment};
-    vk::RenderPassCreateInfo renderPassInfo{
-        .attachmentCount = attachments.size(),
-        .pAttachments = attachments.data(),
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-        .dependencyCount = 1,
-        .pDependencies = &dependency};
-
-    renderPass_ = device_.createRenderPass(renderPassInfo);
-}
-
-void Viewport::createFramebuffers() {
-    for (const vk::ImageView& view : swapChainImageViews_) {
-        std::array<vk::ImageView, 2> attachments = {view, depthImageView_};
-
-        vk::FramebufferCreateInfo framebufferInfo{
-            .renderPass = renderPass_,
-            .attachmentCount = attachments.size(),
-            .pAttachments = attachments.data(),
-            .width = swapChainExtent_.width,
-            .height = swapChainExtent_.height,
-            .layers = 1,
-        };
-
-        swapChainFramebuffers_.push_back(
-            device_.createFramebuffer(framebufferInfo));
-    }
-}
-
 uint32_t Viewport::findMemoryType(uint32_t typeFilter,
                                   vk::MemoryPropertyFlags properties) {
     auto memProperties = physicalDevice_.getMemoryProperties();
@@ -339,4 +263,70 @@ uint32_t Viewport::findMemoryType(uint32_t typeFilter,
     throw std::runtime_error("Failed to find suitable memory type");
 }
 
+void Viewport::createSyncObjects() {
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        imageAvailableSemaphores_.push_back(device_.createSemaphore({}));
+        renderFinishedSemaphores_.push_back(device_.createSemaphore({}));
+        inFlightFences_.push_back(
+            device_.createFence({.flags = vk::FenceCreateFlagBits::eSignaled}));
+    }
+    UB_INFO("Created Sync Objects");
 }
+
+bool Viewport::beginFrame() {
+    // Wait until the previous frame is done rendering
+    device_.waitForFences(1, &inFlightFences_[currentFrame_], vk::True, std::numeric_limits<uint32_t>::max());
+
+    // TODO: remove exceptions
+    try {
+        // This line gets immediately gets the index of the next image in the
+        // swapchain. This image may not be available for immediate use, so a
+        // semaphore is used to synchronize commands that require this image
+
+        // TODO: ERROR HERE! Swapchain is destroyed on move in constructor!!!
+        auto [result, idx] = device_.acquireNextImageKHR(
+            swapChain_, std::numeric_limits<uint64_t>::max(),
+            imageAvailableSemaphores_[currentFrame_]);
+        imageIndex_ = idx;
+    } catch (const std::exception& e) {
+        recreateSwapChain();
+        return false;
+    }
+
+    auto resetFenceResult =
+        device_.resetFences(1, &inFlightFences_[currentFrame_]);
+
+    return true;
+}
+
+bool Viewport::endFrame() {
+    vk::PresentInfoKHR presentInfo{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &renderFinishedSemaphores_[currentFrame_],
+        .swapchainCount = 1,
+        .pSwapchains = &swapChain_,
+        .pImageIndices = &imageIndex_,
+    };
+
+    vk::Result presentResult;
+    // TODO: remove exceptions
+    try {
+        presentResult = presentQueue_.presentKHR(presentInfo);
+    } catch (const std::exception& e) {
+        UB_INFO(e.what());
+        framebufferResized_ = true;
+    }
+
+    if (framebufferResized_ || presentResult == vk::Result::eSuboptimalKHR) {
+        framebufferResized_ = false;
+        recreateSwapChain();
+    }
+
+    currentFrame_ = (currentFrame_ + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    return true;
+}
+
+
+} // namespace vkutils
+} // namespace yuubi
