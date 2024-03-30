@@ -77,6 +77,8 @@ else()
         "$<$<CONFIG:Debug>:-Wextra>"
         "$<$<CONFIG:Debug>:-g>"
         "$<$<CONFIG:Debug>:-gcodeview>"
+        "$<$<CONFIG:Debug>:-fcolor-diagnostics>"
+        "$<$<CONFIG:Debug>:-fansi-escape-codes>"
 
         # rel w/ debug info (for profiling)
         "$<$<CONFIG:RelWithDebInfo>:-O3>"
