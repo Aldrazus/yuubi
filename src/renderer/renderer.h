@@ -6,9 +6,11 @@
 #include <glm/glm.hpp>
 
 #include "pch.h"
+#include "vkutils/context.h"
 #include "vkutils/viewport.h"
 #include "window.h"
 
+class Device;
 struct UniformBufferObject {
     glm::mat4 model;
     glm::mat4 view;
@@ -68,20 +70,6 @@ public:
     inline void resize() { viewport_.shouldResize(); }
 
 private:
-    void createInstance();
-
-    void createSurface();
-
-    void pickPhysicalDevice();
-
-    void createLogicalDevice();
-
-    QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice physicalDevice);
-
-    bool isDeviceSuitable(vk::PhysicalDevice device);
-
-    bool checkDeviceExtensionSupport(vk::PhysicalDevice device);
-
     SwapChainSupportDetails querySwapChainSupport(
         vk::PhysicalDevice physicalDevice);
 
@@ -155,40 +143,10 @@ private:
 
     vk::ShaderModule createShaderModule(const std::vector<char>& code);
 
-    void setupDebugMessenger();
-
-    bool checkValidationLayerSupport();
-
-    std::vector<const char*> getRequiredExtensions();
-
-    static VKAPI_ATTR VkBool32 VKAPI_CALL
-    debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                  VkDebugUtilsMessageTypeFlagsEXT messageType,
-                  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                  void* pUserData) {
-        std::cerr << "validation layer: " << pCallbackData->pMessage
-                  << std::endl;
-
-        return VK_FALSE;
-    }
-
-    vk::Instance instance_;
-    vk::DebugUtilsMessengerEXT debugMessenger_;
-    vk::DispatchLoaderDynamic dldi_;
-    vk::DispatchLoaderDynamic dldy_;
-    static const std::vector<const char*> validationLayers_;
-#if UB_DEBUG
-    const bool enableValidationLayers_ = true;
-#else
-    const bool enableValidationLayers_ = false;
-#endif
-
-    vk::PhysicalDevice physicalDevice_;
-    vk::Device device_;
-    vk::Queue graphicsQueue_;
-    vk::Queue presentQueue_;
     const Window& window_;
-    vk::SurfaceKHR surface_;
+    yuubi::vkutils::Context context_;
+
+    yuubi::vkutils::Device* device_;
     yuubi::vkutils::Viewport viewport_;
 
     static const std::vector<const char*> deviceExtensions_;
