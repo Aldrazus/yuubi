@@ -9,6 +9,7 @@
 #include "vkutils/context.h"
 #include "vkutils/viewport.h"
 #include "window.h"
+#include "renderer/device_selector.h"
 
 class Device;
 struct UniformBufferObject {
@@ -70,6 +71,7 @@ public:
     inline void resize() { viewport_.shouldResize(); }
 
 private:
+
     SwapChainSupportDetails querySwapChainSupport(
         vk::PhysicalDevice physicalDevice);
 
@@ -144,9 +146,19 @@ private:
     vk::ShaderModule createShaderModule(const std::vector<char>& code);
 
     const Window& window_;
-    yuubi::vkutils::Context context_;
 
-    yuubi::vkutils::Device* device_;
+    vk::Instance instance_;
+    vk::DispatchLoaderDynamic dldi_;
+    vk::DispatchLoaderDynamic dldy_;
+    vk::DebugUtilsMessengerEXT debugMessenger_;
+    vk::SurfaceKHR surface_;
+
+    vk::PhysicalDevice physicalDevice_;
+    vk::Device device_;
+    VmaAllocator allocator_;
+    vk::Queue graphicsQueue_;
+    uint32_t graphicsQueueFamilyIndex_;
+
     yuubi::vkutils::Viewport viewport_;
 
     static const std::vector<const char*> deviceExtensions_;

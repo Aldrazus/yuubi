@@ -8,6 +8,10 @@ target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
 add_subdirectory(VulkanMemoryAllocator)
 target_link_libraries(${PROJECT_NAME} GPUOpen::VulkanMemoryAllocator)
 
+# vk-bootstrap
+add_subdirectory(vk-bootstrap)
+target_link_libraries(${PROJECT_NAME} vk-bootstrap::vk-bootstrap)
+
 # glfw
 add_subdirectory(glfw)
 target_link_libraries(${PROJECT_NAME} glfw)
