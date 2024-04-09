@@ -4,13 +4,9 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 find_package(Vulkan REQUIRED)
 target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
 
-# VulkanMemoryAllocator
-add_subdirectory(VulkanMemoryAllocator)
-target_link_libraries(${PROJECT_NAME} GPUOpen::VulkanMemoryAllocator)
-
-# vk-bootstrap
-add_subdirectory(vk-bootstrap)
-target_link_libraries(${PROJECT_NAME} vk-bootstrap::vk-bootstrap)
+# VulkanMemoryAllocator-Hpp
+add_subdirectory(VulkanMemoryAllocator-Hpp)
+target_link_libraries(${PROJECT_NAME} VulkanMemoryAllocator-Hpp)
 
 # glfw
 add_subdirectory(glfw)

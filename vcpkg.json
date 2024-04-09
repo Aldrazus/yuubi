@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    "assimp",
+    "glfw",
+    "glm",
+    "imgui",
+    "vulkan",
+    "spdlog"
+  ]
+}
