@@ -38,15 +38,16 @@ Device::Device(vk::Instance instance, const PhysicalDevice& physicalDevice)
 
     device_ = physicalDevice.physicalDevice.createDevice(createInfo);
 
-    VmaAllocatorCreateInfo allocatorInfo{
+    vma::AllocatorCreateInfo allocatorInfo{
         .physicalDevice = physicalDevice_,
         .device = device_,
         .instance = instance_,
         .vulkanApiVersion = vk::ApiVersion13,
     };
-    vmaCreateAllocator(&allocatorInfo, &allocator_);
+    allocator_ = vma::createAllocator(allocatorInfo);
     graphicsQueue_ = {.queue = device_.getQueue(graphicsFamilyIndex, 0),
                       .familyIndex = graphicsFamilyIndex};
+    dld_.init(instance_, vkGetInstanceProcAddr, device_, vkGetDeviceProcAddr);
 }
 
 void Device::destroy() {
@@ -55,14 +56,13 @@ void Device::destroy() {
 }
 
 Buffer Device::createBuffer(size_t size, vk::BufferUsageFlags usage,
-                            VmaMemoryUsage memoryUsage) {
+                            vma::MemoryUsage memoryUsage) {
     vk::BufferCreateInfo bufferInfo{.size = size, .usage = usage};
 
-    VmaAllocationCreateInfo allocInfo{.usage = memoryUsage};
+    vma::AllocationCreateInfo allocInfo{.usage = memoryUsage};
 
-    Buffer buffer;
-    vmaCreateBuffer(allocator_, &bufferInfo, &allocInfo, &buffer.buffer,
-                    &buffer.allocation, nullptr);
+    auto [buffer, alloc] = allocator_.createBuffer(bufferInfo, allocInfo);
+    return {.buffer = buffer, .allocation = alloc};
 }
 
 }

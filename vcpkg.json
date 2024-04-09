@@ -1,10 +1,20 @@
 {
   "dependencies": [
     "assimp",
-    "glfw",
+    "glfw3",
     "glm",
+    {
+      "name": "imgui",
+      "features": [
+        "glfw-binding",
+        "vulkan-binding",
+        "docking-experimental"
+      ]
+    },
     "imgui",
-    "vulkan",
-    "spdlog"
+    "spdlog",
+    "vulkan-memory-allocator",
+    "vulkan-memory-allocator-hpp",
+    "stb"
   ]
 }
