@@ -5,12 +5,10 @@
 #include "renderer/device_selector.h"
 #include "renderer/device.h"
 
-#include "vkutils/vulkan_usage.h"
+#include "renderer/vulkan_usage.h"
 
-#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -93,7 +91,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     dldy_ = device.dld_;
     allocator_ = device.allocator_;
 
-    viewport_ = yuubi::vkutils::Viewport(surface_, physicalDevice_, device_,
+    viewport_ = yuubi::Viewport(surface_, physicalDevice_, device_,
                                          graphicsQueue_);
     viewport_.initialize();
 

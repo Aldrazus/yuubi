@@ -1,12 +1,11 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
-#include "vkutils/vulkan_usage.h"
+#include "renderer/vulkan_usage.h"
 
-#include "vkutils/viewport.h"
+#include "renderer/viewport.h"
 
 namespace yuubi {
-namespace vkutils {
 
 Viewport::Viewport(vk::SurfaceKHR surface, vk::PhysicalDevice physicalDevice, vk::Device device, vk::Queue presentQueue) : surface_(surface), physicalDevice_(physicalDevice), device_(device), presentQueue_(presentQueue) {}
 
@@ -325,5 +324,4 @@ bool Viewport::endFrame() {
 }
 
 
-} // namespace vkutils
 } // namespace yuubi

@@ -1,11 +1,10 @@
 #pragma once
 
-#include "vkutils/vulkan_usage.h"
+#include "renderer/vulkan_usage.h"
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
 namespace yuubi {
-namespace vkutils {
 
 class Viewport {
 public:
@@ -135,5 +134,4 @@ private:
     std::vector<vk::Fence> inFlightFences_;
 };
 
-} // namespace vkutils
 } // namespace yuubi

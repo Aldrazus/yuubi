@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vkutils/vulkan_usage.h"
+#include "renderer/vulkan_usage.h"
 #include "renderer/device_selector.h"
 
 namespace yuubi {

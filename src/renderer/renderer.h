@@ -1,12 +1,11 @@
 #pragma once
 
-#include "vkutils/vulkan_usage.h"
+#include "renderer/vulkan_usage.h"
 
 #include <glm/glm.hpp>
 
 #include "pch.h"
-#include "vkutils/context.h"
-#include "vkutils/viewport.h"
+#include "renderer/viewport.h"
 #include "window.h"
 #include "renderer/device_selector.h"
 
@@ -158,7 +157,7 @@ private:
     vk::Queue graphicsQueue_;
     uint32_t graphicsQueueFamilyIndex_;
 
-    yuubi::vkutils::Viewport viewport_;
+    yuubi::Viewport viewport_;
 
     static const std::vector<const char*> deviceExtensions_;
 

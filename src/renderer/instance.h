@@ -1,7 +1,7 @@
 #pragma once
 
 #include <initializer_list>
-#include "vkutils/vulkan_usage.h"
+#include "renderer/vulkan_usage.h"
 #include "pch.h"
 
 namespace yuubi {
