@@ -139,8 +139,6 @@ private:
 
     void recordCommandBuffer(vk::CommandBuffer commandBuffer);
 
-    static std::vector<char> readFile(const std::string& filename);
-
     vk::ShaderModule createShaderModule(const std::vector<char>& code);
 
     const Window& window_;

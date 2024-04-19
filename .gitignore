@@ -1,3 +1,5 @@
+.vscode/
+.vs/
 .cache/
 bin/
 build/
@@ -5,5 +7,4 @@ build32/
 build64/
 buildjs
 imgui.ini
-.vs/
 shaders/*.spv

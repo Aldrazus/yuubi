@@ -1,6 +1,8 @@
 target_sources(
     ${PROJECT_NAME}
     PRIVATE
+    "core/io/file.h"
+    "core/io/file.cpp"
     "core/log.cpp"
     "core/log.h"
     "core/ref.h"

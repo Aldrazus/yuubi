@@ -1,6 +1,7 @@
 #include <cstring>
 #include <limits>
 
+#include "core/io/file.h"
 #include "renderer/instance.h"
 #include "renderer/device_selector.h"
 #include "renderer/device.h"
@@ -222,8 +223,8 @@ void Renderer::createDescriptorSetLayout() {
 }
 
 void Renderer::createGraphicsPipeline() {
-    auto vertShaderCode = readFile("shaders/vert.spv");
-    auto fragShaderCode = readFile("shaders/frag.spv");
+    auto vertShaderCode = yuubi::readFile("shaders/vert.spv");
+    auto fragShaderCode = yuubi::readFile("shaders/frag.spv");
 
     vk::ShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     vk::ShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -968,24 +969,6 @@ void Renderer::createDescriptorSets() {
         device_.updateDescriptorSets(descriptorWrites.size(),
                                      descriptorWrites.data(), 0, nullptr);
     }
-}
-
-std::vector<char> Renderer::readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open file!");
-    }
-
-    size_t fileSize = (size_t)file.tellg();
-    std::vector<char> buffer(fileSize);
-
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-
-    file.close();
-
-    return buffer;
 }
 
 vk::ShaderModule Renderer::createShaderModule(const std::vector<char>& code) {
