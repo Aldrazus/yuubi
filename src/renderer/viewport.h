@@ -1,20 +1,23 @@
 #pragma once
 
+#if 0
+
+#include <cstddef>
+#include "core/util.h"
 #include "renderer/vulkan_usage.h"
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
 namespace yuubi {
 
-class Viewport {
+class Viewport : NonCopyable {
 public:
-    Viewport() {};
+    Viewport(std::nullptr_t) {};
     Viewport(vk::SurfaceKHR surface, vk::PhysicalDevice physicalDevice, vk::Device device, vk::Queue presentQueue);
 
     void initialize();
     void destroy();
 
-    Viewport& operator=(Viewport&& rhs) = default;
     void recreateSwapChain();
 
     inline vk::Extent2D getExtent() const {
@@ -100,6 +103,13 @@ private:
                             vk::MemoryPropertyFlags properties);
 
     // Context
+    const vk::raii::SurfaceKHR& surface_ = nullptr;
+    const vk::raii::PhysicalDevice& physicalDevice_ = nullptr;
+    const vk::raii::Device& device_ = nullptr;
+    const vk::raii::Queue& presentQueue_ = nullptr;
+    const vk::raii::SwapchainKHR swapChain_ = nullptr;
+
+
     vk::SurfaceKHR surface_;
     vk::PhysicalDevice physicalDevice_;
     vk::Device device_;
@@ -135,3 +145,4 @@ private:
 };
 
 } // namespace yuubi
+#endif

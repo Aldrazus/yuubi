@@ -5,6 +5,8 @@
 
 #include "renderer/viewport.h"
 
+#if 0
+
 namespace yuubi {
 
 Viewport::Viewport(vk::SurfaceKHR surface, vk::PhysicalDevice physicalDevice, vk::Device device, vk::Queue presentQueue) : surface_(surface), physicalDevice_(physicalDevice), device_(device), presentQueue_(presentQueue) {}
@@ -325,3 +327,4 @@ bool Viewport::endFrame() {
 
 
 } // namespace yuubi
+#endif

@@ -45,7 +45,7 @@ bool Application::OnWindowResize(WindowResizeEvent& e) {
     }
     minimized_ = false;
     // TODO: let renderer resize
-    renderer_.resize();
+    // renderer_.resize();
     return false;
 }
 
@@ -62,6 +62,6 @@ void Application::Run() {
     UB_INFO("Running application");
     while (running_) {
         window_.OnUpdate();
-        renderer_.drawFrame();
+        // renderer_.drawFrame();
     }
 }

@@ -1,8 +1,9 @@
 #include "renderer/device.h"
-#include "renderer/device_selector.h"
+#include "renderer/vma/allocator.h"
 
 namespace util {
-uint32_t findGraphicsQueueFamilyIndex(vk::PhysicalDevice physicalDevice) {
+uint32_t findGraphicsQueueFamilyIndex(
+    const vk::raii::PhysicalDevice& physicalDevice) {
     auto properties = physicalDevice.getQueueFamilyProperties();
 
     for (const auto [i, p] : std::views::enumerate(properties)) {
@@ -17,44 +18,119 @@ uint32_t findGraphicsQueueFamilyIndex(vk::PhysicalDevice physicalDevice) {
 }
 
 namespace yuubi {
-Device::Device(vk::Instance instance, const PhysicalDevice& physicalDevice)
-    : instance_(instance), physicalDevice_(physicalDevice.physicalDevice) {
+
+Device::Device(const vk::raii::Instance& instance,
+               const vk::raii::SurfaceKHR& surface) {
+    selectPhysicalDevice(instance, surface);
+    createLogicalDevice(instance);
+}
+
+void Device::selectPhysicalDevice(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) {
+    vk::raii::PhysicalDevices physicalDevices{instance};
+    std::partition(physicalDevices.begin(), physicalDevices.end(),
+                   [](const vk::raii::PhysicalDevice& device) {
+                       return device.getProperties().deviceType ==
+                              vk::PhysicalDeviceType::eDiscreteGpu;
+                   });
+
+    auto suitableDeviceIter =
+        std::find_if(physicalDevices.begin(), physicalDevices.end(),
+                     [this, &surface](const vk::raii::PhysicalDevice device) {
+                         return isDeviceSuitable(device, surface);
+                     });
+
+    if (suitableDeviceIter == physicalDevices.end()) {
+        UB_ERROR("Failed to find a suitable GPU!");
+    }
+
+    // TODO: Is this correct? Do I move here?
+    physicalDevice_ = std::move(*suitableDeviceIter);
+}
+
+bool Device::isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice, const vk::raii::SurfaceKHR& surface) {
+    bool isGraphicsCapable = false;
+    std::vector<vk::QueueFamilyProperties> properties =
+        physicalDevice.getQueueFamilyProperties();
+
+    for (const auto [i, p] : std::views::enumerate(properties)) {
+        if (p.queueFlags & vk::QueueFlagBits::eGraphics &&
+            physicalDevice.getSurfaceSupportKHR(i, surface)) {
+            isGraphicsCapable = true;
+            break;
+        }
+    }
+
+    return isGraphicsCapable && supportsFeatures(physicalDevice);
+}
+
+bool Device::supportsFeatures(const vk::raii::PhysicalDevice& physicalDevice) {
+    auto supportedFeatures =
+        physicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2,
+                                    vk::PhysicalDeviceVulkan11Features,
+                                    vk::PhysicalDeviceVulkan12Features,
+                                    vk::PhysicalDeviceVulkan13Features>();
+
+    // TODO: compare all features
+    auto availableFeatures11 =
+        supportedFeatures.get<vk::PhysicalDeviceVulkan11Features>();
+    auto requiredFeatures11 =
+        requiredFeatures_.get<vk::PhysicalDeviceVulkan11Features>();
+
+    auto availableFeatures12 =
+        supportedFeatures.get<vk::PhysicalDeviceVulkan12Features>();
+    auto requiredFeatures12 =
+        requiredFeatures_.get<vk::PhysicalDeviceVulkan12Features>();
+    if (requiredFeatures12.bufferDeviceAddress &&
+        !availableFeatures12.bufferDeviceAddress)
+        return false;
+    if (requiredFeatures12.descriptorIndexing &&
+        !availableFeatures12.descriptorIndexing)
+        return false;
+
+    auto availableFeatures13 =
+        supportedFeatures.get<vk::PhysicalDeviceVulkan13Features>();
+    auto requiredFeatures13 =
+        requiredFeatures_.get<vk::PhysicalDeviceVulkan13Features>();
+    if (requiredFeatures13.dynamicRendering &&
+        !availableFeatures13.dynamicRendering)
+        return false;
+    if (requiredFeatures13.synchronization2 &&
+        !availableFeatures13.synchronization2)
+        return false;
+
+    return true;
+}
+
+void Device::createLogicalDevice(const vk::raii::Instance& instance) {
     float priority = 1.0f;
     const auto graphicsFamilyIndex =
-        util::findGraphicsQueueFamilyIndex(physicalDevice.physicalDevice);
+        util::findGraphicsQueueFamilyIndex(physicalDevice_);
+
     vk::DeviceQueueCreateInfo queueCreateInfo{
         .queueFamilyIndex = graphicsFamilyIndex,
         .queueCount = 1,
         .pQueuePriorities = &priority};
 
     vk::DeviceCreateInfo createInfo{
-        .pNext = &physicalDevice.featuresToEnable,
+        .pNext = &requiredFeatures_,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
         .enabledLayerCount = 0,
         .enabledExtensionCount =
-            static_cast<uint32_t>(physicalDevice.extensionsToEnable.size()),
-        .ppEnabledExtensionNames = physicalDevice.extensionsToEnable.data()};
+            static_cast<uint32_t>(requiredExtensions_.size()),
+        .ppEnabledExtensionNames = requiredExtensions_.data()};
 
-    device_ = physicalDevice.physicalDevice.createDevice(createInfo);
+    device_ = vk::raii::Device{physicalDevice_, createInfo};
 
-    vma::AllocatorCreateInfo allocatorInfo{
-        .physicalDevice = physicalDevice_,
-        .device = device_,
-        .instance = instance_,
-        .vulkanApiVersion = vk::ApiVersion13,
-    };
-    allocator_ = vma::createAllocator(allocatorInfo);
-    graphicsQueue_ = {.queue = device_.getQueue(graphicsFamilyIndex, 0),
-                      .familyIndex = graphicsFamilyIndex};
-    dld_.init(instance_, vkGetInstanceProcAddr, device_, vkGetDeviceProcAddr);
+    graphicsQueue_ = {
+        .queue = device_.getQueue2(
+            {.queueFamilyIndex = graphicsFamilyIndex, .queueIndex = 0}),
+        .familyIndex = graphicsFamilyIndex};
+
+    allocator_ = Allocator{instance, physicalDevice_, device_};
 }
 
-void Device::destroy() {
-    vmaDestroyAllocator(allocator_);
-    device_.destroy();
-}
-
+#if 0
 Buffer Device::createBuffer(size_t size, vk::BufferUsageFlags usage,
                             vma::MemoryUsage memoryUsage) {
     vk::BufferCreateInfo bufferInfo{.size = size, .usage = usage};
@@ -64,5 +140,18 @@ Buffer Device::createBuffer(size_t size, vk::BufferUsageFlags usage,
     auto [buffer, alloc] = allocator_.createBuffer(bufferInfo, allocInfo);
     return {.buffer = buffer, .allocation = alloc};
 }
+#endif
+
+const vk::StructureChain<
+    vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
+    vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
+    Device::requiredFeatures_{
+        {},
+        {},
+        {.descriptorIndexing = true, .bufferDeviceAddress = true},
+        {.synchronization2 = true, .dynamicRendering = true}};
+
+const std::vector<const char*> Device::requiredExtensions_{
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 }

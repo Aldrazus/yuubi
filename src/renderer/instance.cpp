@@ -1,121 +1,60 @@
 #include "renderer/instance.h"
 
-#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 namespace yuubi {
-InstanceBuilder& InstanceBuilder::setAppName(std::string_view name)
-{
-    appName_ = name;
-    return *this;
-}
-InstanceBuilder& InstanceBuilder::requireApiVersion(uint32_t apiVersion)
-{
-    apiVersion_ = apiVersion;
-    return *this;
-}
-InstanceBuilder& InstanceBuilder::enableValidationLayers(bool shouldEnable)
-{
-    shouldEnableValidationLayers_ = shouldEnable;
-    return *this;
-}
-InstanceBuilder& InstanceBuilder::useDefaultDebugMessenger()
-{
-    shouldUseDefaultDebugMessenger_ = true;
-    return *this;
-}
 
-bool InstanceBuilder::supportsValidationLayers() {
-std::vector<vk::LayerProperties> availableLayers =
-        vk::enumerateInstanceLayerProperties();
-
-    // TODO: find cleaner approach
-    return std::all_of(
-        validationLayers_.begin(), validationLayers_.end(),
-        [&availableLayers](const std::string& layer) {
-            return std::find_if(
-                       availableLayers.begin(), availableLayers.end(),
-                       [&layer](const vk::LayerProperties& availableLayer) {
-                           return std::strcmp(availableLayer.layerName.data(),
-                                              layer.data());
-                       }) != availableLayers.end();
-        });
-}
-
-InstanceBuilder& InstanceBuilder::requireExtensions(std::initializer_list<const char*> extensions) {
-    requiredExtensions_ = extensions;
-    return *this;
-}
-
-Instance InstanceBuilder::build()
-{
+Instance::Instance(const vk::raii::Context& context) {
     vk::ApplicationInfo appInfo{
-        .pApplicationName = appName_.data(),
+        .pApplicationName = "Yuubi",
         .applicationVersion = vk::makeApiVersion(0, 1, 0, 0),
         .pEngineName = "No Engine",
         .engineVersion = vk::makeApiVersion(0, 1, 0, 0),
-        .apiVersion = apiVersion_};
+        .apiVersion = vk::ApiVersion13};
 
-    // extensions
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-    for (uint32_t i = 0; i < glfwExtensionCount; i++) {
-        requiredExtensions_.push_back(glfwExtensions[i]);
+    std::vector<const char*> extensions(glfwExtensions,
+                                        glfwExtensions + glfwExtensionCount);
+
+    if (enableValidationLayers_) {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
-    if (shouldEnableValidationLayers_) {
-        requiredExtensions_.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-    vk::InstanceCreateInfo createInfo{
-        .pApplicationInfo = &appInfo,
-        .enabledLayerCount = 0,
-        .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions_.size()),
-        .ppEnabledExtensionNames = requiredExtensions_.data(),
-    };
+    vk::StructureChain<vk::InstanceCreateInfo,
+                       vk::DebugUtilsMessengerCreateInfoEXT>
+        createInfo;
+    createInfo.get<vk::InstanceCreateInfo>()
+        .setPApplicationInfo(&appInfo)
+        .setPEnabledExtensionNames(extensions);
 
-    if (shouldEnableValidationLayers_) {
-        createInfo.enabledLayerCount = validationLayers_.size();
-        createInfo.ppEnabledLayerNames = validationLayers_.data();
-
-        vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
-            .messageSeverity =
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
-                vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning,
-            .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-                           vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-                           vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
-            .pfnUserCallback = debugCallback,
-            .pUserData = nullptr};
-        createInfo.pNext = &debugCreateInfo;
+    if (enableValidationLayers_) {
+        createInfo.get<vk::InstanceCreateInfo>().setPEnabledLayerNames(
+            validationLayers_);
+    } else {
+        createInfo.unlink<vk::DebugUtilsMessengerCreateInfoEXT>();
     }
 
-    Instance instance{vk::createInstance(createInfo)};
+    createInfo.get<vk::DebugUtilsMessengerCreateInfoEXT>()
+        .setMessageSeverity(vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
+                            vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
+                            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
+        .setMessageType(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+                        vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+                        vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
+        .setPfnUserCallback(debugCallback);
 
-    if (shouldEnableValidationLayers_ && shouldUseDefaultDebugMessenger_) {
-        
-        vk::DebugUtilsMessengerCreateInfoEXT createInfo{
-            .messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-            vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
-            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning,
-            .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-            vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
-            .pfnUserCallback = debugCallback,
-            .pUserData = nullptr};
+    instance_ = vk::raii::Instance{context, createInfo.get()};
 
-        vk::DispatchLoaderDynamic dldi;
-        dldi.init(instance.instance, vkGetInstanceProcAddr);
-        instance.debugMessenger =
-            instance.instance.createDebugUtilsMessengerEXT(createInfo, nullptr, dldi);
+    if (enableValidationLayers_) {
+        debugMessenger_ = instance_.createDebugUtilsMessengerEXT(
+            createInfo.get<vk::DebugUtilsMessengerCreateInfoEXT>());
     }
-
-    return instance;
 }
 
-const std::vector<const char*> InstanceBuilder::validationLayers_ = {
+const std::vector<const char*> Instance::validationLayers_ = {
     "VK_LAYER_KHRONOS_validation"};
 
 }

@@ -27,5 +27,5 @@ private:
     bool running_ = false;
     bool minimized_ = false;
     Window window_;
-    Renderer renderer_;
+    yuubi::Renderer renderer_;
 };

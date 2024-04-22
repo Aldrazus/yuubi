@@ -1,25 +1,20 @@
 #pragma once
 
-#include <initializer_list>
 #include "renderer/vulkan_usage.h"
+#include "core/util.h"
 #include "pch.h"
 
 namespace yuubi {
-struct Instance {
-    vk::Instance instance;
-    vk::DebugUtilsMessengerEXT debugMessenger;
-};
 
-class InstanceBuilder {
+class Instance : NonCopyable {
 public:
-    InstanceBuilder& setAppName(std::string_view name);
-    InstanceBuilder& requireApiVersion(uint32_t apiVersion);
-    InstanceBuilder& enableValidationLayers(bool shouldEnable);
-    InstanceBuilder& requireExtensions(std::initializer_list<const char*> extensions);
-    InstanceBuilder& useDefaultDebugMessenger();
-    Instance build();
-private:
-    bool supportsValidationLayers();
+    Instance() = default;
+    ~Instance() = default;
+    Instance(Instance&&) = default;
+    Instance& operator=(Instance&&) = default;
+
+    Instance(const vk::raii::Context& context);
+
     static VKAPI_ATTR VkBool32 VKAPI_CALL
     debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                   VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -30,11 +25,26 @@ private:
 
         return VK_FALSE;
     }
-    std::string appName_ = "Untitled App";
-    uint32_t apiVersion_ = vk::ApiVersion10;
-    bool shouldEnableValidationLayers_ = false;
-    bool shouldUseDefaultDebugMessenger_ = false;
-    std::vector<const char*> requiredExtensions_;
+
+    const vk::raii::Instance& getInstance() const { return instance_; }
+
+    operator const vk::raii::Instance& () {
+        return instance_;
+    }
+
+private:
+    void createInstance();
+    void setupDebugMessenger();
+
     static const std::vector<const char*> validationLayers_;
+    #if UB_DEBUG
+    bool enableValidationLayers_ = true;
+    #else
+    const bool enableValidationLayers_ = false;
+    #endif
+
+    vk::raii::Instance instance_ = nullptr;
+    vk::raii::DebugUtilsMessengerEXT debugMessenger_ = nullptr;
 };
+
 }
