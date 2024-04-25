@@ -2,7 +2,9 @@
 
 #include "renderer/device.h"
 #include "renderer/instance.h"
+#include "renderer/viewport.h"
 #include "window.h"
+#include "pch.h"
 
 namespace yuubi {
 
@@ -15,8 +17,9 @@ private:
     const Window& window_;
     vk::raii::Context context_;
     Instance instance_;
-    vk::raii::SurfaceKHR surface_ = nullptr;
-    Device device_;
+    std::shared_ptr<vk::raii::SurfaceKHR> surface_;
+    std::shared_ptr<Device> device_;
+    Viewport viewport_;
 };
 
 }

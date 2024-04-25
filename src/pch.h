@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <memory>
 #include <cstdint>
+#include <cstddef>
 #include <algorithm>
 #include <ranges>
 #include <tuple>

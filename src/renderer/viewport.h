@@ -1,5 +1,47 @@
 #pragma once
 
+#include "core/util.h"
+#include "renderer/vulkan_usage.h"
+#include "pch.h"
+
+namespace yuubi {
+
+class Device;
+
+class Viewport : NonCopyable {
+public:
+    Viewport() {};
+    Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface, std::shared_ptr<Device> device);
+
+    void recreateSwapChain();
+
+private:
+    struct FrameData {
+        // TODO: add command pool and command buffer
+        vk::raii::Semaphore imageAvailable_;
+        vk::raii::Semaphore renderFinished_;
+        vk::raii::Fence inFlight_;
+    };
+    
+    void createSwapChain();
+    void createImageViews();
+    void createDepthStencil();
+    vk::SurfaceFormatKHR chooseSwapSurfaceFormat() const;
+    vk::PresentModeKHR chooseSwapPresentMode() const;
+    vk::Extent2D chooseSwapExtent() const;
+
+    std::shared_ptr<vk::raii::SurfaceKHR> surface_;
+    std::shared_ptr<Device> device_;
+    vk::raii::SwapchainKHR swapChain_ = nullptr;
+    std::vector<vk::raii::ImageView> imageViews_;
+    vk::Format swapChainImageFormat_;
+    vk::Extent2D swapChainExtent_;
+
+    bool doFrame();
+};
+
+}
+
 #if 0
 
 #include <cstddef>

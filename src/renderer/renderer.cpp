@@ -14,9 +14,9 @@ Renderer::Renderer(const Window& window) : window_(window) {
         UB_ERROR("Unable to create window surface!");
     }
 
-    surface_ = vk::raii::SurfaceKHR{instance_, tmp};
-
-    device_ = Device{instance_, surface_};
+    surface_ = std::make_shared<vk::raii::SurfaceKHR>(instance_, tmp);
+    device_ = std::make_shared<Device>(instance_, *surface_);
+    viewport_ = Viewport{surface_, device_};
 }
 
 Renderer::~Renderer() {}

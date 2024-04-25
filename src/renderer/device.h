@@ -21,8 +21,10 @@ public:
     ~Device() = default;
     Device(Device&&) = default;
     Device& operator=(Device&&) = default;
-
     Device(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface);
+
+    const vk::raii::Device& getDevice() const { return device_; }
+    const vk::raii::PhysicalDevice& getPhysicalDevice() const { return physicalDevice_; }
 private:
     void selectPhysicalDevice(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface);
     bool isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice, const vk::raii::SurfaceKHR& surface);
