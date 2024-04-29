@@ -13,23 +13,26 @@ Viewport::Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface,
     createSwapChain();
     createImageViews();
     createDepthStencil();
+    createFrames();
 }
 
 Viewport& Viewport::operator=(Viewport&& rhs) {
+    // Destroy this (done automatically)
+
+    // Move from rhs to this
     surface_ = rhs.surface_;
-    rhs.surface_ = nullptr;
-
     device_ = rhs.device_;
-    rhs.device_ = nullptr;
-
     swapChain_ = std::move(rhs.swapChain_);
-    rhs.swapChain_ = nullptr;
-
     imageViews_ = std::move(rhs.imageViews_);
     swapChainImageFormat_ = rhs.swapChainImageFormat_;
     swapChainExtent_ = rhs.swapChainExtent_;
-
     depthImage_ = std::move(rhs.depthImage_);
+    frames_ = std::move(rhs.frames_);
+
+    // Invalidate rhs
+    rhs.device_ = nullptr;
+    rhs.surface_ = nullptr;
+    rhs.swapChain_ = nullptr;
     rhs.depthImage_ = Image{}; 
 
     return *this;
@@ -102,6 +105,14 @@ void Viewport::createDepthStencil() {
     vk::Format depthFormat = findDepthFormat();
 
     depthImage_ = device_->createImage(swapChainExtent_.width, swapChainExtent_.height, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+}
+
+void Viewport::createFrames() {
+    for (auto& frame : frames_) {
+        frame.inFlight_ = device_->getDevice().createFence({});
+        frame.imageAvailable_ = device_->getDevice().createSemaphore({});
+        frame.renderFinished_ = device_->getDevice().createSemaphore({});
+    }
 }
 
 vk::Format Viewport::findDepthFormat() const

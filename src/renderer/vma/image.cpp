@@ -6,7 +6,6 @@ namespace yuubi {
 Image::Image(std::shared_ptr<Allocator> allocator, const vk::ImageCreateInfo& createInfo) : allocator_(allocator) {
     vma::AllocationCreateInfo allocInfo{};
     auto [image, allocation] = allocator_->getAllocator().createImage(createInfo, allocInfo);
-    UB_INFO(image.objectType == vk::ObjectType::eImage);
     image_ = vk::raii::Image{allocator_->getDevice(), image};
     allocation_ = allocation;
 }
@@ -31,7 +30,6 @@ Image::~Image() {
 
 void Image::destroy() {
     if (allocator_ != nullptr) {
-        UB_INFO("destroying!");
         allocator_->getAllocator().destroyImage(image_.release(), allocation_);
     }
 }

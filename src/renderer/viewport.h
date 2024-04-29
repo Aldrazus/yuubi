@@ -9,6 +9,12 @@ namespace yuubi {
 
 class Device;
 
+struct Frame {
+    vk::raii::Semaphore imageAvailable_ = nullptr;
+    vk::raii::Semaphore renderFinished_ = nullptr;
+    vk::raii::Fence inFlight_ = nullptr;
+};
+
 class Viewport : NonCopyable {
 public:
     Viewport(){};
@@ -17,6 +23,7 @@ public:
 
     Viewport(Viewport&&) = default;
     Viewport& operator=(Viewport&& rhs);
+    ~Viewport() = default;
     void recreateSwapChain();
 
 private:
@@ -30,6 +37,7 @@ private:
     void createSwapChain();
     void createImageViews();
     void createDepthStencil();
+    void createFrames();
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat() const;
     vk::PresentModeKHR chooseSwapPresentMode() const;
     vk::Extent2D chooseSwapExtent() const;
@@ -37,6 +45,7 @@ private:
     vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates,
                                    vk::ImageTiling tiling,
                                    vk::FormatFeatureFlags features) const;
+    bool doFrame();
 
     std::shared_ptr<vk::raii::SurfaceKHR> surface_;
     std::shared_ptr<Device> device_;
@@ -45,8 +54,9 @@ private:
     vk::Format swapChainImageFormat_;
     vk::Extent2D swapChainExtent_;
     Image depthImage_;
-
-    bool doFrame();
+    
+    static const uint32_t maxFramesInFlight = 2;
+    std::array<Frame, maxFramesInFlight> frames_;
 };
 
 }
