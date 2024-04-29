@@ -15,6 +15,7 @@ struct Buffer {
     vma::Allocation allocation;
 };
 
+class Image;
 class Device : NonCopyable {
 public:
     Device() = default;
@@ -25,6 +26,10 @@ public:
 
     const vk::raii::Device& getDevice() const { return device_; }
     const vk::raii::PhysicalDevice& getPhysicalDevice() const { return physicalDevice_; }
+
+    Image createImage(uint32_t width, uint32_t height, vk::Format format,
+                      vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties);
+
 private:
     void selectPhysicalDevice(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface);
     bool isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice, const vk::raii::SurfaceKHR& surface);
@@ -34,7 +39,7 @@ private:
     vk::raii::PhysicalDevice physicalDevice_ = nullptr;
     vk::raii::Device device_ = nullptr;
     Queue graphicsQueue_;
-    Allocator allocator_ = nullptr;
+    std::shared_ptr<Allocator> allocator_ = nullptr;
     
     static const vk::StructureChain<
         vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,

@@ -22,6 +22,8 @@ target_sources(
     "renderer/vulkan_usage.cpp"
     "renderer/vma/allocator.h"
     "renderer/vma/allocator.cpp"
+    "renderer/vma/image.h"
+    "renderer/vma/image.cpp"
     "application.h"
     "application.cpp"
     "key_codes.h"

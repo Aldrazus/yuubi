@@ -1,5 +1,6 @@
 #include "renderer/device.h"
 #include "renderer/vma/allocator.h"
+#include "renderer/vma/image.h"
 
 namespace util {
 uint32_t findGraphicsQueueFamilyIndex(
@@ -25,7 +26,8 @@ Device::Device(const vk::raii::Instance& instance,
     createLogicalDevice(instance);
 }
 
-void Device::selectPhysicalDevice(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) {
+void Device::selectPhysicalDevice(const vk::raii::Instance& instance,
+                                  const vk::raii::SurfaceKHR& surface) {
     vk::raii::PhysicalDevices physicalDevices{instance};
     std::partition(physicalDevices.begin(), physicalDevices.end(),
                    [](const vk::raii::PhysicalDevice& device) {
@@ -47,7 +49,8 @@ void Device::selectPhysicalDevice(const vk::raii::Instance& instance, const vk::
     physicalDevice_ = std::move(*suitableDeviceIter);
 }
 
-bool Device::isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice, const vk::raii::SurfaceKHR& surface) {
+bool Device::isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice,
+                              const vk::raii::SurfaceKHR& surface) {
     bool isGraphicsCapable = false;
     std::vector<vk::QueueFamilyProperties> properties =
         physicalDevice.getQueueFamilyProperties();
@@ -127,7 +130,7 @@ void Device::createLogicalDevice(const vk::raii::Instance& instance) {
             {.queueFamilyIndex = graphicsFamilyIndex, .queueIndex = 0}),
         .familyIndex = graphicsFamilyIndex};
 
-    allocator_ = Allocator{instance, physicalDevice_, device_};
+    allocator_ = std::make_shared<Allocator>(instance, physicalDevice_, device_);
 }
 
 #if 0
@@ -141,6 +144,25 @@ Buffer Device::createBuffer(size_t size, vk::BufferUsageFlags usage,
     return {.buffer = buffer, .allocation = alloc};
 }
 #endif
+
+Image Device::createImage(uint32_t width, uint32_t height, vk::Format format,
+                          vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+                          vk::MemoryPropertyFlags properties) {
+    vk::ImageCreateInfo imageInfo{
+        .imageType = vk::ImageType::e2D,
+        .format = format,
+        .extent = {.width = width, .height = height, .depth = 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = vk::SampleCountFlagBits::e1,
+        .tiling = tiling,
+        .usage = usage,
+        .sharingMode = vk::SharingMode::eExclusive,
+        .initialLayout = vk::ImageLayout::eUndefined,
+    };
+
+    return Image{allocator_, imageInfo};
+}
 
 const vk::StructureChain<
     vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,

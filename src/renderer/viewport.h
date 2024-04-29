@@ -3,6 +3,7 @@
 #include "core/util.h"
 #include "renderer/vulkan_usage.h"
 #include "pch.h"
+#include "renderer/vma/image.h"
 
 namespace yuubi {
 
@@ -10,9 +11,12 @@ class Device;
 
 class Viewport : NonCopyable {
 public:
-    Viewport() {};
-    Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface, std::shared_ptr<Device> device);
+    Viewport(){};
+    Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface,
+             std::shared_ptr<Device> device);
 
+    Viewport(Viewport&&) = default;
+    Viewport& operator=(Viewport&& rhs);
     void recreateSwapChain();
 
 private:
@@ -22,13 +26,17 @@ private:
         vk::raii::Semaphore renderFinished_;
         vk::raii::Fence inFlight_;
     };
-    
+
     void createSwapChain();
     void createImageViews();
     void createDepthStencil();
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat() const;
     vk::PresentModeKHR chooseSwapPresentMode() const;
     vk::Extent2D chooseSwapExtent() const;
+    vk::Format findDepthFormat() const;
+    vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates,
+                                   vk::ImageTiling tiling,
+                                   vk::FormatFeatureFlags features) const;
 
     std::shared_ptr<vk::raii::SurfaceKHR> surface_;
     std::shared_ptr<Device> device_;
@@ -36,6 +44,7 @@ private:
     std::vector<vk::raii::ImageView> imageViews_;
     vk::Format swapChainImageFormat_;
     vk::Extent2D swapChainExtent_;
+    Image depthImage_;
 
     bool doFrame();
 };

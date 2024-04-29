@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include "renderer/vulkan_usage.h"
 #include "renderer/device.h"
+#include "renderer/vma/image.h"
 
 namespace yuubi {
 
@@ -12,6 +13,26 @@ Viewport::Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface,
     createSwapChain();
     createImageViews();
     createDepthStencil();
+}
+
+Viewport& Viewport::operator=(Viewport&& rhs) {
+    surface_ = rhs.surface_;
+    rhs.surface_ = nullptr;
+
+    device_ = rhs.device_;
+    rhs.device_ = nullptr;
+
+    swapChain_ = std::move(rhs.swapChain_);
+    rhs.swapChain_ = nullptr;
+
+    imageViews_ = std::move(rhs.imageViews_);
+    swapChainImageFormat_ = rhs.swapChainImageFormat_;
+    swapChainExtent_ = rhs.swapChainExtent_;
+
+    depthImage_ = std::move(rhs.depthImage_);
+    rhs.depthImage_ = Image{}; 
+
+    return *this;
 }
 
 void Viewport::recreateSwapChain() {
@@ -77,7 +98,38 @@ void Viewport::createImageViews() {
     }
 }
 
-void Viewport::createDepthStencil() {}
+void Viewport::createDepthStencil() {
+    vk::Format depthFormat = findDepthFormat();
+
+    depthImage_ = device_->createImage(swapChainExtent_.width, swapChainExtent_.height, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+}
+
+vk::Format Viewport::findDepthFormat() const
+{
+return findSupportedFormat(
+        {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint,
+         vk::Format::eD24UnormS8Uint},
+        vk::ImageTiling::eOptimal,
+        vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+}
+
+vk::Format Viewport::findSupportedFormat(
+    const std::vector<vk::Format>& candidates, vk::ImageTiling tiling,
+    vk::FormatFeatureFlags features) const {
+    for (vk::Format format : candidates) {
+        auto props = device_->getPhysicalDevice().getFormatProperties(format);
+
+        if (tiling == vk::ImageTiling::eLinear &&
+            (props.linearTilingFeatures & features) == features) {
+            return format;
+        } else if (tiling == vk::ImageTiling::eOptimal &&
+                   (props.optimalTilingFeatures & features) == features) {
+            return format;
+        }
+    }
+
+    UB_ERROR("Failed to find supported format.");
+}
 
 vk::SurfaceFormatKHR Viewport::chooseSwapSurfaceFormat() const {
     const auto availableFormats =
