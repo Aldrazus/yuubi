@@ -1,13 +1,26 @@
 {
   "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 26
+  },
   "configurePresets": [
     {
       "name": "default",
-      "generator": "Ninja",
+      "displayName": "Ninja Multi-Config",
+      "description": "Default build using Ninja Multi-Config generator",
+      "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
       }
+    },
+    {
+      "name": "vs",
+      "inherits": "default",
+      "displayName": "Visual Studio Config",
+      "description": "Default build using Visual Studio",
+      "generator": "Visual Studio 17 2022"
     }
   ]
 }
