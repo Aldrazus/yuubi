@@ -109,9 +109,21 @@ void Viewport::createDepthStencil() {
 
 void Viewport::createFrames() {
     for (auto& frame : frames_) {
-        frame.inFlight_ = device_->getDevice().createFence({});
-        frame.imageAvailable_ = device_->getDevice().createSemaphore({});
-        frame.renderFinished_ = device_->getDevice().createSemaphore({});
+        frame.inFlight_ = vk::raii::Fence{device_->getDevice(), {}};
+        frame.imageAvailable_ = vk::raii::Semaphore{device_->getDevice(), {}};
+        frame.renderFinished_ = vk::raii::Semaphore{device_->getDevice(), {}};
+
+        frame.commandPool_ = vk::raii::CommandPool{device_->getDevice(), {
+            .queueFamilyIndex = device_->getQueue().familyIndex
+        }};
+
+        // TODO: wtf?
+        vk::CommandBufferAllocateInfo allocInfo {
+            .commandPool = frame.commandPool_,
+            .level = vk::CommandBufferLevel::ePrimary,
+            .commandBufferCount = 1 
+        };
+        frame.commandBuffer_ = std::move(device_->getDevice().allocateCommandBuffers(allocInfo)[0]);
     }
 }
 
@@ -175,6 +187,60 @@ vk::Extent2D Viewport::chooseSwapExtent() const {
         UB_ERROR("Surface extent set to max!");
     }
     return capabilities.currentExtent;
+}
+
+bool Viewport::doFrame(std::function<void(const Frame&, const vk::raii::ImageView&)> f)
+{
+    // Wait for GPU to finish previous work on this frame.
+    device_->getDevice().waitForFences(*currentFrame().inFlight_, vk::True, std::numeric_limits<uint32_t>::max());
+
+    // Get swapchain image index for this frame.
+    uint32_t imageIndex;
+    try {
+        // This line gets immediately gets the index of the next image in the
+        // swapchain. This image may not be available for immediate use, so a
+        // semaphore is used to synchronize commands that require this image
+
+        auto [result, idx] = device_->getDevice().acquireNextImage2KHR({
+            .swapchain = swapChain_,
+            .timeout = std::numeric_limits<uint64_t>::max(),
+            .semaphore = currentFrame().imageAvailable_
+        });
+        imageIndex = idx;
+
+    } catch (const std::exception& e) {
+        recreateSwapChain();
+        return false;
+    }
+
+    device_->getDevice().resetFences(*currentFrame().inFlight_);
+
+    // Submit commands for rendering this frame.
+    f(currentFrame(), imageViews_[imageIndex]);
+
+    // Present this frame.
+    vk::PresentInfoKHR presentInfo {
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &(*currentFrame().renderFinished_),
+        .swapchainCount = 1,
+        .pSwapchains = &(*swapChain_),
+        .pImageIndices = &imageIndex,
+    };
+
+    vk::Result presentResult;
+    try {
+        presentResult = device_->getQueue().queue.presentKHR(presentInfo);
+    } catch (const std::exception& e) {
+        frameBufferResized_ = true;
+    }
+
+    if (frameBufferResized_ || presentResult == vk::Result::eSuboptimalKHR) {
+        frameBufferResized_ = false;
+        recreateSwapChain();
+    }
+
+    currentFrame_ = (currentFrame_ + 1) % maxFramesInFlight_;
+    return true;
 }
 
 }
