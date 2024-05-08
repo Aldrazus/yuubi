@@ -1,48 +1,29 @@
 target_sources(
     ${PROJECT_NAME}
-    PRIVATE
-    "core/io/file.h"
-    "core/io/file.cpp"
-    "core/log.cpp"
-    "core/log.h"
-    "core/ref.h"
-    "event/event.h"
-    "event/key_event.h"
-    "event/mouse_event.h"
-    "event/window_event.h"
-    "renderer/device.h"
-    "renderer/device.cpp"
-    "renderer/instance.h"
-    "renderer/instance.cpp"
-    "renderer/renderer.h"
-    "renderer/renderer.cpp"
-    "renderer/viewport.h"
-    "renderer/viewport.cpp"
-    "renderer/vulkan_usage.h"
-    "renderer/vulkan_usage.cpp"
-    "renderer/vma/allocator.h"
-    "renderer/vma/allocator.cpp"
-    "renderer/vma/image.h"
-    "renderer/vma/image.cpp"
-    "application.h"
-    "application.cpp"
-    "key_codes.h"
-    "main.cpp"
-    "mouse_codes.h"
-    "window.h"
-    "window.cpp"
+    PUBLIC
+    main.cpp
+)
+
+target_sources(
+    ${PROJECT_NAME}
+    PUBLIC
+    FILE_SET modules TYPE CXX_MODULES FILES
+    yuubi.ixx
+    application.ixx
+    window.ixx
+    event/base.ixx
+    event/dispatcher.ixx
+    event/enums.ixx
+    event/event.ixx
+    event/key.ixx
+    event/key_codes.ixx
+    event/window.ixx
 )
 
 target_include_directories(
     ${PROJECT_NAME}
     PRIVATE
     .
-)
-
-target_precompile_headers(
-    ${PROJECT_NAME}
-    PRIVATE
-    "pch.h"
 )
 
 if (MSVC)

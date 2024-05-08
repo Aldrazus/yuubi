@@ -12,7 +12,6 @@
       ]
     },
     "imgui",
-    "spdlog",
     "vulkan-memory-allocator",
     "vulkan-memory-allocator-hpp",
     "stb"

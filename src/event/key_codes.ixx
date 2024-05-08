@@ -1,11 +1,13 @@
-#pragma once
+module;
 
-#include "pch.h"
+#include <cstdint>
+
+export module Yuubi.Event:KeyCodes;
 
 using KeyCode = uint16_t;
 
 namespace Key {
-enum : KeyCode {
+export enum : KeyCode {
     // From glfw3.h
     Space = 32,
     Apostrophe = 39, /* ' */

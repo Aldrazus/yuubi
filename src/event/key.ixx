@@ -1,9 +1,14 @@
-#pragma once
+module;
 
 #include "event/event.h"
-#include "key_codes.h"
 
-class KeyEvent : public Event {
+export module Yuubi.Event:Key;
+
+import :Base;
+import :Enums;
+import :KeyCodes;
+
+export class KeyEvent : public Event {
     public:
     EVENT_CLASS_CATEGORY(EventCategoryKeyboard)
 
@@ -14,7 +19,7 @@ class KeyEvent : public Event {
         KeyCode keyCode;
 };
 
-class KeyPressedEvent : public KeyEvent {
+export class KeyPressedEvent : public KeyEvent {
     public:
         KeyPressedEvent(const KeyCode keycode, bool repeat = false) : KeyEvent(keycode), repeat(repeat) {}
         bool isRepeating() const {
@@ -26,13 +31,13 @@ class KeyPressedEvent : public KeyEvent {
     bool repeat;
 };
 
-class KeyReleasedEvent : public KeyEvent {
+export class KeyReleasedEvent : public KeyEvent {
     public:
         KeyReleasedEvent(const KeyCode keycode) : KeyEvent(keycode) {}
         EVENT_CLASS_TYPE(KeyReleased)
 };
 
-class KeyTypedEvent : public KeyEvent {
+export class KeyTypedEvent : public KeyEvent {
     public:
         KeyTypedEvent(const KeyCode keycode) : KeyEvent(keycode) {}
         EVENT_CLASS_TYPE(KeyTyped)

@@ -1,8 +1,6 @@
-#include "application.h"
-#include "core/log.h"
+import Yuubi.Application;
 
 int main() {
-    Log::Init();
     Application app;
-    app.Run();
+    app.run();
 }

@@ -1,9 +1,14 @@
-#pragma once
+module;
 
-#include "pch.h"
+#include <cstdint>
 #include "event/event.h"
 
-class WindowCloseEvent : public Event {
+export module Yuubi.Event:Window;
+
+import :Base;
+import :Enums;
+
+export class WindowCloseEvent : public Event {
     public:
         EVENT_CLASS_CATEGORY(EventCategoryApplication)
         EVENT_CLASS_TYPE(WindowClose)
@@ -11,7 +16,7 @@ class WindowCloseEvent : public Event {
         WindowCloseEvent() {}
 };
 
-class WindowResizeEvent : public Event {
+export class WindowResizeEvent : public Event {
     public:
         EVENT_CLASS_CATEGORY(EventCategoryApplication)
         EVENT_CLASS_TYPE(WindowResize)
@@ -30,3 +35,4 @@ class WindowResizeEvent : public Event {
         int32_t width_;
         int32_t height_;
 };
+

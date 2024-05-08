@@ -42,7 +42,3 @@ set(ASSIMP_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 
 find_package(assimp REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE assimp::assimp)
-
-# spdlog
-find_package(spdlog REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
