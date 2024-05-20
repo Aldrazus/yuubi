@@ -116,11 +116,12 @@ void Viewport::createDepthStencil() {
 
 void Viewport::createFrames() {
     for (auto& frame : frames_) {
-        frame.inFlight = vk::raii::Fence{device_->getDevice(), {}};
-        frame.imageAvailable = vk::raii::Semaphore{device_->getDevice(), {}};
-        frame.renderFinished = vk::raii::Semaphore{device_->getDevice(), {}};
+        frame.inFlight = vk::raii::Fence{device_->getDevice(), vk::FenceCreateInfo()};
+        frame.imageAvailable = vk::raii::Semaphore{device_->getDevice(), vk::SemaphoreCreateInfo()};
+        frame.renderFinished = vk::raii::Semaphore{device_->getDevice(), vk::SemaphoreCreateInfo()};
 
         frame.commandPool = vk::raii::CommandPool{device_->getDevice(), {
+            .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = device_->getQueue().familyIndex
         }};
 
@@ -211,7 +212,9 @@ bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&)> 
         auto [result, idx] = device_->getDevice().acquireNextImage2KHR({
             .swapchain = swapChain_,
             .timeout = std::numeric_limits<uint64_t>::max(),
-            .semaphore = currentFrame().imageAvailable
+            .semaphore = currentFrame().imageAvailable,
+            // TODO: WTF?
+            .deviceMask = 1
         });
         imageIndex = idx;
 

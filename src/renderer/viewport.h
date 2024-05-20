@@ -35,6 +35,7 @@ public:
     ~Viewport() = default;
     void recreateSwapChain();
     bool doFrame(std::function<void(const Frame&, const SwapchainImage&)> f);
+    inline const Image& getDepthImage() const { return depthImage_; }
     inline const vk::raii::ImageView& getDepthImageView() const { return depthImageView_; }
     inline const vk::Extent2D& getExtent() const { return swapChainExtent_; }
 

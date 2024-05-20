@@ -2,7 +2,6 @@
 
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_structs.hpp>
 
 namespace yuubi {
 
@@ -21,7 +20,9 @@ Renderer::Renderer(const Window& window) : window_(window) {
     viewport_ = Viewport{surface_, device_};
 }
 
-Renderer::~Renderer() {}
+Renderer::~Renderer() {
+    device_->getDevice().waitIdle();
+}
 
 void Renderer::draw() {
     viewport_.doFrame([this](const Frame& frame, const SwapchainImage& image) {
@@ -31,7 +32,12 @@ void Renderer::draw() {
         transitionImage(frame.commandBuffer, image.image,
                         vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
-        transitionImage(frame.commandBuffer, view
+        /*
+        transitionImage(frame.commandBuffer,
+                        viewport_.getDepthImage().getImage(),
+                        vk::ImageLayout::eUndefined,
+                        vk::ImageLayout::eDepthAttachmentOptimal);
+        */
 
         vk::RenderingAttachmentInfo colorAttachmentInfo{
             .imageView = image.imageView,
@@ -61,12 +67,31 @@ void Renderer::draw() {
 
         frame.commandBuffer.beginRendering(renderInfo);
         {
-
+            // TODO 
         }
         frame.commandBuffer.endRendering();
 
         transitionImage(frame.commandBuffer, image.image,
-                        vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
+                        vk::ImageLayout::eGeneral,
+                        vk::ImageLayout::ePresentSrcKHR);
+
+        frame.commandBuffer.end();
+
+        vk::Semaphore waitSemaphores[]{frame.imageAvailable};
+        vk::PipelineStageFlags waitStages[]{
+            vk::PipelineStageFlagBits::eColorAttachmentOutput};
+
+        vk::Semaphore signalSemaphores[] { frame.renderFinished };
+
+        vk::SubmitInfo submitInfo{.waitSemaphoreCount = 1,
+                              .pWaitSemaphores = waitSemaphores,
+                              .pWaitDstStageMask = waitStages,
+                              .commandBufferCount = 1,
+                              .pCommandBuffers = &*frame.commandBuffer,
+                              .signalSemaphoreCount = 1,
+                              .pSignalSemaphores = signalSemaphores};
+
+        device_->getQueue().queue.submit({submitInfo}, frame.inFlight); 
     });
 }
 

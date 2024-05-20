@@ -62,6 +62,6 @@ void Application::Run() {
     UB_INFO("Running application");
     while (running_) {
         window_.OnUpdate();
-        // renderer_.drawFrame();
+        renderer_.draw();
     }
 }
