@@ -4,6 +4,7 @@
 #include "renderer/vulkan_usage.h"
 #include "renderer/device.h"
 #include "renderer/vma/image.h"
+#include "pch.h"
 
 namespace yuubi {
 
@@ -23,7 +24,7 @@ Viewport& Viewport::operator=(Viewport&& rhs) {
     surface_ = rhs.surface_;
     device_ = rhs.device_;
     swapChain_ = std::move(rhs.swapChain_);
-    imageViews_ = std::move(rhs.imageViews_);
+    images_ = std::move(rhs.images_);
     swapChainImageFormat_ = rhs.swapChainImageFormat_;
     swapChainExtent_ = rhs.swapChainExtent_;
     depthImage_ = std::move(rhs.depthImage_);
@@ -82,9 +83,8 @@ void Viewport::createSwapChain() {
 }
 
 void Viewport::createImageViews() {
-    // Create image views
     const auto images = swapChain_.getImages();
-    imageViews_.clear();
+    images_.clear();
     for (const auto image : images) {
         vk::ImageViewCreateInfo imageViewCreateInfo{
             .image = image,
@@ -97,7 +97,12 @@ void Viewport::createImageViews() {
                                  .layerCount = 1},
         };
 
-        imageViews_.emplace_back(device_->getDevice(), imageViewCreateInfo);
+        SwapchainImage swapchainImage {
+            .image = image,
+            .imageView = {device_->getDevice(), imageViewCreateInfo}
+        };
+
+        images_.push_back(std::move(swapchainImage));
     }
 }
 
@@ -105,25 +110,27 @@ void Viewport::createDepthStencil() {
     vk::Format depthFormat = findDepthFormat();
 
     depthImage_ = device_->createImage(swapChainExtent_.width, swapChainExtent_.height, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    
+    depthImageView_ = device_->createImageView(depthImage_.getImage(), depthFormat, vk::ImageAspectFlagBits::eDepth);
 }
 
 void Viewport::createFrames() {
     for (auto& frame : frames_) {
-        frame.inFlight_ = vk::raii::Fence{device_->getDevice(), {}};
-        frame.imageAvailable_ = vk::raii::Semaphore{device_->getDevice(), {}};
-        frame.renderFinished_ = vk::raii::Semaphore{device_->getDevice(), {}};
+        frame.inFlight = vk::raii::Fence{device_->getDevice(), {}};
+        frame.imageAvailable = vk::raii::Semaphore{device_->getDevice(), {}};
+        frame.renderFinished = vk::raii::Semaphore{device_->getDevice(), {}};
 
-        frame.commandPool_ = vk::raii::CommandPool{device_->getDevice(), {
+        frame.commandPool = vk::raii::CommandPool{device_->getDevice(), {
             .queueFamilyIndex = device_->getQueue().familyIndex
         }};
 
         // TODO: wtf?
         vk::CommandBufferAllocateInfo allocInfo {
-            .commandPool = frame.commandPool_,
+            .commandPool = frame.commandPool,
             .level = vk::CommandBufferLevel::ePrimary,
             .commandBufferCount = 1 
         };
-        frame.commandBuffer_ = std::move(device_->getDevice().allocateCommandBuffers(allocInfo)[0]);
+        frame.commandBuffer = std::move(device_->getDevice().allocateCommandBuffers(allocInfo)[0]);
     }
 }
 
@@ -189,10 +196,10 @@ vk::Extent2D Viewport::chooseSwapExtent() const {
     return capabilities.currentExtent;
 }
 
-bool Viewport::doFrame(std::function<void(const Frame&, const vk::raii::ImageView&)> f)
+bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&)> f)
 {
     // Wait for GPU to finish previous work on this frame.
-    device_->getDevice().waitForFences(*currentFrame().inFlight_, vk::True, std::numeric_limits<uint32_t>::max());
+    device_->getDevice().waitForFences(*currentFrame().inFlight, vk::True, std::numeric_limits<uint32_t>::max());
 
     // Get swapchain image index for this frame.
     uint32_t imageIndex;
@@ -204,7 +211,7 @@ bool Viewport::doFrame(std::function<void(const Frame&, const vk::raii::ImageVie
         auto [result, idx] = device_->getDevice().acquireNextImage2KHR({
             .swapchain = swapChain_,
             .timeout = std::numeric_limits<uint64_t>::max(),
-            .semaphore = currentFrame().imageAvailable_
+            .semaphore = currentFrame().imageAvailable
         });
         imageIndex = idx;
 
@@ -213,15 +220,15 @@ bool Viewport::doFrame(std::function<void(const Frame&, const vk::raii::ImageVie
         return false;
     }
 
-    device_->getDevice().resetFences(*currentFrame().inFlight_);
+    device_->getDevice().resetFences(*currentFrame().inFlight);
 
     // Submit commands for rendering this frame.
-    f(currentFrame(), imageViews_[imageIndex]);
+    f(currentFrame(), images_[imageIndex]);
 
     // Present this frame.
     vk::PresentInfoKHR presentInfo {
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &(*currentFrame().renderFinished_),
+        .pWaitSemaphores = &(*currentFrame().renderFinished),
         .swapchainCount = 1,
         .pSwapchains = &(*swapChain_),
         .pImageIndices = &imageIndex,

@@ -13,7 +13,12 @@ public:
     Renderer(const Window& window);
     ~Renderer();
 
+    void draw();
+
 private:
+    // TODO: maybe move to utils
+    void transitionImage(const vk::raii::CommandBuffer& commandBuffer, const vk::Image& image, const vk::ImageLayout& currentLayout, const vk::ImageLayout& newLayout);
+
     const Window& window_;
     vk::raii::Context context_;
     Instance instance_;

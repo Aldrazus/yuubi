@@ -30,6 +30,8 @@ public:
     Image createImage(uint32_t width, uint32_t height, vk::Format format,
                       vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties);
 
+    vk::raii::ImageView createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags);
+
     const Queue& getQueue() {
         return graphicsQueue_;
     }

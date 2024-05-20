@@ -16,6 +16,8 @@ public:
     Image& operator=(Image&& rhs);
     ~Image();
 
+    inline const vk::raii::Image& getImage() const { return image_; }
+
 private:
     void destroy();
 

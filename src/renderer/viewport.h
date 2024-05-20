@@ -10,12 +10,18 @@ namespace yuubi {
 class Device;
 
 struct Frame : NonCopyable {
-    vk::raii::Semaphore imageAvailable_ = nullptr;
-    vk::raii::Semaphore renderFinished_ = nullptr;
-    vk::raii::Fence inFlight_ = nullptr;
+    vk::raii::Semaphore imageAvailable = nullptr;
+    vk::raii::Semaphore renderFinished = nullptr;
+    vk::raii::Fence inFlight = nullptr;
 
-    vk::raii::CommandPool commandPool_ = nullptr;
-    vk::raii::CommandBuffer commandBuffer_ = nullptr;
+    vk::raii::CommandPool commandPool = nullptr;
+    vk::raii::CommandBuffer commandBuffer = nullptr;
+};
+
+struct SwapchainImage : NonCopyable {
+    // Managed by swapchain
+    vk::Image image = nullptr;
+    vk::raii::ImageView imageView = nullptr;
 };
 
 class Viewport : NonCopyable {
@@ -28,6 +34,9 @@ public:
     Viewport& operator=(Viewport&& rhs);
     ~Viewport() = default;
     void recreateSwapChain();
+    bool doFrame(std::function<void(const Frame&, const SwapchainImage&)> f);
+    inline const vk::raii::ImageView& getDepthImageView() const { return depthImageView_; }
+    inline const vk::Extent2D& getExtent() const { return swapChainExtent_; }
 
 private:
     void createSwapChain();
@@ -43,15 +52,14 @@ private:
                                    vk::FormatFeatureFlags features) const;
     inline const Frame& currentFrame() const { return frames_[currentFrame_]; }
 
-    bool doFrame(std::function<void(const Frame&, const vk::raii::ImageView&)> f);
-
     std::shared_ptr<vk::raii::SurfaceKHR> surface_;
     std::shared_ptr<Device> device_;
     vk::raii::SwapchainKHR swapChain_ = nullptr;
-    std::vector<vk::raii::ImageView> imageViews_;
+    std::vector<SwapchainImage> images_;
     vk::Format swapChainImageFormat_;
     vk::Extent2D swapChainExtent_;
     Image depthImage_;
+    vk::raii::ImageView depthImageView_ = nullptr;
     
     static const uint32_t maxFramesInFlight_ = 2;
     std::array<Frame, maxFramesInFlight_> frames_;

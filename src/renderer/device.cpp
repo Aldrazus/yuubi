@@ -164,6 +164,25 @@ Image Device::createImage(uint32_t width, uint32_t height, vk::Format format,
     return Image{allocator_, imageInfo};
 }
 
+vk::raii::ImageView Device::createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags)
+{
+    vk::ImageViewCreateInfo viewInfo{
+        .image = image,
+        .viewType = vk::ImageViewType::e2D,
+        .format = format,
+        .subresourceRange =
+            {
+                .aspectMask = aspectFlags,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    return device_.createImageView(viewInfo);
+}
+
 const vk::StructureChain<
     vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
     vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
