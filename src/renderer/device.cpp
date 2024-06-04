@@ -133,18 +133,6 @@ void Device::createLogicalDevice(const vk::raii::Instance& instance) {
     allocator_ = std::make_shared<Allocator>(instance, physicalDevice_, device_);
 }
 
-#if 0
-Buffer Device::createBuffer(size_t size, vk::BufferUsageFlags usage,
-                            vma::MemoryUsage memoryUsage) {
-    vk::BufferCreateInfo bufferInfo{.size = size, .usage = usage};
-
-    vma::AllocationCreateInfo allocInfo{.usage = memoryUsage};
-
-    auto [buffer, alloc] = allocator_.createBuffer(bufferInfo, allocInfo);
-    return {.buffer = buffer, .allocation = alloc};
-}
-#endif
-
 Image Device::createImage(uint32_t width, uint32_t height, vk::Format format,
                           vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                           vk::MemoryPropertyFlags properties) {
@@ -162,6 +150,11 @@ Image Device::createImage(uint32_t width, uint32_t height, vk::Format format,
     };
 
     return Image{allocator_, imageInfo};
+}
+
+Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo)
+{
+    return Buffer{allocator_, createInfo, allocInfo};
 }
 
 vk::raii::ImageView Device::createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags)

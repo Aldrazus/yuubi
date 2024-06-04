@@ -3,16 +3,12 @@
 #include "core/util.h"
 #include "renderer/vma/allocator.h"
 #include "renderer/vulkan_usage.h"
+#include "renderer/vma/buffer.h"
 
 namespace yuubi {
 struct Queue {
     vk::raii::Queue queue = nullptr;
     uint32_t familyIndex;
-};
-
-struct Buffer {
-    vk::raii::Buffer buffer;
-    vma::Allocation allocation;
 };
 
 class Image;
@@ -31,6 +27,8 @@ public:
                       vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties);
 
     vk::raii::ImageView createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags);
+
+    Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo);
 
     const Queue& getQueue() {
         return graphicsQueue_;

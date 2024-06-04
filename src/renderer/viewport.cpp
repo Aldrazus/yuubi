@@ -107,16 +107,16 @@ void Viewport::createImageViews() {
 }
 
 void Viewport::createDepthStencil() {
-    vk::Format depthFormat = findDepthFormat();
+    depthImageFormat_ = findDepthFormat();
 
-    depthImage_ = device_->createImage(swapChainExtent_.width, swapChainExtent_.height, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    depthImage_ = device_->createImage(swapChainExtent_.width, swapChainExtent_.height, depthImageFormat_, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
     
-    depthImageView_ = device_->createImageView(depthImage_.getImage(), depthFormat, vk::ImageAspectFlagBits::eDepth);
+    depthImageView_ = device_->createImageView(depthImage_.getImage(), depthImageFormat_, vk::ImageAspectFlagBits::eDepth);
 }
 
 void Viewport::createFrames() {
     for (auto& frame : frames_) {
-        frame.inFlight = vk::raii::Fence{device_->getDevice(), vk::FenceCreateInfo()};
+        frame.inFlight = vk::raii::Fence{device_->getDevice(), vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}};
         frame.imageAvailable = vk::raii::Semaphore{device_->getDevice(), vk::SemaphoreCreateInfo()};
         frame.renderFinished = vk::raii::Semaphore{device_->getDevice(), vk::SemaphoreCreateInfo()};
 
@@ -224,6 +224,7 @@ bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&)> 
     }
 
     device_->getDevice().resetFences(*currentFrame().inFlight);
+    currentFrame().commandBuffer.reset();
 
     // Submit commands for rendering this frame.
     f(currentFrame(), images_[imageIndex]);

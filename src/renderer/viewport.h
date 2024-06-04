@@ -38,6 +38,8 @@ public:
     inline const Image& getDepthImage() const { return depthImage_; }
     inline const vk::raii::ImageView& getDepthImageView() const { return depthImageView_; }
     inline const vk::Extent2D& getExtent() const { return swapChainExtent_; }
+    inline const vk::Format& getSwapChainImageFormat() const { return swapChainImageFormat_; }
+    inline const vk::Format& getDepthFormat() const { return depthImageFormat_; }
 
 private:
     void createSwapChain();
@@ -61,6 +63,7 @@ private:
     vk::Extent2D swapChainExtent_;
     Image depthImage_;
     vk::raii::ImageView depthImageView_ = nullptr;
+    vk::Format depthImageFormat_;
     
     static const uint32_t maxFramesInFlight_ = 2;
     std::array<Frame, maxFramesInFlight_> frames_;
