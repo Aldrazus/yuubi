@@ -6,6 +6,7 @@
 #include "core/io/file.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/vulkan_usage.h"
+#include <cstring>
 
 namespace yuubi {
 
@@ -53,8 +54,8 @@ Renderer::Renderer(const Window& window) : window_(window) {
     createIndexBuffer();
 
     // Create graphics pipeline.
-    auto vertShaderCode = yuubi::readFile("shaders/vert.spv");
-    auto fragShaderCode = yuubi::readFile("shaders/frag.spv");
+    auto vertShaderCode = yuubi::readFile("shaders/shader.vert.spv");
+    auto fragShaderCode = yuubi::readFile("shaders/shader.frag.spv");
 
     vk::raii::ShaderModule vertShaderModule(device_->getDevice(), {
         .codeSize = vertShaderCode.size(),
@@ -111,7 +112,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
         .rasterizerDiscardEnable = vk::False,
         .polygonMode = vk::PolygonMode::eFill,
         .cullMode = vk::CullModeFlagBits::eBack,
-        .frontFace = vk::FrontFace::eCounterClockwise,
+        .frontFace = vk::FrontFace::eClockwise,
         .depthBiasEnable = vk::False,
         .lineWidth = 1.0f,
     };
@@ -301,6 +302,7 @@ void Renderer::transitionImage(const vk::raii::CommandBuffer& commandBuffer,
 
 void Renderer::createVertexBuffer() {
     vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    std::println("Copying {} bytes", bufferSize);
 
     // Create staging buffer.
     vk::BufferCreateInfo stagingBufferCreateInfo{
@@ -353,7 +355,7 @@ void Renderer::createIndexBuffer() {
     Buffer stagingBuffer = device_->createBuffer(stagingBufferCreateInfo, stagingBufferAllocCreateInfo);
 
     // Copy vertex data onto mapped memory in staging buffer.
-    std::memcpy(stagingBuffer.getMappedMemory(), vertices.data(), static_cast<size_t>(bufferSize));
+    std::memcpy(stagingBuffer.getMappedMemory(), indices.data(), static_cast<size_t>(bufferSize));
 
     // Create vertex buffer.
     vk::BufferCreateInfo indexBufferCreateInfo{
@@ -369,7 +371,7 @@ void Renderer::createIndexBuffer() {
 
     submitImmediateCommands([this, &stagingBuffer, bufferSize](const vk::raii::CommandBuffer& commandBuffer){
         vk::BufferCopy copyRegion{.size = bufferSize};
-        commandBuffer.copyBuffer(stagingBuffer.getBuffer(), vertexBuffer_.getBuffer(), {copyRegion});
+        commandBuffer.copyBuffer(stagingBuffer.getBuffer(), indexBuffer_.getBuffer(), {copyRegion});
     });
 }
 
@@ -405,13 +407,12 @@ void Renderer::submitImmediateCommands(std::function<void(const vk::raii::Comman
 
     vk::CommandBufferSubmitInfo commandBufferSubmitInfo{
         .commandBuffer = immediateCommandBuffer_,
-        // TODO: device mask?
     };
     device_->getQueue().queue.submit2({vk::SubmitInfo2{
         .commandBufferInfoCount = 1,
         .pCommandBufferInfos = &commandBufferSubmitInfo,
     }}, immediateCommandFence_);
 
-    device_->getDevice().waitForFences({immediateCommandFence_}, true, std::numeric_limits<uint64_t>::max());
+    device_->getDevice().waitForFences({immediateCommandFence_}, vk::True, std::numeric_limits<uint64_t>::max());
 }
 }

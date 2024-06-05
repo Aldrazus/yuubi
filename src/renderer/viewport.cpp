@@ -40,6 +40,7 @@ Viewport& Viewport::operator=(Viewport&& rhs) {
 }
 
 void Viewport::recreateSwapChain() {
+    device_->getDevice().waitIdle();
     createSwapChain();
     createImageViews();
     createDepthStencil();
