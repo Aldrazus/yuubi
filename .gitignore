@@ -8,3 +8,4 @@ build64/
 buildjs
 imgui.ini
 shaders/*.spv
+*.rdbg
