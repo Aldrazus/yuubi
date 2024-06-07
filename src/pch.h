@@ -9,6 +9,7 @@
 #include <memory>
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 #include <algorithm>
 #include <ranges>
 #include <tuple>

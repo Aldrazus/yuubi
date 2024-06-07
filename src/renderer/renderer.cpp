@@ -3,10 +3,12 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
+// #include <imgui_impl_glfw.h>
+// #include <imgui_impl_vulkan.h>
 #include "core/io/file.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/vulkan_usage.h"
-#include <cstring>
+#include "pch.h"
 
 namespace yuubi {
 
@@ -302,7 +304,6 @@ void Renderer::transitionImage(const vk::raii::CommandBuffer& commandBuffer,
 
 void Renderer::createVertexBuffer() {
     vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-    std::println("Copying {} bytes", bufferSize);
 
     // Create staging buffer.
     vk::BufferCreateInfo stagingBufferCreateInfo{

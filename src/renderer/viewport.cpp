@@ -78,6 +78,8 @@ void Viewport::createSwapChain() {
         .oldSwapchain = nullptr,
     };
 
+    // Have to delete old swapchain before creating a new one.
+    swapChain_.clear();
     swapChain_ = vk::raii::SwapchainKHR(device_->getDevice(), createInfo);
     swapChainImageFormat_ = surfaceFormat.format;
     swapChainExtent_ = swapExtent;
