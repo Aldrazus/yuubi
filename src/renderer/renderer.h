@@ -42,10 +42,10 @@ private:
     // TODO: maybe move to utils
     void transitionImage(const vk::raii::CommandBuffer& commandBuffer, const vk::Image& image, const vk::ImageLayout& currentLayout, const vk::ImageLayout& newLayout);
 
+    void createPushConstants();
     void createGraphicsPipeline();
     void createVertexBuffer();
     void createIndexBuffer();
-    void createUniformBuffers();
     void createDescriptor();
     void createImmediateCommandBuffer();
     void submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function);
@@ -66,7 +66,6 @@ private:
     vk::raii::CommandPool immediateCommandPool_ = nullptr;
     vk::raii::CommandBuffer immediateCommandBuffer_ = nullptr;
     vk::raii::Fence immediateCommandFence_ = nullptr;
-
 };
 
 }
