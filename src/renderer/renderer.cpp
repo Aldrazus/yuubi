@@ -122,16 +122,19 @@ void Renderer::draw() {
                             glm::vec3(0.0f, 0.0f, 1.0f));
             auto view = glm::lookAt(glm::vec3(2.0f), glm::vec3(0.0f),
                                     glm::vec3(0.0f, 0.0f, 1.0f));
+
             auto projection = glm::perspective(
                 glm::radians(45.0f),
                 viewport_.getExtent().width /
                     static_cast<float>(viewport_.getExtent().height),
                 0.1f, 10.0f);
-            // projection[1][1] *= -1;
+            projection[1][1] *= -1.0f;
+
+            auto mvp = projection * view;
 
             frame.commandBuffer.pushConstants<glm::mat4>(
                 pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                {projection * view});
+                {mvp});
 
             vk::Viewport viewport{
                 .x = 0.0f,
@@ -265,7 +268,7 @@ void Renderer::createGraphicsPipeline() {
         .rasterizerDiscardEnable = vk::False,
         .polygonMode = vk::PolygonMode::eFill,
         .cullMode = vk::CullModeFlagBits::eBack,
-        .frontFace = vk::FrontFace::eClockwise,
+        .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = vk::False,
         .lineWidth = 1.0f,
     };

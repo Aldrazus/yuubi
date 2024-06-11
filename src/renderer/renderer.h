@@ -42,7 +42,6 @@ private:
     // TODO: maybe move to utils
     void transitionImage(const vk::raii::CommandBuffer& commandBuffer, const vk::Image& image, const vk::ImageLayout& currentLayout, const vk::ImageLayout& newLayout);
 
-    void createPushConstants();
     void createGraphicsPipeline();
     void createVertexBuffer();
     void createIndexBuffer();
