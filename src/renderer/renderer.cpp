@@ -128,19 +128,19 @@ void Renderer::draw() {
                 viewport_.getExtent().width /
                     static_cast<float>(viewport_.getExtent().height),
                 0.1f, 10.0f);
-            projection[1][1] *= -1.0f;
 
-            auto mvp = projection * view;
 
             frame.commandBuffer.pushConstants<glm::mat4>(
                 pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                {mvp});
+                {projection * view * model});
 
+            // NOTE: Viewport is flipped vertically to match OpenGL/GLM's clip coordinate system
+            // where the origin is at the bottom left and the y-axis points upwards.
             vk::Viewport viewport{
                 .x = 0.0f,
-                .y = 0.0f,
+                .y = static_cast<float>(viewport_.getExtent().height),
                 .width = static_cast<float>(viewport_.getExtent().width),
-                .height = static_cast<float>(viewport_.getExtent().height),
+                .height = -static_cast<float>(viewport_.getExtent().height),
                 .minDepth = 0.0f,
                 .maxDepth = 1.0f};
 
