@@ -1,5 +1,6 @@
 #pragma once
 
+#include "renderer/camera.h"
 #include "renderer/device.h"
 #include "renderer/instance.h"
 #include "renderer/viewport.h"
@@ -36,7 +37,8 @@ public:
     Renderer(const Window& window);
     ~Renderer();
 
-    void draw();
+    void draw(const Camera& camera);
+    void renderScene(std::function<void(Renderer&)> f);
 
 private:
     // TODO: maybe move to utils

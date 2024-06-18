@@ -1,9 +1,10 @@
 #include "window.h"
 
 #include "event/window_event.h"
+#include "event/key_event.h"
+#include "event/mouse_event.h"
 #include "pch.h"
 
-#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 Window::Window(uint32_t width, uint32_t height, std::string_view title)
@@ -13,15 +14,16 @@ Window::Window(uint32_t width, uint32_t height, std::string_view title)
     window_ =
         glfwCreateWindow(width_, height_, title_.data(), nullptr, nullptr);
     glfwSetWindowUserPointer(window_, this);
-    InitCallbacks();
+    glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    initCallbacks();
 }
 
-void Window::InitCallbacks() {
+void Window::initCallbacks() {
     glfwSetWindowCloseCallback(window_, [](GLFWwindow* window) {
         Window* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
         // send this to app
         WindowCloseEvent e;
-        w->event_callback_(e);
+        w->eventCallback_(e);
     });
 
     glfwSetWindowSizeCallback(window_, [](GLFWwindow* window, int width,
@@ -29,12 +31,73 @@ void Window::InitCallbacks() {
         Window* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 
         WindowResizeEvent e{width, height};
-        w->event_callback_(e);
+        w->eventCallback_(e);
+    });
+
+    glfwSetKeyCallback(window_, [](GLFWwindow* window, int key, int scancode,
+                                   int action, int mods) {
+        Window* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+
+        switch (action) {
+            case GLFW_PRESS: {
+                KeyPressedEvent event(key, false);
+                w->eventCallback_(event);
+                break;
+            }
+            case GLFW_REPEAT: {
+                KeyPressedEvent event(key, true);
+                w->eventCallback_(event);
+                break;
+            }
+            case GLFW_RELEASE: {
+                KeyReleasedEvent event(key);
+                w->eventCallback_(event);
+                break;
+            }
+        }
+    });
+
+    glfwSetCharCallback(window_, [](GLFWwindow* window,
+                                    unsigned int codepoint) {
+        Window* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+        KeyTypedEvent event(codepoint);
+        w->eventCallback_(event);
+    });
+
+    glfwSetCursorPosCallback(window_, [](GLFWwindow* window, double xpos,
+                                         double ypos) {
+        Window* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+        MouseMovedEvent event(xpos, ypos);
+        w->eventCallback_(event);
+    });
+
+    glfwSetMouseButtonCallback(window_, [](GLFWwindow* window, int button,
+                                           int action, int mods) {
+        Window* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+        switch (action) {
+            case GLFW_PRESS: {
+                MouseButtonPressedEvent event(button);
+                w->eventCallback_(event);
+                break;
+            }
+            case GLFW_RELEASE: {
+                MouseButtonReleasedEvent event(button);
+                w->eventCallback_(event);
+                break;
+            }
+        }
+    });
+
+    glfwSetScrollCallback(window_, [](GLFWwindow* window, double xoffset,
+                                      double yoffset) {
+        Window* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+        MouseScrollEvent event(xoffset, yoffset);
+        w->eventCallback_(event);
     });
 }
 
 // TODO: move this to constructor?
-void Window::SetEventCallback(EventCallbackFn fn) { event_callback_ = fn; }
+void Window::setEventCallback(EventCallbackFn fn) { eventCallback_ = fn; }
 
 GLFWwindow* Window::getWindow() const { return window_; }
 
@@ -43,4 +106,4 @@ Window::~Window() {
     glfwTerminate();
 }
 
-void Window::OnUpdate() { glfwPollEvents(); }
+void Window::onUpdate() { glfwPollEvents(); }

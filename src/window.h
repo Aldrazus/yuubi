@@ -12,18 +12,18 @@ public:
 
     ~Window();
 
-    void OnUpdate();
+    void onUpdate();
 
-    void SetEventCallback(EventCallbackFn);
+    void setEventCallback(EventCallbackFn);
 
     GLFWwindow* getWindow() const;
 
 private:
-    void InitCallbacks();
+    void initCallbacks();
 
     uint32_t width_;
     uint32_t height_;
     std::string title_;
-    EventCallbackFn event_callback_;
+    EventCallbackFn eventCallback_;
     GLFWwindow* window_ = nullptr;
 };

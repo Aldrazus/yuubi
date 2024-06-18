@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 #include "core/io/file.h"
+#include "renderer/camera.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/vulkan_usage.h"
 #include "pch.h"
@@ -37,7 +38,8 @@ Vertex::getAttributeDescriptions() {
     return attributeDescriptions;
 }
 
-Renderer::Renderer(const Window& window) : window_(window) {
+Renderer::Renderer(const Window& window)
+    : window_(window) {
     instance_ = Instance{context_};
 
     VkSurfaceKHR tmp;
@@ -59,8 +61,8 @@ Renderer::Renderer(const Window& window) : window_(window) {
 
 Renderer::~Renderer() { device_->getDevice().waitIdle(); }
 
-void Renderer::draw() {
-    viewport_.doFrame([this](const Frame& frame, const SwapchainImage& image) {
+void Renderer::draw(const Camera& camera) {
+    viewport_.doFrame([this, &camera](const Frame& frame, const SwapchainImage& image) {
         vk::CommandBufferBeginInfo beginInfo{};
         frame.commandBuffer.begin(beginInfo);
 
@@ -120,8 +122,13 @@ void Renderer::draw() {
             auto model =
                 glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                             glm::vec3(0.0f, 0.0f, 1.0f));
+
+#if 0
             auto view = glm::lookAt(glm::vec3(2.0f), glm::vec3(0.0f),
                                     glm::vec3(0.0f, 0.0f, 1.0f));
+#else
+            auto view = camera.getViewMatrix();
+#endif
 
             auto projection = glm::perspective(
                 glm::radians(45.0f),
@@ -129,13 +136,13 @@ void Renderer::draw() {
                     static_cast<float>(viewport_.getExtent().height),
                 0.1f, 10.0f);
 
-
             frame.commandBuffer.pushConstants<glm::mat4>(
                 pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                {projection * view * model});
+                {projection * view});
 
-            // NOTE: Viewport is flipped vertically to match OpenGL/GLM's clip coordinate system
-            // where the origin is at the bottom left and the y-axis points upwards.
+            // NOTE: Viewport is flipped vertically to match OpenGL/GLM's clip
+            // coordinate system where the origin is at the bottom left and the
+            // y-axis points upwards.
             vk::Viewport viewport{
                 .x = 0.0f,
                 .y = static_cast<float>(viewport_.getExtent().height),

@@ -7,10 +7,10 @@
 class MouseButtonEvent : public Event {
     public:
     EVENT_CLASS_CATEGORY(EventCategoryMouseButton | EventCategoryMouse | EventCategoryInput)
+    MouseCode mouseCode;
 
     protected:
 MouseButtonEvent(const MouseCode mousecode) : mouseCode(mousecode) {}
-    MouseCode mouseCode;
 };
 
 class MouseButtonPressedEvent : public MouseButtonEvent {

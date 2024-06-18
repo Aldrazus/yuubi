@@ -1,14 +1,10 @@
 #include "application.h"
+#include <chrono>
 #include "event/event.h"
+#include "event/key_event.h"
+#include "event/mouse_event.h"
+#include "key_codes.h"
 #include "pch.h"
-
-#include <vulkan/vulkan.hpp>
-#include <GLFW/glfw3.h>
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
 
 #define UB_BIND_EVENT_FN(fn)                                    \
     [this](auto&&... args) -> decltype(auto) {                  \
@@ -20,25 +16,29 @@
 
 Application* Application::instance_ = nullptr;
 
-Application::Application() : window_(800, 600, "Yuubi"), renderer_(window_) {
+Application::Application()
+    : window_(800, 600, "Yuubi"),
+      renderer_(window_),
+      camera_(glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f) {
     if (instance_ != nullptr) {
         UB_ERROR("Application already exists");
         exit(1);
     }
     instance_ = this;
-    window_.SetEventCallback(UB_BIND_EVENT_FN(OnEvent));
+    window_.setEventCallback(UB_BIND_EVENT_FN(onEvent));
+    previousFrameTime = std::chrono::high_resolution_clock::now();
     UB_INFO("Starting application");
 }
 
 Application::~Application() {}
 
-bool Application::OnWindowClose(WindowCloseEvent& e) {
+bool Application::onWindowClose(WindowCloseEvent& e) {
     running_ = false;
     UB_INFO("Closing application");
     return true;
 }
 
-bool Application::OnWindowResize(WindowResizeEvent& e) {
+bool Application::onWindowResize(WindowResizeEvent& e) {
     if (e.getWidth() == 0 && e.getHeight() == 0) {
         minimized_ = true;
         return false;
@@ -49,19 +49,90 @@ bool Application::OnWindowResize(WindowResizeEvent& e) {
     return false;
 }
 
-void Application::OnEvent(Event& e) {
-    EventDispatcher dispatcher(e);
-    dispatcher.dispatch<WindowCloseEvent>(
-        UB_BIND_EVENT_FN(Application::OnWindowClose));
-    dispatcher.dispatch<WindowResizeEvent>(
-        UB_BIND_EVENT_FN(Application::OnWindowResize));
+bool Application::onKeyPress(KeyPressedEvent& e) {
+    switch (e.keyCode) {
+        case Key::W: {
+            camera_.velocity.z = -1;
+            break;
+        }
+        case Key::A: {
+            camera_.velocity.x = -1;
+            break;
+        }
+        case Key::S: {
+            camera_.velocity.z = 1;
+            break;
+        }
+        case Key::D: {
+            camera_.velocity.x = 1;
+        }
+    }
+    return true;
 }
 
-void Application::Run() {
+bool Application::onKeyRelease(KeyReleasedEvent& e) {
+    switch (e.keyCode) {
+        case Key::W: {
+            camera_.velocity.z = 0;
+            break;
+        }
+        case Key::A: {
+            camera_.velocity.x = 0;
+            break;
+        }
+        case Key::S: {
+            camera_.velocity.z = 0;
+            break;
+        }
+        case Key::D: {
+            camera_.velocity.x = 0;
+        }
+    }
+    return true;
+}
+
+bool Application::onMouseMove(MouseMovedEvent& e) {
+    static double oldX = e.xPos;
+    static double oldY = e.yPos;
+
+    const double deltaX = e.xPos - oldX;
+    const double deltaY = e.yPos - oldY;
+
+    camera_.yaw += deltaX / 100.0f;
+    camera_.pitch -= deltaY / 100.0f;
+
+    oldX = e.xPos;
+    oldY = e.yPos;
+
+    return true;
+}
+
+void Application::onEvent(Event& e) {
+    EventDispatcher dispatcher(e);
+    dispatcher.dispatch<WindowCloseEvent>(
+        UB_BIND_EVENT_FN(Application::onWindowClose));
+    dispatcher.dispatch<WindowResizeEvent>(
+        UB_BIND_EVENT_FN(Application::onWindowResize));
+    dispatcher.dispatch<KeyPressedEvent>(
+        UB_BIND_EVENT_FN(Application::onKeyPress));
+    dispatcher.dispatch<KeyReleasedEvent>(
+        UB_BIND_EVENT_FN(Application::onKeyRelease));
+    dispatcher.dispatch<MouseMovedEvent>(
+        UB_BIND_EVENT_FN(Application::onMouseMove));
+}
+
+void Application::run() {
     running_ = true;
     UB_INFO("Running application");
     while (running_) {
-        window_.OnUpdate();
-        renderer_.draw();
+        currentFrameTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> elapsedTime =
+            currentFrameTime - previousFrameTime;
+        deltaTime = elapsedTime.count();
+        previousFrameTime = currentFrameTime;
+
+        window_.onUpdate();
+        camera_.updatePosition(deltaTime);
+        renderer_.draw(camera_);
     }
 }

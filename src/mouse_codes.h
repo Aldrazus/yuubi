@@ -1,28 +1,24 @@
 #pragma once
 
 #include "pch.h"
-#include "event/event.h"
 
-class WindowCloseEvent : public Event {
-public:
-    EVENT_CLASS_CATEGORY(EventCategoryApplication)
-    EVENT_CLASS_TYPE(WindowClose)
+using MouseCode = uint16_t;
 
-    WindowCloseEvent() {}
+namespace Key {
+enum : MouseCode {
+    // From glfw3.h
+    Button0 = 0,
+    Button1 = 1,
+    Button2 = 2,
+    Button3 = 3,
+    Button4 = 4,
+    Button5 = 5,
+    Button6 = 6,
+    Button7 = 7,
+
+    ButtonLast = Button7,
+    ButtonLeft = Button0,
+    ButtonRight = Button1,
+    ButtonMiddle = Button2
 };
-
-class WindowResizeEvent : public Event {
-public:
-    EVENT_CLASS_CATEGORY(EventCategoryApplication)
-    EVENT_CLASS_TYPE(WindowResize)
-
-    WindowResizeEvent(int width, int height) : width_(width), height_(height) {}
-
-    int32_t getWidth() const { return width_; }
-
-    int32_t getHeight() const { return height_; }
-
-private:
-    int32_t width_;
-    int32_t height_;
-};
+}

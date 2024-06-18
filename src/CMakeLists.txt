@@ -3,6 +3,7 @@ target_sources(
     PRIVATE
     "core/io/file.cpp"
     "core/log.cpp"
+    "renderer/camera.cpp"
     "renderer/device.cpp"
     "renderer/instance.cpp"
     "renderer/renderer.cpp"

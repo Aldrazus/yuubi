@@ -7,11 +7,12 @@ class KeyEvent : public Event {
     public:
     EVENT_CLASS_CATEGORY(EventCategoryKeyboard)
 
+    KeyCode keyCode;
+
     protected:
         KeyEvent(const KeyCode keycode)
             : keyCode(keycode) {}
 
-        KeyCode keyCode;
 };
 
 class KeyPressedEvent : public KeyEvent {
