@@ -1,4 +1,5 @@
 #include "application.h"
+#include <algorithm>
 #include <chrono>
 #include "event/event.h"
 #include "event/key_event.h"
@@ -71,6 +72,7 @@ bool Application::onKeyPress(KeyPressedEvent& e) {
 }
 
 bool Application::onKeyRelease(KeyReleasedEvent& e) {
+    // TODO: fix bug where camera stops when opposite keys are held and one is released
     switch (e.keyCode) {
         case Key::W: {
             camera_.velocity.z = 0;
@@ -98,8 +100,12 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
     const double deltaX = e.xPos - oldX;
     const double deltaY = e.yPos - oldY;
 
-    camera_.yaw += deltaX / 100.0f;
-    camera_.pitch -= deltaY / 100.0f;
+    const float sensitivity = 100.0f;
+
+    camera_.yaw += deltaX * deltaTime * sensitivity;
+    
+    camera_.pitch -= deltaY * deltaTime * sensitivity;
+    camera_.pitch = std::clamp(camera_.pitch, -89.0f, 89.0f);
 
     oldX = e.xPos;
     oldY = e.yPos;

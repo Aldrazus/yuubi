@@ -23,18 +23,21 @@ glm::mat4 Camera::getViewMatrix() const
 glm::mat4 Camera::getRotationMatrix() const
 {
     const auto pitchRotation = glm::angleAxis(glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
-    const auto yawRotation = glm::angleAxis(glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-    // const auto yawRotation = glm::angleAxis(yaw, glm::vec3(0.0f, -1.0f, 0.0f));
+    const auto yawRotation = glm::angleAxis(glm::radians(yaw), glm::vec3(0.0f, -1.0f, 0.0f));
 
-    const auto orientation = glm::normalize(pitchRotation * yawRotation);
+    // The following line doesn't work:
+    // const auto orientation = glm::normalize(pitchRotation * yawRotation);
+    // We must concatenate the two rotation matrices instead of multiplying the two quaternions before casting.
+    // This locks the roll (z) axis of rotation.
+    return glm::mat4_cast(glm::normalize(yawRotation)) * glm::mat4_cast(glm::normalize(pitchRotation));
     
-    return glm::mat4_cast(orientation);
 }
 
 void Camera::updatePosition(float deltaTime)
 {
     const auto cameraRotation = getRotationMatrix();
-    position_ += glm::vec3(cameraRotation * glm::vec4(velocity * 0.5f, 0.0f)) * deltaTime;
+    const float moveSpeed = 1.0f;
+    position_ += glm::vec3(cameraRotation * glm::vec4(velocity * moveSpeed, 0.0f)) * deltaTime;
 }
 
 
