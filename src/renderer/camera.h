@@ -10,6 +10,7 @@ class Camera {
 public:
     Camera(glm::vec3 position, glm::vec3 velocity, float pitch, float yaw);
     glm::mat4 getViewMatrix() const;
+    glm::mat4 getViewProjectionMatrix() const;
     glm::mat4 getRotationMatrix() const;
     void updatePosition(float deltaTime);
 
@@ -18,7 +19,10 @@ public:
     float yaw = 0.0f;
 private:
     glm::vec3 position_;
-    
+    float near_ = 0.1f;
+    float far_ = 75.0f;
+    float aspectRatio_ = 16.0f / 9.0f;
+    float fov_ = glm::radians(90.0f);
 };
 
 }

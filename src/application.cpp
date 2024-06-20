@@ -20,6 +20,7 @@ Application* Application::instance_ = nullptr;
 Application::Application()
     : window_(800, 600, "Yuubi"),
       renderer_(window_),
+      // TODO: initialize camera with aspect ratio calculated using viewport
       camera_(glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f) {
     if (instance_ != nullptr) {
         UB_ERROR("Application already exists");
@@ -72,7 +73,8 @@ bool Application::onKeyPress(KeyPressedEvent& e) {
 }
 
 bool Application::onKeyRelease(KeyReleasedEvent& e) {
-    // TODO: fix bug where camera stops when opposite keys are held and one is released
+    // TODO: fix bug where camera stops when opposite keys are held and one is
+    // released
     switch (e.keyCode) {
         case Key::W: {
             camera_.velocity.z = 0;
@@ -103,7 +105,7 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
     const float sensitivity = 100.0f;
 
     camera_.yaw += deltaX * deltaTime * sensitivity;
-    
+
     camera_.pitch -= deltaY * deltaTime * sensitivity;
     camera_.pitch = std::clamp(camera_.pitch, -89.0f, 89.0f);
 

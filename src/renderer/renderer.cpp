@@ -123,22 +123,10 @@ void Renderer::draw(const Camera& camera) {
                 glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                             glm::vec3(0.0f, 0.0f, 1.0f));
 
-#if 0
-            auto view = glm::lookAt(glm::vec3(2.0f), glm::vec3(0.0f),
-                                    glm::vec3(0.0f, 0.0f, 1.0f));
-#else
-            auto view = camera.getViewMatrix();
-#endif
-
-            auto projection = glm::perspective(
-                glm::radians(45.0f),
-                viewport_.getExtent().width /
-                    static_cast<float>(viewport_.getExtent().height),
-                0.1f, 10.0f);
 
             frame.commandBuffer.pushConstants<glm::mat4>(
                 pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                {projection * view});
+                {camera.getViewProjectionMatrix()});
 
             // NOTE: Viewport is flipped vertically to match OpenGL/GLM's clip
             // coordinate system where the origin is at the bottom left and the
