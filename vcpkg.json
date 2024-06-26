@@ -1,6 +1,5 @@
 {
   "dependencies": [
-    "assimp",
     "glfw3",
     "glm",
     {
@@ -15,6 +14,7 @@
     "spdlog",
     "vulkan-memory-allocator",
     "vulkan-memory-allocator-hpp",
-    "stb"
+    "stb",
+    "tinygltf"
   ]
 }
