@@ -13,31 +13,6 @@
 
 namespace yuubi {
 
-vk::VertexInputBindingDescription Vertex::getBindingDescription() {
-    vk::VertexInputBindingDescription bindingDescription{
-        .binding = 0,
-        .stride = sizeof(Vertex),
-        .inputRate = vk::VertexInputRate::eVertex};
-
-    return bindingDescription;
-}
-
-std::array<vk::VertexInputAttributeDescription, 2>
-Vertex::getAttributeDescriptions() {
-    std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions;
-    attributeDescriptions[0] = {.location = 0,
-                                .binding = 0,
-                                .format = vk::Format::eR32G32Sfloat,
-                                .offset = offsetof(Vertex, pos)};
-
-    attributeDescriptions[1] = {.location = 1,
-                                .binding = 0,
-                                .format = vk::Format::eR32G32B32Sfloat,
-                                .offset = offsetof(Vertex, color)};
-
-    return attributeDescriptions;
-}
-
 Renderer::Renderer(const Window& window)
     : window_(window) {
     instance_ = Instance{context_};
@@ -107,8 +82,6 @@ void Renderer::draw(const Camera& camera) {
             frame.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                                              graphicsPipeline_);
 
-            frame.commandBuffer.bindVertexBuffers(
-                0, {*vertexBuffer_.getBuffer()}, {0});
             frame.commandBuffer.bindIndexBuffer(indexBuffer_.getBuffer(), 0,
                                                 vk::IndexType::eUint16);
 
@@ -124,9 +97,9 @@ void Renderer::draw(const Camera& camera) {
                             glm::vec3(0.0f, 0.0f, 1.0f));
 
 
-            frame.commandBuffer.pushConstants<glm::mat4>(
+            frame.commandBuffer.pushConstants<PushConstants>(
                 pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                {camera.getViewProjectionMatrix()});
+                {PushConstants{camera.getViewProjectionMatrix(), vertexBuffer_.getAddress()}});
 
             // NOTE: Viewport is flipped vertically to match OpenGL/GLM's clip
             // coordinate system where the origin is at the bottom left and the
@@ -230,16 +203,6 @@ void Renderer::createGraphicsPipeline() {
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
                                                         fragShaderStageInfo};
 
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
-
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &bindingDescription,
-        .vertexAttributeDescriptionCount =
-            static_cast<uint32_t>(attributeDescriptions.size()),
-        .pVertexAttributeDescriptions = attributeDescriptions.data()};
-
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
         .topology = vk::PrimitiveTopology::eTriangleList,
         .primitiveRestartEnable = vk::False};
@@ -262,7 +225,7 @@ void Renderer::createGraphicsPipeline() {
         .depthClampEnable = vk::False,
         .rasterizerDiscardEnable = vk::False,
         .polygonMode = vk::PolygonMode::eFill,
-        .cullMode = vk::CullModeFlagBits::eBack,
+        .cullMode = vk::CullModeFlagBits::eNone,
         .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = vk::False,
         .lineWidth = 1.0f,
@@ -289,7 +252,7 @@ void Renderer::createGraphicsPipeline() {
     vk::PushConstantRange pushConstantRange{
         .stageFlags = vk::ShaderStageFlagBits::eVertex,
         .offset = 0,
-        .size = sizeof(glm::mat4),
+        .size = sizeof(PushConstants),
     };
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
@@ -315,11 +278,15 @@ void Renderer::createGraphicsPipeline() {
         .pColorAttachmentFormats = &viewport_.getSwapChainImageFormat(),
         // .depthAttachmentFormat = viewport_.getDepthFormat(),
     };
+
+    vk::PipelineVertexInputStateCreateInfo vertexInputState{
+    };
+
     vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
         .pNext = &pipelineRenderingCreateInfo,
         .stageCount = 2,
         .pStages = shaderStages,
-        .pVertexInputState = &vertexInputInfo,
+        .pVertexInputState = &vertexInputState,
         .pInputAssemblyState = &inputAssembly,
         .pViewportState = &viewportState,
         .pRasterizationState = &rasterizer,
@@ -359,11 +326,13 @@ void Renderer::createVertexBuffer() {
     // Create vertex buffer.
     vk::BufferCreateInfo vertexBufferCreateInfo{
         .size = bufferSize,
-        .usage = vk::BufferUsageFlagBits::eVertexBuffer |
-                 vk::BufferUsageFlagBits::eTransferDst};
+        .usage = vk::BufferUsageFlagBits::eStorageBuffer |
+                 vk::BufferUsageFlagBits::eTransferDst | 
+                vk::BufferUsageFlagBits::eShaderDeviceAddress};
 
     vma::AllocationCreateInfo vertexBufferAllocCreateInfo{
-        .usage = vma::MemoryUsage::eAuto};
+        .usage = vma::MemoryUsage::eAuto,
+    };
 
     vertexBuffer_ = device_->createBuffer(vertexBufferCreateInfo,
                                           vertexBufferAllocCreateInfo);
@@ -398,7 +367,7 @@ void Renderer::createIndexBuffer() {
     std::memcpy(stagingBuffer.getMappedMemory(), indices.data(),
                 static_cast<size_t>(bufferSize));
 
-    // Create vertex buffer.
+    // Create index buffer.
     vk::BufferCreateInfo indexBufferCreateInfo{
         .size = bufferSize,
         .usage = vk::BufferUsageFlagBits::eIndexBuffer |

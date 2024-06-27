@@ -84,8 +84,9 @@ bool Device::supportsFeatures(const vk::raii::PhysicalDevice& physicalDevice) {
     auto requiredFeatures12 =
         requiredFeatures_.get<vk::PhysicalDeviceVulkan12Features>();
     if (requiredFeatures12.bufferDeviceAddress &&
-        !availableFeatures12.bufferDeviceAddress)
+        !availableFeatures12.bufferDeviceAddress) {
         return false;
+    }
     if (requiredFeatures12.descriptorIndexing &&
         !availableFeatures12.descriptorIndexing)
         return false;
@@ -180,10 +181,11 @@ const vk::StructureChain<
     vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
     vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
     Device::requiredFeatures_{
-        {},
-        {},
-        {.descriptorIndexing = true, .bufferDeviceAddress = true},
-        {.synchronization2 = true, .dynamicRendering = true}};
+        vk::PhysicalDeviceFeatures2{},
+        vk::PhysicalDeviceVulkan11Features{},
+        vk::PhysicalDeviceVulkan12Features{.descriptorIndexing = vk::True, .bufferDeviceAddress = vk::True, .bufferDeviceAddressCaptureReplay = vk::True},
+        vk::PhysicalDeviceVulkan13Features{.synchronization2 = vk::True, .dynamicRendering = vk::True},
+};
 
 const std::vector<const char*> Device::requiredExtensions_{
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};

@@ -11,7 +11,16 @@ Buffer::Buffer(std::shared_ptr<Allocator> allocator,
         allocator_->getAllocator().createBuffer(createInfo, allocCreateInfo, allocationInfo_);
     buffer_ = vk::raii::Buffer(allocator_->getDevice(), buffer);
     allocation_ = allocation;
+
+    if (createInfo.usage & vk::BufferUsageFlagBits::eShaderDeviceAddress) {
+        address_ = allocator_->getDevice().getBufferAddress(vk::BufferDeviceAddressInfo{
+            .buffer = buffer_
+        });
+    }     
+
+    std::println("Buffer address: {}", address_);
 }
+
 
 Buffer& Buffer::operator=(Buffer&& rhs) {
     // If rhs is this, no-op.
@@ -27,12 +36,14 @@ Buffer& Buffer::operator=(Buffer&& rhs) {
     allocator_ = rhs.allocator_;
     allocation_ = rhs.allocation_;
     allocationInfo_ = rhs.allocationInfo_;
+    address_ = rhs.address_;
 
     // Invalidate rhs.
     rhs.buffer_ = nullptr;
     rhs.allocator_ = nullptr;
     rhs.allocation_ = nullptr;
     rhs.allocationInfo_ = vma::AllocationInfo{};
+    rhs.address_ = vk::DeviceAddress{};
 
     return *this;
 }

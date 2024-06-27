@@ -20,7 +20,7 @@ public:
 
     inline const vk::raii::Buffer& getBuffer() const { return buffer_; }
     inline void* getMappedMemory() { return allocationInfo_.pMappedData; }
-
+    inline const vk::DeviceAddress& getAddress() const { return address_; }
 private:
     void destroy();
 
@@ -28,6 +28,7 @@ private:
     std::shared_ptr<Allocator> allocator_ = nullptr;
     vma::Allocation allocation_;
     vma::AllocationInfo allocationInfo_;
+    vk::DeviceAddress address_;
 };
 
 }
