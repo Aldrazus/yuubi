@@ -99,7 +99,7 @@ void Renderer::draw(const Camera& camera) {
 
             frame.commandBuffer.pushConstants<PushConstants>(
                 pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                {PushConstants{camera.getViewProjectionMatrix(), vertexBuffer_.getAddress()}});
+                {PushConstants{camera.getViewProjectionMatrix() * model, vertexBuffer_.getAddress()}});
 
             // NOTE: Viewport is flipped vertically to match OpenGL/GLM's clip
             // coordinate system where the origin is at the bottom left and the
@@ -226,7 +226,7 @@ void Renderer::createGraphicsPipeline() {
         .rasterizerDiscardEnable = vk::False,
         .polygonMode = vk::PolygonMode::eFill,
         .cullMode = vk::CullModeFlagBits::eNone,
-        .frontFace = vk::FrontFace::eCounterClockwise,
+        .frontFace = vk::FrontFace::eClockwise,
         .depthBiasEnable = vk::False,
         .lineWidth = 1.0f,
     };
@@ -313,7 +313,7 @@ void Renderer::createVertexBuffer() {
     vma::AllocationCreateInfo stagingBufferAllocCreateInfo{
         .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite |
                  vma::AllocationCreateFlagBits::eMapped,
-        .usage = vma::MemoryUsage::eAuto,
+        .usage = vma::MemoryUsage::eCpuOnly,
     };
 
     Buffer stagingBuffer = device_->createBuffer(stagingBufferCreateInfo,
@@ -331,7 +331,7 @@ void Renderer::createVertexBuffer() {
                 vk::BufferUsageFlagBits::eShaderDeviceAddress};
 
     vma::AllocationCreateInfo vertexBufferAllocCreateInfo{
-        .usage = vma::MemoryUsage::eAuto,
+        .usage = vma::MemoryUsage::eGpuOnly,
     };
 
     vertexBuffer_ = device_->createBuffer(vertexBufferCreateInfo,
@@ -374,7 +374,7 @@ void Renderer::createIndexBuffer() {
                  vk::BufferUsageFlagBits::eTransferDst};
 
     vma::AllocationCreateInfo indexBufferAllocCreateInfo{
-        .usage = vma::MemoryUsage::eAuto};
+        .usage = vma::MemoryUsage::eGpuOnly};
 
     indexBuffer_ = device_->createBuffer(indexBufferCreateInfo,
                                          indexBufferAllocCreateInfo);

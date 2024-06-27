@@ -183,7 +183,7 @@ const vk::StructureChain<
     Device::requiredFeatures_{
         vk::PhysicalDeviceFeatures2{},
         vk::PhysicalDeviceVulkan11Features{},
-        vk::PhysicalDeviceVulkan12Features{.descriptorIndexing = vk::True, .bufferDeviceAddress = vk::True, .bufferDeviceAddressCaptureReplay = vk::True},
+        vk::PhysicalDeviceVulkan12Features{.descriptorIndexing = vk::True, .bufferDeviceAddress = vk::True},
         vk::PhysicalDeviceVulkan13Features{.synchronization2 = vk::True, .dynamicRendering = vk::True},
 };
 
