@@ -44,12 +44,10 @@ void Renderer::draw(const Camera& camera) {
         transitionImage(frame.commandBuffer, image.image,
                         vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
-        /*
         transitionImage(frame.commandBuffer,
                         viewport_.getDepthImage().getImage(),
                         vk::ImageLayout::eUndefined,
                         vk::ImageLayout::eDepthAttachmentOptimal);
-        */
 
         vk::RenderingAttachmentInfo colorAttachmentInfo{
             .imageView = image.imageView,
@@ -74,7 +72,7 @@ void Renderer::draw(const Camera& camera) {
             .layerCount = 1,
             .colorAttachmentCount = 1,
             .pColorAttachments = &colorAttachmentInfo,
-            // .pDepthAttachment = &depthAttachmentInfo,
+            .pDepthAttachment = &depthAttachmentInfo,
         };
 
         frame.commandBuffer.beginRendering(renderInfo);
@@ -225,8 +223,8 @@ void Renderer::createGraphicsPipeline() {
         .depthClampEnable = vk::False,
         .rasterizerDiscardEnable = vk::False,
         .polygonMode = vk::PolygonMode::eFill,
-        .cullMode = vk::CullModeFlagBits::eNone,
-        .frontFace = vk::FrontFace::eClockwise,
+        .cullMode = vk::CullModeFlagBits::eBack,
+        .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = vk::False,
         .lineWidth = 1.0f,
     };
@@ -276,7 +274,7 @@ void Renderer::createGraphicsPipeline() {
     vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo{
         .colorAttachmentCount = 1,
         .pColorAttachmentFormats = &viewport_.getSwapChainImageFormat(),
-        // .depthAttachmentFormat = viewport_.getDepthFormat(),
+        .depthAttachmentFormat = viewport_.getDepthFormat(),
     };
 
     vk::PipelineVertexInputStateCreateInfo vertexInputState{
@@ -291,7 +289,7 @@ void Renderer::createGraphicsPipeline() {
         .pViewportState = &viewportState,
         .pRasterizationState = &rasterizer,
         .pMultisampleState = &multisampling,
-        // .pDepthStencilState = &depthStencil,
+        .pDepthStencilState = &depthStencil,
         .pColorBlendState = &colorBlending,
         .pDynamicState = &dynamicState,
         .layout = pipelineLayout_,

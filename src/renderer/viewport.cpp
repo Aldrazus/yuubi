@@ -28,6 +28,8 @@ Viewport& Viewport::operator=(Viewport&& rhs) {
     swapChainImageFormat_ = rhs.swapChainImageFormat_;
     swapChainExtent_ = rhs.swapChainExtent_;
     depthImage_ = std::move(rhs.depthImage_);
+    depthImageView_ = std::move(rhs.depthImageView_);
+    depthImageFormat_ = rhs.depthImageFormat_;
     frames_ = std::move(rhs.frames_);
 
     // Invalidate rhs

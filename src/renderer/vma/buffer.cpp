@@ -17,8 +17,6 @@ Buffer::Buffer(std::shared_ptr<Allocator> allocator,
             .buffer = buffer_
         });
     }     
-
-    std::println("Buffer address: {}", address_);
 }
 
 
