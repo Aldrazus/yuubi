@@ -6,6 +6,7 @@
 
 namespace yuubi {
 
+// TODO: decouple camera class from renderer
 class Camera {
 public:
     Camera(glm::vec3 position, glm::vec3 velocity, float pitch, float yaw);

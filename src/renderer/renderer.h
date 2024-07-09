@@ -12,52 +12,44 @@
 
 namespace yuubi {
 
-// Texture coordinates are interleaved between vec3
-// position and normal members to meet alignment requirements
-// as specified in Section 15.8.4 of the Vulkan spec
-// https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#interfaces-resources-layout
-// https://docs.vulkan.org/guide/latest/shader_memory_layout.html
 struct Vertex {
     glm::vec3 position;
-    float uv_x;
     glm::vec3 normal;
-    float uv_y;
     glm::vec4 color;
+    glm::vec2 uv;
+
+    static const vk::VertexInputBindingDescription getBindingDescription();
+    static const std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions();
 };
 
 struct PushConstants {
     glm::mat4 mvp;
-    vk::DeviceAddress vertexBuffer;
 };
 
 const std::vector<Vertex> vertices = {
     Vertex{
         .position = {0.5f, -0.5f, 0.0f},
-        .uv_x = 0.0f,
         .normal = {0.0f, 0.0f, 0.0f},
-        .uv_y = 0.0f,
-        .color = {0.0f, 0.0f, 0.0f, 1.0f}
+        .color = {0.0f, 0.0f, 0.0f, 1.0f},
+        .uv = {0.0f, 0.0f}
     },
     Vertex{
         .position = {0.5f, 0.5f, 0.0f},
-        .uv_x = 0.0f,
         .normal = {0.0f, 0.0f, 0.0f},
-        .uv_y = 0.0f,
-        .color = {0.5f, 0.5f, 0.5f, 1.0f}
+        .color = {0.5f, 0.5f, 0.5f, 1.0f},
+        .uv = {0.0f, 0.0f}
     },
     Vertex{
         .position = {-0.5f, -0.5f, 0.0f},
-        .uv_x = 0.0f,
         .normal = {0.0f, 0.0f, 0.0f},
-        .uv_y = 0.0f,
-        .color = {1.0f, 0.0f, 0.0f, 1.0f}
+        .color = {1.0f, 0.0f, 0.0f, 1.0f},
+        .uv = {0.0f, 0.0f}
     },
     Vertex{
         .position = {-0.5f, 0.5f, 0.0f},
-        .uv_x = 0.0f,
         .normal = {0.0f, 0.0f, 0.0f},
-        .uv_y = 0.0f,
-        .color = {0.0f, 1.0f, 0.0f, 1.0f}
+        .color = {0.0f, 1.0f, 0.0f, 1.0f},
+        .uv = {0.0f, 0.0f}
     },
 };
 

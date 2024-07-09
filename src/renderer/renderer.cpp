@@ -13,6 +13,40 @@
 
 namespace yuubi {
 
+const vk::VertexInputBindingDescription Vertex::getBindingDescription()
+{
+    vk::VertexInputBindingDescription bindingDescription{
+        .binding = 0,
+        .stride = sizeof(Vertex),
+        .inputRate = vk::VertexInputRate::eVertex};
+
+    return bindingDescription;
+}
+const std::array<vk::VertexInputAttributeDescription, 4> Vertex::getAttributeDescriptions()
+{
+std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions;
+    attributeDescriptions[0] = {.location = 0,
+                                .binding = 0,
+                                .format = vk::Format::eR32G32Sfloat,
+                                .offset = offsetof(Vertex, position)};
+
+    attributeDescriptions[1] = {.location = 1,
+                                .binding = 0,
+                                .format = vk::Format::eR32G32B32Sfloat,
+                                .offset = offsetof(Vertex, normal)};
+
+    attributeDescriptions[2] = {.location = 2,
+                                .binding = 0,
+                                .format = vk::Format::eR32G32B32Sfloat,
+                                .offset = offsetof(Vertex, color)};
+    attributeDescriptions[3] = {.location = 3,
+                                .binding = 0,
+                                .format = vk::Format::eR32G32Sfloat,
+                                .offset = offsetof(Vertex, uv)};
+
+    return attributeDescriptions;
+}
+
 Renderer::Renderer(const Window& window)
     : window_(window) {
     instance_ = Instance{context_};
@@ -80,6 +114,8 @@ void Renderer::draw(const Camera& camera) {
             frame.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                                              graphicsPipeline_);
 
+            frame.commandBuffer.bindVertexBuffers(0, {*vertexBuffer_.getBuffer()}, {0});
+
             frame.commandBuffer.bindIndexBuffer(indexBuffer_.getBuffer(), 0,
                                                 vk::IndexType::eUint16);
 
@@ -97,7 +133,7 @@ void Renderer::draw(const Camera& camera) {
 
             frame.commandBuffer.pushConstants<PushConstants>(
                 pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                {PushConstants{camera.getViewProjectionMatrix() * model, vertexBuffer_.getAddress()}});
+                {PushConstants{camera.getViewProjectionMatrix() * model}});
 
             // NOTE: Viewport is flipped vertically to match OpenGL/GLM's clip
             // coordinate system where the origin is at the bottom left and the
@@ -201,6 +237,16 @@ void Renderer::createGraphicsPipeline() {
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
                                                         fragShaderStageInfo};
 
+    auto bindingDescription = Vertex::getBindingDescription();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount =
+            static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()};
+
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
         .topology = vk::PrimitiveTopology::eTriangleList,
         .primitiveRestartEnable = vk::False};
@@ -277,14 +323,11 @@ void Renderer::createGraphicsPipeline() {
         .depthAttachmentFormat = viewport_.getDepthFormat(),
     };
 
-    vk::PipelineVertexInputStateCreateInfo vertexInputState{
-    };
-
     vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
         .pNext = &pipelineRenderingCreateInfo,
         .stageCount = 2,
         .pStages = shaderStages,
-        .pVertexInputState = &vertexInputState,
+        .pVertexInputState = &vertexInputInfo,
         .pInputAssemblyState = &inputAssembly,
         .pViewportState = &viewportState,
         .pRasterizationState = &rasterizer,
@@ -324,9 +367,8 @@ void Renderer::createVertexBuffer() {
     // Create vertex buffer.
     vk::BufferCreateInfo vertexBufferCreateInfo{
         .size = bufferSize,
-        .usage = vk::BufferUsageFlagBits::eStorageBuffer |
-                 vk::BufferUsageFlagBits::eTransferDst | 
-                vk::BufferUsageFlagBits::eShaderDeviceAddress};
+        .usage = vk::BufferUsageFlagBits::eVertexBuffer |
+                 vk::BufferUsageFlagBits::eTransferDst};
 
     vma::AllocationCreateInfo vertexBufferAllocCreateInfo{
         .usage = vma::MemoryUsage::eGpuOnly,

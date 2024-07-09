@@ -83,10 +83,6 @@ bool Device::supportsFeatures(const vk::raii::PhysicalDevice& physicalDevice) {
         supportedFeatures.get<vk::PhysicalDeviceVulkan12Features>();
     auto requiredFeatures12 =
         requiredFeatures_.get<vk::PhysicalDeviceVulkan12Features>();
-    if (requiredFeatures12.bufferDeviceAddress &&
-        !availableFeatures12.bufferDeviceAddress) {
-        return false;
-    }
     if (requiredFeatures12.descriptorIndexing &&
         !availableFeatures12.descriptorIndexing)
         return false;
@@ -183,7 +179,7 @@ const vk::StructureChain<
     Device::requiredFeatures_{
         vk::PhysicalDeviceFeatures2{},
         vk::PhysicalDeviceVulkan11Features{},
-        vk::PhysicalDeviceVulkan12Features{.descriptorIndexing = vk::True, .bufferDeviceAddress = vk::True},
+        vk::PhysicalDeviceVulkan12Features{.descriptorIndexing = vk::True},
         vk::PhysicalDeviceVulkan13Features{.synchronization2 = vk::True, .dynamicRendering = vk::True},
 };
 
