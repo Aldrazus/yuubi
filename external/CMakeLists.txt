@@ -13,33 +13,43 @@ target_compile_definitions(${PROJECT_NAME}
 )
 
 # VulkanMemoryAllocator
-find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE GPUOpen::VulkanMemoryAllocator)
+add_subdirectory(VulkanMemoryAllocator)
+target_link_libraries(${PROJECT_NAME} GPUOpen::VulkanMemoryAllocator)
 
 # VulkanMemoryAllocator-Hpp
-find_package(unofficial-vulkan-memory-allocator-hpp CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp)
+add_subdirectory(VulkanMemoryAllocator-Hpp)
+target_link_libraries(${PROJECT_NAME} VulkanMemoryAllocator-Hpp)
 
 # glfw
-find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
+add_subdirectory(glfw)
+target_link_libraries(${PROJECT_NAME} glfw)
 
 # glm
-find_package(glm CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
+add_subdirectory(glm)
+target_link_libraries(${PROJECT_NAME} glm)
 
 # Dear ImGui
-find_package(imgui CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
+add_library(imgui)
+target_sources(imgui
+    PRIVATE
+    "imgui/imgui.h"
+    "imgui/imgui.cpp"
+    
+    "imgui/imgui_demo.cpp"
+    "imgui/imgui_draw.cpp"
+    "imgui/imgui_widgets.cpp"
+    "imgui/imgui_tables.cpp"
+    "imgui/backends/imgui_impl_vulkan.cpp"
+    "imgui/backends/imgui_impl_glfw.cpp"
+    )
+target_include_directories(imgui PUBLIC "imgui" "imgui/backends")
+target_link_libraries(imgui PRIVATE Vulkan::Vulkan glfw)
+target_link_libraries(${PROJECT_NAME} imgui)
 
 # stb-image
-find_package(Stb REQUIRED)
-target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
+add_subdirectory(stb_image)
+target_link_libraries(${PROJECT_NAME} stb_image)
 
 # spdlog
-find_package(spdlog REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
-
-# tinygltf
-find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
-target_include_directories(${PROJECT_NAME} PRIVATE ${TINYGLTF_INCLUDE_DIRS})
+add_subdirectory(spdlog)
+target_link_libraries(${PROJECT_NAME} spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)

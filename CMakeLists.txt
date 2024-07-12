@@ -19,9 +19,9 @@ find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{
 
 ## find all the shader files under the shaders folder
 file(GLOB_RECURSE GLSL_SOURCE_FILES
-    "${PROJECT_SOURCE_DIR}/shaders/*.frag"
-    "${PROJECT_SOURCE_DIR}/shaders/*.vert"
-    "${PROJECT_SOURCE_DIR}/shaders/*.comp"
+    "${PROJECT_SOURCE_DIR}/src/shaders/*.frag"
+    "${PROJECT_SOURCE_DIR}/src/shaders/*.vert"
+    "${PROJECT_SOURCE_DIR}/src/shaders/*.comp"
     )
 
 ## iterate each shader
