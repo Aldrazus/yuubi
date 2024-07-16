@@ -16,10 +16,6 @@ target_compile_definitions(${PROJECT_NAME}
 add_subdirectory(VulkanMemoryAllocator)
 target_link_libraries(${PROJECT_NAME} GPUOpen::VulkanMemoryAllocator)
 
-# VulkanMemoryAllocator-Hpp
-add_subdirectory(VulkanMemoryAllocator-Hpp)
-target_link_libraries(${PROJECT_NAME} VulkanMemoryAllocator-Hpp)
-
 # glfw
 add_subdirectory(glfw)
 target_link_libraries(${PROJECT_NAME} glfw)

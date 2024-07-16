@@ -6,14 +6,14 @@ Allocator::Allocator(const vk::raii::Instance& instance,
               const vk::raii::PhysicalDevice& physicalDevice,
               const vk::raii::Device& device) : device_(&device)
 {
-    vma::AllocatorCreateInfo allocatorInfo{
-        .physicalDevice = physicalDevice,
-        .device = device,
-        .instance = instance,
+    VmaAllocatorCreateInfo allocatorInfo{
+        .physicalDevice = *physicalDevice,
+        .device = *device,
+        .instance = *instance,
         .vulkanApiVersion = vk::ApiVersion13,
     };
 
-    allocator_ = vma::createAllocator(allocatorInfo);
+    vmaCreateAllocator(&allocatorInfo, &allocator_);
 }
 
 Allocator::Allocator(Allocator&& rhs)
@@ -35,7 +35,7 @@ Allocator& Allocator::operator=(Allocator&& rhs)
 
 Allocator::~Allocator()
 {
-    allocator_.destroy();
+    vmaDestroyAllocator(allocator_);
 }
 
 

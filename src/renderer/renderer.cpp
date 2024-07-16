@@ -70,7 +70,10 @@ Renderer::Renderer(const Window& window) : window_(window) {
     initImGui();
 }
 
-Renderer::~Renderer() { device_->getDevice().waitIdle(); ImGui_ImplVulkan_Shutdown();}
+Renderer::~Renderer() {
+    device_->getDevice().waitIdle();
+    ImGui_ImplVulkan_Shutdown();
+}
 
 void Renderer::draw(const Camera& camera) {
     viewport_.doFrame([this, &camera](const Frame& frame,
@@ -82,19 +85,19 @@ void Renderer::draw(const Camera& camera) {
                         vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
         transitionImage(frame.commandBuffer,
-                        viewport_.getDepthImage().getImage(),
+                        *viewport_.getDepthImage().getImage(),
                         vk::ImageLayout::eUndefined,
                         vk::ImageLayout::eDepthAttachmentOptimal);
 
         vk::RenderingAttachmentInfo colorAttachmentInfo{
-            .imageView = image.imageView,
+            .imageView = *image.imageView,
             .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
             .loadOp = vk::AttachmentLoadOp::eClear,
             .storeOp = vk::AttachmentStoreOp::eStore,
             .clearValue = {{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}}}};
 
         vk::RenderingAttachmentInfo depthAttachmentInfo{
-            .imageView = viewport_.getDepthImageView(),
+            .imageView = *viewport_.getDepthImageView(),
             .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
             .loadOp = vk::AttachmentLoadOp::eClear,
             .storeOp = vk::AttachmentStoreOp::eStore,
@@ -115,12 +118,12 @@ void Renderer::draw(const Camera& camera) {
         frame.commandBuffer.beginRendering(renderInfo);
         {
             frame.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                                             graphicsPipeline_);
+                                             *graphicsPipeline_);
 
             frame.commandBuffer.bindVertexBuffers(
                 0, {*vertexBuffer_.getBuffer()}, {0});
 
-            frame.commandBuffer.bindIndexBuffer(indexBuffer_.getBuffer(), 0,
+            frame.commandBuffer.bindIndexBuffer(*indexBuffer_.getBuffer(), 0,
                                                 vk::IndexType::eUint16);
 
             static auto startTime = std::chrono::high_resolution_clock::now();
@@ -135,7 +138,7 @@ void Renderer::draw(const Camera& camera) {
                             glm::vec3(0.0f, 0.0f, 1.0f));
 
             frame.commandBuffer.pushConstants<PushConstants>(
-                pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
+                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
                 {PushConstants{camera.getViewProjectionMatrix() * model}});
 
             // NOTE: Viewport is flipped vertically to match OpenGL/GLM's clip
@@ -167,11 +170,11 @@ void Renderer::draw(const Camera& camera) {
 
         frame.commandBuffer.end();
 
-        vk::Semaphore waitSemaphores[]{frame.imageAvailable};
+        vk::Semaphore waitSemaphores[]{*frame.imageAvailable};
         vk::PipelineStageFlags waitStages[]{
             vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
-        vk::Semaphore signalSemaphores[]{frame.renderFinished};
+        vk::Semaphore signalSemaphores[]{*frame.renderFinished};
 
         vk::SubmitInfo submitInfo{.waitSemaphoreCount = 1,
                                   .pWaitSemaphores = waitSemaphores,
@@ -181,7 +184,7 @@ void Renderer::draw(const Camera& camera) {
                                   .signalSemaphoreCount = 1,
                                   .pSignalSemaphores = signalSemaphores};
 
-        device_->getQueue().queue.submit({submitInfo}, frame.inFlight);
+        device_->getQueue().queue.submit({submitInfo}, *frame.inFlight);
     });
 }
 
@@ -229,12 +232,12 @@ void Renderer::createGraphicsPipeline() {
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eVertex,
-        .module = vertShaderModule,
+        .module = *vertShaderModule,
         .pName = "main"};
 
     vk::PipelineShaderStageCreateInfo fragShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eFragment,
-        .module = fragShaderModule,
+        .module = *fragShaderModule,
         .pName = "main"};
 
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
@@ -338,7 +341,7 @@ void Renderer::createGraphicsPipeline() {
         .pDepthStencilState = &depthStencil,
         .pColorBlendState = &colorBlending,
         .pDynamicState = &dynamicState,
-        .layout = pipelineLayout_,
+        .layout = *pipelineLayout_,
         .subpass = 0};
 
     graphicsPipeline_ = vk::raii::Pipeline(device_->getDevice(), nullptr,
@@ -354,10 +357,10 @@ void Renderer::createVertexBuffer() {
         .usage = vk::BufferUsageFlagBits::eTransferSrc,
     };
 
-    vma::AllocationCreateInfo stagingBufferAllocCreateInfo{
-        .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite |
-                 vma::AllocationCreateFlagBits::eMapped,
-        .usage = vma::MemoryUsage::eCpuOnly,
+    VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                 VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        .usage = VMA_MEMORY_USAGE_CPU_ONLY,
     };
 
     Buffer stagingBuffer = device_->createBuffer(stagingBufferCreateInfo,
@@ -373,8 +376,8 @@ void Renderer::createVertexBuffer() {
         .usage = vk::BufferUsageFlagBits::eVertexBuffer |
                  vk::BufferUsageFlagBits::eTransferDst};
 
-    vma::AllocationCreateInfo vertexBufferAllocCreateInfo{
-        .usage = vma::MemoryUsage::eGpuOnly,
+    VmaAllocationCreateInfo vertexBufferAllocCreateInfo{
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
     };
 
     vertexBuffer_ = device_->createBuffer(vertexBufferCreateInfo,
@@ -383,8 +386,8 @@ void Renderer::createVertexBuffer() {
     submitImmediateCommands([this, &stagingBuffer, bufferSize](
                                 const vk::raii::CommandBuffer& commandBuffer) {
         vk::BufferCopy copyRegion{.size = bufferSize};
-        commandBuffer.copyBuffer(stagingBuffer.getBuffer(),
-                                 vertexBuffer_.getBuffer(), {copyRegion});
+        commandBuffer.copyBuffer(*stagingBuffer.getBuffer(),
+                                 *vertexBuffer_.getBuffer(), {copyRegion});
     });
 }
 
@@ -397,10 +400,10 @@ void Renderer::createIndexBuffer() {
         .usage = vk::BufferUsageFlagBits::eTransferSrc,
     };
 
-    vma::AllocationCreateInfo stagingBufferAllocCreateInfo{
-        .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite |
-                 vma::AllocationCreateFlagBits::eMapped,
-        .usage = vma::MemoryUsage::eAuto,
+    VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                 VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO,
     };
 
     Buffer stagingBuffer = device_->createBuffer(stagingBufferCreateInfo,
@@ -416,8 +419,8 @@ void Renderer::createIndexBuffer() {
         .usage = vk::BufferUsageFlagBits::eIndexBuffer |
                  vk::BufferUsageFlagBits::eTransferDst};
 
-    vma::AllocationCreateInfo indexBufferAllocCreateInfo{
-        .usage = vma::MemoryUsage::eGpuOnly};
+    VmaAllocationCreateInfo indexBufferAllocCreateInfo{
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY};
 
     indexBuffer_ = device_->createBuffer(indexBufferCreateInfo,
                                          indexBufferAllocCreateInfo);
@@ -425,8 +428,8 @@ void Renderer::createIndexBuffer() {
     submitImmediateCommands([this, &stagingBuffer, bufferSize](
                                 const vk::raii::CommandBuffer& commandBuffer) {
         vk::BufferCopy copyRegion{.size = bufferSize};
-        commandBuffer.copyBuffer(stagingBuffer.getBuffer(),
-                                 indexBuffer_.getBuffer(), {copyRegion});
+        commandBuffer.copyBuffer(*stagingBuffer.getBuffer(),
+                                 *indexBuffer_.getBuffer(), {copyRegion});
     });
 }
 
@@ -438,7 +441,7 @@ void Renderer::createImmediateCommandBuffer() {
 
     // TODO: wtf?
     vk::CommandBufferAllocateInfo allocInfo{
-        .commandPool = immediateCommandPool_,
+        .commandPool = *immediateCommandPool_,
         .level = vk::CommandBufferLevel::ePrimary,
         .commandBufferCount = 1};
     immediateCommandBuffer_ =
@@ -463,16 +466,16 @@ void Renderer::submitImmediateCommands(
     immediateCommandBuffer_.end();
 
     vk::CommandBufferSubmitInfo commandBufferSubmitInfo{
-        .commandBuffer = immediateCommandBuffer_,
+        .commandBuffer = *immediateCommandBuffer_,
     };
     device_->getQueue().queue.submit2(
         {vk::SubmitInfo2{
             .commandBufferInfoCount = 1,
             .pCommandBufferInfos = &commandBufferSubmitInfo,
         }},
-        immediateCommandFence_);
+        *immediateCommandFence_);
 
-    device_->getDevice().waitForFences({immediateCommandFence_}, vk::True,
+    device_->getDevice().waitForFences({*immediateCommandFence_}, vk::True,
                                        std::numeric_limits<uint64_t>::max());
 }
 
@@ -506,13 +509,14 @@ void Renderer::initImGui() {
                                .descriptorCount = 1000},
     };
 
-    imguiPool_ = vk::raii::DescriptorPool(device_->getDevice(),
-                                          vk::DescriptorPoolCreateInfo{
-                                          .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-                                              .maxSets = 1000,
-                                              .poolSizeCount = poolSizes.size(),
-                                              .pPoolSizes = poolSizes.data(),
-                                          });
+    imguiPool_ = vk::raii::DescriptorPool(
+        device_->getDevice(),
+        vk::DescriptorPoolCreateInfo{
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .maxSets = 1000,
+            .poolSizeCount = poolSizes.size(),
+            .pPoolSizes = poolSizes.data(),
+        });
 
     ImGui::CreateContext();
 
@@ -529,13 +533,9 @@ void Renderer::initImGui() {
         .MinImageCount = 3,
         .ImageCount = 3,
         .UseDynamicRendering = true,
-        .ColorAttachmentFormat = (VkFormat)viewport_.getSwapChainImageFormat()
-    };
-
-    initInfo.PipelineRenderingCreateInfo = vk::PipelineRenderingCreateInfo {
-        .colorAttachmentCount = 1,
-        .pColorAttachmentFormats = &viewport_.getSwapChainImageFormat()
-    };
+        .PipelineRenderingCreateInfo = vk::PipelineRenderingCreateInfo{
+            .colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &viewport_.getSwapChainImageFormat()}};
 
     ImGui_ImplVulkan_Init(&initInfo);
 

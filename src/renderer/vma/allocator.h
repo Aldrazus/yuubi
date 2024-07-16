@@ -17,11 +17,11 @@ public:
     Allocator& operator=(Allocator&& rhs);
     ~Allocator();
     
-    inline vma::Allocator& getAllocator() { return allocator_; }
+    inline VmaAllocator& getAllocator() { return allocator_; }
     const vk::raii::Device& getDevice() const { return *device_; }
 
 private:
-    vma::Allocator allocator_;
+    VmaAllocator allocator_;
     // TODO: make shared
     const vk::raii::Device* device_;
 };

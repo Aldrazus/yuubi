@@ -11,7 +11,7 @@ class Allocator;
 class Image : NonCopyable {
 public:
     Image() {};
-    Image(std::shared_ptr<Allocator> allocator, const vk::ImageCreateInfo& createInfo);
+    Image(std::shared_ptr<Allocator> allocator, const VkImageCreateInfo& createInfo);
     Image(Image&& rhs) = default;
     Image& operator=(Image&& rhs);
     ~Image();
@@ -23,6 +23,6 @@ private:
 
     vk::raii::Image image_ = nullptr;
     std::shared_ptr<Allocator> allocator_ = nullptr;
-    vma::Allocation allocation_;
+    VmaAllocation allocation_;
 };
 }

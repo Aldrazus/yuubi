@@ -28,7 +28,7 @@ public:
 
     vk::raii::ImageView createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags);
 
-    Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo);
+    Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo);
 
     const Queue& getQueue() {
         return graphicsQueue_;

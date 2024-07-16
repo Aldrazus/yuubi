@@ -12,8 +12,8 @@ class Buffer : NonCopyable {
 public:
     Buffer() {}
     Buffer(std::shared_ptr<Allocator> allocator,
-           const vk::BufferCreateInfo& createInfo,
-           const vma::AllocationCreateInfo& allocCreateInfo);
+           const VkBufferCreateInfo& createInfo,
+           const VmaAllocationCreateInfo& allocCreateInfo);
     Buffer(Buffer&& rhs) = default;
     Buffer& operator=(Buffer&& rhs);
     ~Buffer();
@@ -25,8 +25,8 @@ private:
 
     vk::raii::Buffer buffer_ = nullptr;
     std::shared_ptr<Allocator> allocator_ = nullptr;
-    vma::Allocation allocation_;
-    vma::AllocationInfo allocationInfo_;
+    VmaAllocation allocation_;
+    VmaAllocationInfo allocationInfo_;
 };
 
 }

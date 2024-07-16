@@ -54,7 +54,7 @@ void Viewport::createSwapChain() {
     auto swapExtent = chooseSwapExtent();
 
     const auto capabilities =
-        device_->getPhysicalDevice().getSurfaceCapabilitiesKHR(*surface_);
+        device_->getPhysicalDevice().getSurfaceCapabilitiesKHR(**surface_);
     uint32_t imageCount = capabilities.minImageCount;
     if (capabilities.maxImageCount > 0 &&
         imageCount > capabilities.maxImageCount) {
@@ -63,7 +63,7 @@ void Viewport::createSwapChain() {
 
     // Create swap chain
     vk::SwapchainCreateInfoKHR createInfo{
-        .surface = *surface_,
+        .surface = **surface_,
         .minImageCount = imageCount,
         .imageFormat = surfaceFormat.format,
         .imageColorSpace = surfaceFormat.colorSpace,
@@ -116,7 +116,7 @@ void Viewport::createDepthStencil() {
 
     depthImage_ = device_->createImage(swapChainExtent_.width, swapChainExtent_.height, depthImageFormat_, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
     
-    depthImageView_ = device_->createImageView(depthImage_.getImage(), depthImageFormat_, vk::ImageAspectFlagBits::eDepth);
+    depthImageView_ = device_->createImageView(*depthImage_.getImage(), depthImageFormat_, vk::ImageAspectFlagBits::eDepth);
 }
 
 void Viewport::createFrames() {
@@ -132,7 +132,7 @@ void Viewport::createFrames() {
 
         // TODO: wtf?
         vk::CommandBufferAllocateInfo allocInfo {
-            .commandPool = frame.commandPool,
+            .commandPool = *frame.commandPool,
             .level = vk::CommandBufferLevel::ePrimary,
             .commandBufferCount = 1 
         };
@@ -169,7 +169,7 @@ vk::Format Viewport::findSupportedFormat(
 
 vk::SurfaceFormatKHR Viewport::chooseSwapSurfaceFormat() const {
     const auto availableFormats =
-        device_->getPhysicalDevice().getSurfaceFormatsKHR(*surface_);
+        device_->getPhysicalDevice().getSurfaceFormatsKHR(**surface_);
     for (const auto& availableFormat : availableFormats) {
         if (availableFormat.format == vk::Format::eB8G8R8A8Srgb &&
             availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
@@ -182,7 +182,7 @@ vk::SurfaceFormatKHR Viewport::chooseSwapSurfaceFormat() const {
 
 vk::PresentModeKHR Viewport::chooseSwapPresentMode() const {
     const auto availablePresentModes =
-        device_->getPhysicalDevice().getSurfacePresentModesKHR(*surface_);
+        device_->getPhysicalDevice().getSurfacePresentModesKHR(**surface_);
     for (const auto& mode : availablePresentModes) {
         if (mode == vk::PresentModeKHR::eMailbox) {
             return mode;
@@ -193,7 +193,7 @@ vk::PresentModeKHR Viewport::chooseSwapPresentMode() const {
 
 vk::Extent2D Viewport::chooseSwapExtent() const {
     const auto capabilities =
-        device_->getPhysicalDevice().getSurfaceCapabilitiesKHR(*surface_);
+        device_->getPhysicalDevice().getSurfaceCapabilitiesKHR(**surface_);
     if (capabilities.currentExtent.width ==
         std::numeric_limits<uint32_t>::max()) {
         // TODO: implement
@@ -215,9 +215,9 @@ bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&)> 
         // semaphore is used to synchronize commands that require this image
 
         auto [result, idx] = device_->getDevice().acquireNextImage2KHR({
-            .swapchain = swapChain_,
+            .swapchain = *swapChain_,
             .timeout = std::numeric_limits<uint64_t>::max(),
-            .semaphore = currentFrame().imageAvailable,
+            .semaphore = *currentFrame().imageAvailable,
             // TODO: WTF?
             .deviceMask = 1
         });

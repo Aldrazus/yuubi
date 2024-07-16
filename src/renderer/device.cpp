@@ -57,7 +57,7 @@ bool Device::isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice,
 
     for (const auto [i, p] : std::views::enumerate(properties)) {
         if (p.queueFlags & vk::QueueFlagBits::eGraphics &&
-            physicalDevice.getSurfaceSupportKHR(i, surface)) {
+            physicalDevice.getSurfaceSupportKHR(i, *surface)) {
             isGraphicsCapable = true;
             break;
         }
@@ -149,7 +149,7 @@ Image Device::createImage(uint32_t width, uint32_t height, vk::Format format,
     return Image{allocator_, imageInfo};
 }
 
-Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo)
+Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo)
 {
     return Buffer{allocator_, createInfo, allocInfo};
 }
