@@ -1,6 +1,9 @@
 #include "renderer/renderer.h"
 
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vulkan/vulkan.hpp>
@@ -13,8 +16,7 @@
 
 namespace yuubi {
 
-const vk::VertexInputBindingDescription Vertex::getBindingDescription()
-{
+const vk::VertexInputBindingDescription Vertex::getBindingDescription() {
     vk::VertexInputBindingDescription bindingDescription{
         .binding = 0,
         .stride = sizeof(Vertex),
@@ -22,9 +24,9 @@ const vk::VertexInputBindingDescription Vertex::getBindingDescription()
 
     return bindingDescription;
 }
-const std::array<vk::VertexInputAttributeDescription, 4> Vertex::getAttributeDescriptions()
-{
-std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions;
+const std::array<vk::VertexInputAttributeDescription, 4>
+Vertex::getAttributeDescriptions() {
+    std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions;
     attributeDescriptions[0] = {.location = 0,
                                 .binding = 0,
                                 .format = vk::Format::eR32G32Sfloat,
@@ -47,8 +49,7 @@ std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions;
     return attributeDescriptions;
 }
 
-Renderer::Renderer(const Window& window)
-    : window_(window) {
+Renderer::Renderer(const Window& window) : window_(window) {
     instance_ = Instance{context_};
 
     VkSurfaceKHR tmp;
@@ -66,12 +67,14 @@ Renderer::Renderer(const Window& window)
     createVertexBuffer();
     createIndexBuffer();
     createGraphicsPipeline();
+    initImGui();
 }
 
-Renderer::~Renderer() { device_->getDevice().waitIdle(); }
+Renderer::~Renderer() { device_->getDevice().waitIdle(); ImGui_ImplVulkan_Shutdown();}
 
 void Renderer::draw(const Camera& camera) {
-    viewport_.doFrame([this, &camera](const Frame& frame, const SwapchainImage& image) {
+    viewport_.doFrame([this, &camera](const Frame& frame,
+                                      const SwapchainImage& image) {
         vk::CommandBufferBeginInfo beginInfo{};
         frame.commandBuffer.begin(beginInfo);
 
@@ -114,7 +117,8 @@ void Renderer::draw(const Camera& camera) {
             frame.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                                              graphicsPipeline_);
 
-            frame.commandBuffer.bindVertexBuffers(0, {*vertexBuffer_.getBuffer()}, {0});
+            frame.commandBuffer.bindVertexBuffers(
+                0, {*vertexBuffer_.getBuffer()}, {0});
 
             frame.commandBuffer.bindIndexBuffer(indexBuffer_.getBuffer(), 0,
                                                 vk::IndexType::eUint16);
@@ -129,7 +133,6 @@ void Renderer::draw(const Camera& camera) {
             auto model =
                 glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                             glm::vec3(0.0f, 0.0f, 1.0f));
-
 
             frame.commandBuffer.pushConstants<PushConstants>(
                 pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
@@ -471,5 +474,71 @@ void Renderer::submitImmediateCommands(
 
     device_->getDevice().waitForFences({immediateCommandFence_}, vk::True,
                                        std::numeric_limits<uint64_t>::max());
+}
+
+void Renderer::initImGui() {
+    IMGUI_CHECKVERSION();
+    std::array<vk::DescriptorPoolSize, 11> poolSizes{
+        vk::DescriptorPoolSize{.type = vk::DescriptorType::eSampler,
+                               .descriptorCount = 1000},
+        vk::DescriptorPoolSize{
+            .type = vk::DescriptorType::eCombinedImageSampler,
+            .descriptorCount = 1000},
+        vk::DescriptorPoolSize{.type = vk::DescriptorType::eSampledImage,
+                               .descriptorCount = 1000},
+        vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageImage,
+                               .descriptorCount = 1000},
+        vk::DescriptorPoolSize{.type = vk::DescriptorType::eUniformTexelBuffer,
+                               .descriptorCount = 1000},
+        vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageTexelBuffer,
+                               .descriptorCount = 1000},
+        vk::DescriptorPoolSize{.type = vk::DescriptorType::eUniformBuffer,
+                               .descriptorCount = 1000},
+        vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageBuffer,
+                               .descriptorCount = 1000},
+        vk::DescriptorPoolSize{
+            .type = vk::DescriptorType::eUniformBufferDynamic,
+            .descriptorCount = 1000},
+        vk::DescriptorPoolSize{
+            .type = vk::DescriptorType::eStorageBufferDynamic,
+            .descriptorCount = 1000},
+        vk::DescriptorPoolSize{.type = vk::DescriptorType::eInputAttachment,
+                               .descriptorCount = 1000},
+    };
+
+    imguiPool_ = vk::raii::DescriptorPool(device_->getDevice(),
+                                          vk::DescriptorPoolCreateInfo{
+                                          .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+                                              .maxSets = 1000,
+                                              .poolSizeCount = poolSizes.size(),
+                                              .pPoolSizes = poolSizes.data(),
+                                          });
+
+    ImGui::CreateContext();
+
+    ImGui_ImplGlfw_InitForVulkan(window_.getWindow(), true);
+
+    ImGui_ImplVulkan_InitInfo initInfo{
+        .Instance = *instance_.getInstance(),
+        .PhysicalDevice = *device_->getPhysicalDevice(),
+        .Device = *device_->getDevice(),
+        .QueueFamily = device_->getQueue().familyIndex,
+        .Queue = *device_->getQueue().queue,
+        .PipelineCache = nullptr,
+        .DescriptorPool = *imguiPool_,
+        .MinImageCount = 3,
+        .ImageCount = 3,
+        .UseDynamicRendering = true,
+        .ColorAttachmentFormat = (VkFormat)viewport_.getSwapChainImageFormat()
+    };
+
+    initInfo.PipelineRenderingCreateInfo = vk::PipelineRenderingCreateInfo {
+        .colorAttachmentCount = 1,
+        .pColorAttachmentFormats = &viewport_.getSwapChainImageFormat()
+    };
+
+    ImGui_ImplVulkan_Init(&initInfo);
+
+    ImGui_ImplVulkan_CreateFontsTexture();
 }
 }

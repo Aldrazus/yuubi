@@ -184,6 +184,7 @@ const vk::StructureChain<
 };
 
 const std::vector<const char*> Device::requiredExtensions_{
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
 
 }

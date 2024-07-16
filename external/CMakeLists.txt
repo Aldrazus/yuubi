@@ -2,7 +2,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 # Vulkan
 find_package(Vulkan REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan)
+target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE
     VULKAN_HPP_NO_CONSTRUCTORS

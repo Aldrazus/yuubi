@@ -10,10 +10,7 @@
       "displayName": "Ninja Multi-Config",
       "description": "Default build using Ninja Multi-Config generator",
       "generator": "Ninja Multi-Config",
-      "binaryDir": "${sourceDir}/build",
-      "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-      }
+      "binaryDir": "${sourceDir}/build"
     },
     {
       "name": "vs",

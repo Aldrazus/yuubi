@@ -75,6 +75,7 @@ private:
     void createDescriptor();
     void createImmediateCommandBuffer();
     void submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function);
+    void initImGui();
 
     const Window& window_;
     vk::raii::Context context_;
@@ -92,6 +93,8 @@ private:
     vk::raii::CommandPool immediateCommandPool_ = nullptr;
     vk::raii::CommandBuffer immediateCommandBuffer_ = nullptr;
     vk::raii::Fence immediateCommandFence_ = nullptr;
+
+    vk::raii::DescriptorPool imguiPool_ = nullptr;
 };
 
 }
