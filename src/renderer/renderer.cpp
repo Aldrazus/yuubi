@@ -12,6 +12,7 @@
 #include "renderer/camera.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/vulkan_usage.h"
+#include "renderer/pipeline_builder.h"
 #include "pch.h"
 
 namespace yuubi {
@@ -218,134 +219,33 @@ void Renderer::transitionImage(const vk::raii::CommandBuffer& commandBuffer,
 }
 
 void Renderer::createGraphicsPipeline() {
-    auto vertShaderCode = yuubi::readFile("shaders/shader.vert.spv");
-    auto fragShaderCode = yuubi::readFile("shaders/shader.frag.spv");
+    auto vertShader = loadShader("shaders/shader.vert.spv", *device_);
+    auto fragShader = loadShader("shaders/shader.frag.spv", *device_);
 
-    vk::raii::ShaderModule vertShaderModule(
-        device_->getDevice(),
-        {.codeSize = vertShaderCode.size(),
-         .pCode = reinterpret_cast<const uint32_t*>(vertShaderCode.data())});
-    vk::raii::ShaderModule fragShaderModule(
-        device_->getDevice(),
-        {.codeSize = fragShaderCode.size(),
-         .pCode = reinterpret_cast<const uint32_t*>(fragShaderCode.data())});
-
-    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
-        .stage = vk::ShaderStageFlagBits::eVertex,
-        .module = *vertShaderModule,
-        .pName = "main"};
-
-    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{
-        .stage = vk::ShaderStageFlagBits::eFragment,
-        .module = *fragShaderModule,
-        .pName = "main"};
-
-    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
-                                                        fragShaderStageInfo};
-
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
-
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &bindingDescription,
-        .vertexAttributeDescriptionCount =
-            static_cast<uint32_t>(attributeDescriptions.size()),
-        .pVertexAttributeDescriptions = attributeDescriptions.data()};
-
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
-        .topology = vk::PrimitiveTopology::eTriangleList,
-        .primitiveRestartEnable = vk::False};
-
-    std::vector<vk::DynamicState> dynamicStates = {
-        vk::DynamicState::eViewport,
-        vk::DynamicState::eScissor,
-    };
-
-    vk::PipelineDynamicStateCreateInfo dynamicState{
-        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
-        .pDynamicStates = dynamicStates.data()};
-
-    vk::PipelineViewportStateCreateInfo viewportState{
-        .viewportCount = 1,
-        .scissorCount = 1,
-    };
-
-    vk::PipelineRasterizationStateCreateInfo rasterizer{
-        .depthClampEnable = vk::False,
-        .rasterizerDiscardEnable = vk::False,
-        .polygonMode = vk::PolygonMode::eFill,
-        .cullMode = vk::CullModeFlagBits::eBack,
-        .frontFace = vk::FrontFace::eCounterClockwise,
-        .depthBiasEnable = vk::False,
-        .lineWidth = 1.0f,
-    };
-
-    vk::PipelineMultisampleStateCreateInfo multisampling{
-        .rasterizationSamples = vk::SampleCountFlagBits::e1,
-        .sampleShadingEnable = vk::False,
-        .minSampleShading = 1.0f,
-    };
-
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-        .blendEnable = vk::False,
-        .colorWriteMask =
-            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-            vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-    };
-
-    vk::PipelineColorBlendStateCreateInfo colorBlending{
-        .logicOpEnable = vk::False,
-        .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment};
-
-    vk::PushConstantRange pushConstantRange{
+    std::vector<vk::PushConstantRange> pushConstantRanges = {vk::PushConstantRange{
         .stageFlags = vk::ShaderStageFlagBits::eVertex,
         .offset = 0,
         .size = sizeof(PushConstants),
+    }};
+
+    pipelineLayout_ = createPipelineLayout(*device_, {}, pushConstantRanges);
+    PipelineBuilder builder(pipelineLayout_);
+    std::array<vk::VertexInputBindingDescription, 1> bindingDescriptions{
+        Vertex::getBindingDescription()
     };
-
-    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
-        .setLayoutCount = 0,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &pushConstantRange};
-
-    pipelineLayout_ = vk::raii::PipelineLayout(device_->getDevice(),
-                                               pipelineLayoutCreateInfo);
-
-    vk::PipelineDepthStencilStateCreateInfo depthStencil{
-        .depthTestEnable = vk::True,
-        .depthWriteEnable = vk::True,
-        .depthCompareOp = vk::CompareOp::eLess,
-        .depthBoundsTestEnable = vk::False,
-        .stencilTestEnable = vk::False,
-        .minDepthBounds = 0.0f,
-        .maxDepthBounds = 1.0f,
-    };
-
-    vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo{
-        .colorAttachmentCount = 1,
-        .pColorAttachmentFormats = &viewport_.getSwapChainImageFormat(),
-        .depthAttachmentFormat = viewport_.getDepthFormat(),
-    };
-
-    vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
-        .pNext = &pipelineRenderingCreateInfo,
-        .stageCount = 2,
-        .pStages = shaderStages,
-        .pVertexInputState = &vertexInputInfo,
-        .pInputAssemblyState = &inputAssembly,
-        .pViewportState = &viewportState,
-        .pRasterizationState = &rasterizer,
-        .pMultisampleState = &multisampling,
-        .pDepthStencilState = &depthStencil,
-        .pColorBlendState = &colorBlending,
-        .pDynamicState = &dynamicState,
-        .layout = *pipelineLayout_,
-        .subpass = 0};
-
-    graphicsPipeline_ = vk::raii::Pipeline(device_->getDevice(), nullptr,
-                                           graphicsPipelineCreateInfo);
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    graphicsPipeline_ = builder
+        .setShaders(vertShader, fragShader)
+        .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+        .setPolygonMode(vk::PolygonMode::eFill)
+        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+        .setMultisamplingNone()
+        .disableBlending()
+        .disableDepthTest()
+        .setColorAttachmentFormat(viewport_.getSwapChainImageFormat())
+        .setDepthFormat(viewport_.getDepthFormat())
+        .setVertexInputInfo(bindingDescriptions, attributeDescriptions)
+        .build(*device_);
 }
 
 void Renderer::createVertexBuffer() {
@@ -528,10 +428,10 @@ void Renderer::initImGui() {
         .Device = *device_->getDevice(),
         .QueueFamily = device_->getQueue().familyIndex,
         .Queue = *device_->getQueue().queue,
-        .PipelineCache = nullptr,
         .DescriptorPool = *imguiPool_,
         .MinImageCount = 3,
         .ImageCount = 3,
+        .PipelineCache = nullptr,
         .UseDynamicRendering = true,
         .PipelineRenderingCreateInfo = vk::PipelineRenderingCreateInfo{
             .colorAttachmentCount = 1,

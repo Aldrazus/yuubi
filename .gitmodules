@@ -16,3 +16,6 @@
 [submodule "external/VulkanMemoryAllocator-Hpp"]
 	path = external/VulkanMemoryAllocator-Hpp
 	url = https://github.com/YaaZ/VulkanMemoryAllocator-Hpp
+[submodule "external/fastgltf"]
+	path = external/fastgltf
+	url = https://github.com/spnda/fastgltf

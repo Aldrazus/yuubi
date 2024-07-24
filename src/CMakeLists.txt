@@ -6,6 +6,7 @@ target_sources(
     "renderer/camera.cpp"
     "renderer/device.cpp"
     "renderer/instance.cpp"
+    "renderer/pipeline_builder.cpp"
     "renderer/renderer.cpp"
     "renderer/viewport.cpp"
     "renderer/vulkan_usage.cpp"
