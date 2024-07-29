@@ -11,7 +11,7 @@ class Device;
 vk::raii::ShaderModule loadShader(std::string_view filename, const Device& device);
 
 // Consider moving to device.h
-vk::raii::PipelineLayout createPipelineLayout(const Device& device, std::span<vk::raii::DescriptorSetLayout> layouts, std::span<vk::PushConstantRange> pushConstantRanges);
+vk::raii::PipelineLayout createPipelineLayout(const Device& device, std::span<vk::DescriptorSetLayout> layouts, std::span<vk::PushConstantRange> pushConstantRanges);
 
 class PipelineBuilder {
 public:

@@ -15,10 +15,11 @@ vk::raii::ShaderModule loadShader(std::string_view filename,
          .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())});
 }
 
-vk::raii::PipelineLayout createPipelineLayout(const Device& device, std::span<vk::raii::DescriptorSetLayout> layouts, std::span<vk::PushConstantRange> pushConstantRanges) {
+vk::raii::PipelineLayout createPipelineLayout(const Device& device, std::span<vk::DescriptorSetLayout> layouts, std::span<vk::PushConstantRange> pushConstantRanges) {
+    // TODO: Use array proxy?
     return vk::raii::PipelineLayout(device.getDevice(), vk::PipelineLayoutCreateInfo{
-        // TODO: fix this
-        .setLayoutCount = 0,
+        .setLayoutCount = static_cast<uint32_t>(layouts.size()),
+        .pSetLayouts = layouts.data(),
         .pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size()),
         .pPushConstantRanges = pushConstantRanges.data()
     });

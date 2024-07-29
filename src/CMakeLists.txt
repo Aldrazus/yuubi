@@ -4,6 +4,8 @@ target_sources(
     "core/io/file.cpp"
     "core/log.cpp"
     "renderer/camera.cpp"
+    "renderer/descriptor_allocator.cpp"
+    "renderer/descriptor_layout_builder.cpp"
     "renderer/device.cpp"
     "renderer/instance.cpp"
     "renderer/pipeline_builder.cpp"

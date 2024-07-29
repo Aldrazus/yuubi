@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/camera.h"
+#include "renderer/descriptor_allocator.h"
 #include "renderer/device.h"
 #include "renderer/instance.h"
 #include "renderer/viewport.h"
@@ -95,6 +96,8 @@ private:
     vk::raii::Fence immediateCommandFence_ = nullptr;
 
     vk::raii::DescriptorPool imguiPool_ = nullptr;
+    DescriptorAllocator descriptorAllocator_;
+    vk::raii::DescriptorSetLayout descriptorSetLayout_ = nullptr;
 };
 
 }

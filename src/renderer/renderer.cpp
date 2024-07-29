@@ -13,6 +13,7 @@
 #include "renderer/vma/buffer.h"
 #include "renderer/vulkan_usage.h"
 #include "renderer/pipeline_builder.h"
+#include "renderer/descriptor_layout_builder.h"
 #include "pch.h"
 
 namespace yuubi {
@@ -63,10 +64,12 @@ Renderer::Renderer(const Window& window) : window_(window) {
     surface_ = std::make_shared<vk::raii::SurfaceKHR>(instance_, tmp);
     device_ = std::make_shared<Device>(instance_, *surface_);
     viewport_ = Viewport{surface_, device_};
+    descriptorAllocator_ = DescriptorAllocator(device_);
 
     createImmediateCommandBuffer();
     createVertexBuffer();
     createIndexBuffer();
+    createDescriptor();
     createGraphicsPipeline();
     initImGui();
 }
@@ -228,7 +231,9 @@ void Renderer::createGraphicsPipeline() {
         .size = sizeof(PushConstants),
     }};
 
-    pipelineLayout_ = createPipelineLayout(*device_, {}, pushConstantRanges);
+    std::vector<vk::DescriptorSetLayout> setLayouts = {*descriptorSetLayout_};
+    
+    pipelineLayout_ = createPipelineLayout(*device_, setLayouts, pushConstantRanges);
     PipelineBuilder builder(pipelineLayout_);
     std::array<vk::VertexInputBindingDescription, 1> bindingDescriptions{
         Vertex::getBindingDescription()
@@ -331,6 +336,26 @@ void Renderer::createIndexBuffer() {
         commandBuffer.copyBuffer(*stagingBuffer.getBuffer(),
                                  *indexBuffer_.getBuffer(), {copyRegion});
     });
+}
+
+void Renderer::createDescriptor() {
+    DescriptorLayoutBuilder layoutBuilder(device_);
+
+    vk::DescriptorBindingFlags bindingFlags = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+
+    descriptorSetLayout_ = layoutBuilder
+        .addBinding(vk::DescriptorSetLayoutBinding{
+            .binding = 0,
+            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+            .descriptorCount = 1024,
+            .stageFlags = vk::ShaderStageFlagBits::eFragment,
+        })
+        .build(vk::DescriptorSetLayoutBindingFlagsCreateInfo{
+            .bindingCount = 1,
+            .pBindingFlags = &bindingFlags
+        }, vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool);
+
+    descriptorAllocator_.allocate(descriptorSetLayout_);
 }
 
 void Renderer::createImmediateCommandBuffer() {
