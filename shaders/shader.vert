@@ -10,8 +10,10 @@ layout(push_constant) uniform constants {
 } PushConstants;
 
 layout(location = 0) out vec3 fragColor;
+layout(location = 1) out vec2 fragUv;
 
 void main() {
     gl_Position = PushConstants.mvp * vec4(inPosition, 1.0f);
     fragColor = inColor;
+    fragUv = inUv;
 }

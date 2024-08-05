@@ -22,7 +22,7 @@ DescriptorAllocator::DescriptorAllocator(const std::shared_ptr<Device>& device) 
     };
 
     vk::DescriptorPoolCreateInfo poolInfo {
-        .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
+        .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind | vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = 1024,
         .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
         .pPoolSizes = poolSizes.data()

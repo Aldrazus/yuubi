@@ -3,6 +3,7 @@ target_sources(
     PRIVATE
     "core/io/file.cpp"
     "core/log.cpp"
+    "renderer/bindless_set_manager.cpp"
     "renderer/camera.cpp"
     "renderer/descriptor_allocator.cpp"
     "renderer/descriptor_layout_builder.cpp"

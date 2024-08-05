@@ -1,19 +1,23 @@
 #include "renderer/renderer.h"
 
 #include <GLFW/glfw3.h>
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_raii.hpp>
+
+// TODO: FIX!!!
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include "core/io/file.h"
 #include "renderer/camera.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/vulkan_usage.h"
 #include "renderer/pipeline_builder.h"
 #include "renderer/descriptor_layout_builder.h"
+#include "renderer/bindless_set_manager.h"
 #include "pch.h"
 
 namespace yuubi {
@@ -64,19 +68,18 @@ Renderer::Renderer(const Window& window) : window_(window) {
     surface_ = std::make_shared<vk::raii::SurfaceKHR>(instance_, tmp);
     device_ = std::make_shared<Device>(instance_, *surface_);
     viewport_ = Viewport{surface_, device_};
-    descriptorAllocator_ = DescriptorAllocator(device_);
+    bindlessSetManager_ = BindlessSetManager(device_);
 
     createImmediateCommandBuffer();
     createVertexBuffer();
     createIndexBuffer();
-    createDescriptor();
+    createTexture();
+    bindlessSetManager_.addImage(sampler_, imageView_);
     createGraphicsPipeline();
-    initImGui();
 }
 
 Renderer::~Renderer() {
     device_->getDevice().waitIdle();
-    ImGui_ImplVulkan_Shutdown();
 }
 
 void Renderer::draw(const Camera& camera) {
@@ -85,9 +88,11 @@ void Renderer::draw(const Camera& camera) {
         vk::CommandBufferBeginInfo beginInfo{};
         frame.commandBuffer.begin(beginInfo);
 
+        // Transition swapchain image layout to COLOR_ATTACHMENT_OPTIMAL before rendering
         transitionImage(frame.commandBuffer, image.image,
-                        vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
+                        vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
+        // Transition depth buffer layout to DEPTH_ATTACHMENT_OPTIMAL before rendering
         transitionImage(frame.commandBuffer,
                         *viewport_.getDepthImage().getImage(),
                         vk::ImageLayout::eUndefined,
@@ -163,13 +168,17 @@ void Renderer::draw(const Camera& camera) {
 
             frame.commandBuffer.setScissor(0, {scissor});
 
+            frame.commandBuffer.bindDescriptorSets(
+                vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {*bindlessSetManager_.getDescriptorSet()}, {});
+
             frame.commandBuffer.drawIndexed(
                 static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
         }
         frame.commandBuffer.endRendering();
 
+        // Transition swapchain image layout to PRESENT_SRC before presenting
         transitionImage(frame.commandBuffer, image.image,
-                        vk::ImageLayout::eGeneral,
+                        vk::ImageLayout::eColorAttachmentOptimal,
                         vk::ImageLayout::ePresentSrcKHR);
 
         frame.commandBuffer.end();
@@ -196,12 +205,8 @@ void Renderer::transitionImage(const vk::raii::CommandBuffer& commandBuffer,
                                const vk::Image& image,
                                const vk::ImageLayout& currentLayout,
                                const vk::ImageLayout& newLayout) {
+
     vk::ImageMemoryBarrier2 imageBarrier{
-        .srcStageMask = vk::PipelineStageFlagBits2::eAllCommands,
-        .srcAccessMask = vk::AccessFlagBits2::eMemoryWrite,
-        .dstStageMask = vk::PipelineStageFlagBits2::eAllCommands,
-        .dstAccessMask = vk::AccessFlagBits2::eMemoryWrite |
-                         vk::AccessFlagBits2::eMemoryRead,
         .oldLayout = currentLayout,
         .newLayout = newLayout,
         .image = image,
@@ -215,6 +220,42 @@ void Renderer::transitionImage(const vk::raii::CommandBuffer& commandBuffer,
             .layerCount = vk::RemainingArrayLayers},
     };
 
+    if (currentLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+        imageBarrier.setSrcAccessMask(vk::AccessFlagBits2::eNone);
+        imageBarrier.setDstAccessMask(vk::AccessFlagBits2::eTransferWrite);
+
+        imageBarrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe);
+        imageBarrier.setDstStageMask(vk::PipelineStageFlagBits2::eTransfer);
+    } else if (currentLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+        imageBarrier.setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite);
+        imageBarrier.setDstAccessMask(vk::AccessFlagBits2::eShaderRead);
+
+        imageBarrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer);
+        imageBarrier.setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader);
+    } else if (currentLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eDepthAttachmentOptimal) {
+        imageBarrier.setSrcAccessMask(vk::AccessFlagBits2::eNone);
+        imageBarrier.setDstAccessMask(vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite);
+
+        imageBarrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe);
+        imageBarrier.setDstStageMask(vk::PipelineStageFlagBits2::eEarlyFragmentTests);
+    } else if (currentLayout == vk::ImageLayout::eColorAttachmentOptimal &&
+               newLayout == vk::ImageLayout::ePresentSrcKHR) {
+        imageBarrier.setSrcAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite);
+        // imageBarrier.setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite);
+
+        imageBarrier.setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+        imageBarrier.setDstStageMask(vk::PipelineStageFlagBits2::eBottomOfPipe);
+    } else if (currentLayout == vk::ImageLayout::eUndefined &&
+               newLayout == vk::ImageLayout::eColorAttachmentOptimal) {
+        // imageBarrier.setSrcAccessMask(vk::AccessFlagBits2::eNone);
+        imageBarrier.setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite);
+
+        imageBarrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe);
+        imageBarrier.setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+    } else {
+        throw std::invalid_argument("Unsupported layout transition!");
+    }
+
     vk::DependencyInfo dependencyInfo{.imageMemoryBarrierCount = 1,
                                       .pImageMemoryBarriers = &imageBarrier};
 
@@ -225,32 +266,34 @@ void Renderer::createGraphicsPipeline() {
     auto vertShader = loadShader("shaders/shader.vert.spv", *device_);
     auto fragShader = loadShader("shaders/shader.frag.spv", *device_);
 
-    std::vector<vk::PushConstantRange> pushConstantRanges = {vk::PushConstantRange{
-        .stageFlags = vk::ShaderStageFlagBits::eVertex,
-        .offset = 0,
-        .size = sizeof(PushConstants),
-    }};
+    std::vector<vk::PushConstantRange> pushConstantRanges = {
+        vk::PushConstantRange{
+            .stageFlags = vk::ShaderStageFlagBits::eVertex,
+            .offset = 0,
+            .size = sizeof(PushConstants),
+        }};
 
-    std::vector<vk::DescriptorSetLayout> setLayouts = {*descriptorSetLayout_};
-    
-    pipelineLayout_ = createPipelineLayout(*device_, setLayouts, pushConstantRanges);
+    std::vector<vk::DescriptorSetLayout> setLayouts = {*bindlessSetManager_.getDescriptorSetLayout()};
+
+    pipelineLayout_ =
+        createPipelineLayout(*device_, setLayouts, pushConstantRanges);
     PipelineBuilder builder(pipelineLayout_);
     std::array<vk::VertexInputBindingDescription, 1> bindingDescriptions{
-        Vertex::getBindingDescription()
-    };
+        Vertex::getBindingDescription()};
     auto attributeDescriptions = Vertex::getAttributeDescriptions();
-    graphicsPipeline_ = builder
-        .setShaders(vertShader, fragShader)
-        .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-        .setPolygonMode(vk::PolygonMode::eFill)
-        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
-        .setMultisamplingNone()
-        .disableBlending()
-        .disableDepthTest()
-        .setColorAttachmentFormat(viewport_.getSwapChainImageFormat())
-        .setDepthFormat(viewport_.getDepthFormat())
-        .setVertexInputInfo(bindingDescriptions, attributeDescriptions)
-        .build(*device_);
+    graphicsPipeline_ =
+        builder.setShaders(vertShader, fragShader)
+            .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+            .setPolygonMode(vk::PolygonMode::eFill)
+            .setCullMode(vk::CullModeFlagBits::eBack,
+                         vk::FrontFace::eCounterClockwise)
+            .setMultisamplingNone()
+            .disableBlending()
+            .disableDepthTest()
+            .setColorAttachmentFormat(viewport_.getSwapChainImageFormat())
+            .setDepthFormat(viewport_.getDepthFormat())
+            .setVertexInputInfo(bindingDescriptions, attributeDescriptions)
+            .build(*device_);
 }
 
 void Renderer::createVertexBuffer() {
@@ -338,24 +381,92 @@ void Renderer::createIndexBuffer() {
     });
 }
 
-void Renderer::createDescriptor() {
-    DescriptorLayoutBuilder layoutBuilder(device_);
+void Renderer::createTexture() {
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight,
+                                &texChannels, STBI_rgb_alpha);
 
-    vk::DescriptorBindingFlags bindingFlags = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+    vk::DeviceSize imageSize = texWidth * texHeight * 4;
 
-    descriptorSetLayout_ = layoutBuilder
-        .addBinding(vk::DescriptorSetLayoutBinding{
-            .binding = 0,
-            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-            .descriptorCount = 1024,
-            .stageFlags = vk::ShaderStageFlagBits::eFragment,
-        })
-        .build(vk::DescriptorSetLayoutBindingFlagsCreateInfo{
-            .bindingCount = 1,
-            .pBindingFlags = &bindingFlags
-        }, vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool);
+    // Create staging buffer.
+    vk::BufferCreateInfo stagingBufferCreateInfo{
+        .size = imageSize,
+        .usage = vk::BufferUsageFlagBits::eTransferSrc,
+    };
 
-    descriptorAllocator_.allocate(descriptorSetLayout_);
+    VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                 VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
+
+    Buffer stagingBuffer = device_->createBuffer(stagingBufferCreateInfo,
+                                                 stagingBufferAllocCreateInfo);
+
+    // Copy image data onto mapped memory in staging buffer.
+    std::memcpy(stagingBuffer.getMappedMemory(), pixels,
+                static_cast<size_t>(imageSize));
+
+    stbi_image_free(pixels);
+
+    texture_ = device_->createImage(
+        static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight),
+        vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal,
+        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
+        vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+    submitImmediateCommands([this, &stagingBuffer, texWidth, texHeight](
+                                const vk::raii::CommandBuffer& commandBuffer) {
+
+        transitionImage(commandBuffer, *texture_.getImage(), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+
+        vk::BufferImageCopy copyRegion{
+            .bufferOffset = 0,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource =
+                vk::ImageSubresourceLayers{
+                    .aspectMask = vk::ImageAspectFlagBits::eColor,
+                    .mipLevel = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1},
+            .imageOffset = {0, 0, 0},
+            .imageExtent =
+                vk::Extent3D{.width = static_cast<uint32_t>(texWidth),
+                             .height = static_cast<uint32_t>(texHeight),
+                             .depth = 1}};
+        commandBuffer.copyBufferToImage(
+            *stagingBuffer.getBuffer(), *texture_.getImage(),
+            vk::ImageLayout::eTransferDstOptimal, {copyRegion});
+
+
+        transitionImage(commandBuffer, *texture_.getImage(), vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+    });
+
+    imageView_ = device_->createImageView(*texture_.getImage(),
+                                          vk::Format::eR8G8B8A8Srgb,
+                                          vk::ImageAspectFlagBits::eColor);
+
+    sampler_ = device_->getDevice().createSampler(vk::SamplerCreateInfo{
+        .magFilter = vk::Filter::eLinear,
+        .minFilter = vk::Filter::eLinear,
+        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+        .addressModeU = vk::SamplerAddressMode::eRepeat,
+        .addressModeV = vk::SamplerAddressMode::eRepeat,
+        .addressModeW = vk::SamplerAddressMode::eRepeat,
+        .mipLodBias = 0.0f,
+        .anisotropyEnable = vk::True,
+        .maxAnisotropy = device_->getPhysicalDevice()
+                             .getProperties()
+                             .limits.maxSamplerAnisotropy,
+        .compareEnable = vk::False,
+        .compareOp = vk::CompareOp::eAlways,
+        .minLod = 0.0f,
+        .maxLod = 0.0f,
+        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+        .unnormalizedCoordinates = vk::False,
+    });
 }
 
 void Renderer::createImmediateCommandBuffer() {
@@ -404,66 +515,4 @@ void Renderer::submitImmediateCommands(
                                        std::numeric_limits<uint64_t>::max());
 }
 
-void Renderer::initImGui() {
-    IMGUI_CHECKVERSION();
-    std::array<vk::DescriptorPoolSize, 11> poolSizes{
-        vk::DescriptorPoolSize{.type = vk::DescriptorType::eSampler,
-                               .descriptorCount = 1000},
-        vk::DescriptorPoolSize{
-            .type = vk::DescriptorType::eCombinedImageSampler,
-            .descriptorCount = 1000},
-        vk::DescriptorPoolSize{.type = vk::DescriptorType::eSampledImage,
-                               .descriptorCount = 1000},
-        vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageImage,
-                               .descriptorCount = 1000},
-        vk::DescriptorPoolSize{.type = vk::DescriptorType::eUniformTexelBuffer,
-                               .descriptorCount = 1000},
-        vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageTexelBuffer,
-                               .descriptorCount = 1000},
-        vk::DescriptorPoolSize{.type = vk::DescriptorType::eUniformBuffer,
-                               .descriptorCount = 1000},
-        vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageBuffer,
-                               .descriptorCount = 1000},
-        vk::DescriptorPoolSize{
-            .type = vk::DescriptorType::eUniformBufferDynamic,
-            .descriptorCount = 1000},
-        vk::DescriptorPoolSize{
-            .type = vk::DescriptorType::eStorageBufferDynamic,
-            .descriptorCount = 1000},
-        vk::DescriptorPoolSize{.type = vk::DescriptorType::eInputAttachment,
-                               .descriptorCount = 1000},
-    };
-
-    imguiPool_ = vk::raii::DescriptorPool(
-        device_->getDevice(),
-        vk::DescriptorPoolCreateInfo{
-            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = 1000,
-            .poolSizeCount = poolSizes.size(),
-            .pPoolSizes = poolSizes.data(),
-        });
-
-    ImGui::CreateContext();
-
-    ImGui_ImplGlfw_InitForVulkan(window_.getWindow(), true);
-
-    ImGui_ImplVulkan_InitInfo initInfo{
-        .Instance = *instance_.getInstance(),
-        .PhysicalDevice = *device_->getPhysicalDevice(),
-        .Device = *device_->getDevice(),
-        .QueueFamily = device_->getQueue().familyIndex,
-        .Queue = *device_->getQueue().queue,
-        .DescriptorPool = *imguiPool_,
-        .MinImageCount = 3,
-        .ImageCount = 3,
-        .PipelineCache = nullptr,
-        .UseDynamicRendering = true,
-        .PipelineRenderingCreateInfo = vk::PipelineRenderingCreateInfo{
-            .colorAttachmentCount = 1,
-            .pColorAttachmentFormats = &viewport_.getSwapChainImageFormat()}};
-
-    ImGui_ImplVulkan_Init(&initInfo);
-
-    ImGui_ImplVulkan_CreateFontsTexture();
-}
 }

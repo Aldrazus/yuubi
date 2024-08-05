@@ -112,7 +112,7 @@ void Device::createLogicalDevice(const vk::raii::Instance& instance) {
         .pQueuePriorities = &priority};
 
     vk::DeviceCreateInfo createInfo{
-        .pNext = &requiredFeatures_,
+        .pNext = &requiredFeatures_.get(),
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
         .enabledLayerCount = 0,
@@ -127,7 +127,8 @@ void Device::createLogicalDevice(const vk::raii::Instance& instance) {
             {.queueFamilyIndex = graphicsFamilyIndex, .queueIndex = 0}),
         .familyIndex = graphicsFamilyIndex};
 
-    allocator_ = std::make_shared<Allocator>(instance, physicalDevice_, device_);
+    allocator_ =
+        std::make_shared<Allocator>(instance, physicalDevice_, device_);
 }
 
 Image Device::createImage(uint32_t width, uint32_t height, vk::Format format,
@@ -149,13 +150,14 @@ Image Device::createImage(uint32_t width, uint32_t height, vk::Format format,
     return Image{allocator_, imageInfo};
 }
 
-Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo)
-{
+Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo,
+                            const VmaAllocationCreateInfo& allocInfo) {
     return Buffer{allocator_, createInfo, allocInfo};
 }
 
-vk::raii::ImageView Device::createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags)
-{
+vk::raii::ImageView Device::createImageView(const vk::Image& image,
+                                            const vk::Format& format,
+                                            vk::ImageAspectFlags aspectFlags) {
     vk::ImageViewCreateInfo viewInfo{
         .image = image,
         .viewType = vk::ImageViewType::e2D,
@@ -177,14 +179,20 @@ const vk::StructureChain<
     vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
     vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
     Device::requiredFeatures_{
-        vk::PhysicalDeviceFeatures2{},
+        vk::PhysicalDeviceFeatures2{
+            .features = {.samplerAnisotropy = vk::True}
+        },
         vk::PhysicalDeviceVulkan11Features{},
-        vk::PhysicalDeviceVulkan12Features{.descriptorIndexing = vk::True},
-        vk::PhysicalDeviceVulkan13Features{.synchronization2 = vk::True, .dynamicRendering = vk::True},
-};
+        vk::PhysicalDeviceVulkan12Features{
+            .descriptorIndexing = vk::True,
+            .descriptorBindingSampledImageUpdateAfterBind = vk::True,
+            .descriptorBindingPartiallyBound = vk::True
+        },
+        vk::PhysicalDeviceVulkan13Features{.synchronization2 = vk::True,
+                                           .dynamicRendering = vk::True},
+    };
 
 const std::vector<const char*> Device::requiredExtensions_{
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
 
 }

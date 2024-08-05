@@ -6,6 +6,8 @@
 #include "renderer/instance.h"
 #include "renderer/viewport.h"
 #include "renderer/vma/buffer.h"
+#include "renderer/vma/image.h"
+#include "renderer/bindless_set_manager.h"
 #include "window.h"
 #include "pch.h"
 
@@ -38,19 +40,19 @@ const std::vector<Vertex> vertices = {
         .position = {0.5f, 0.5f, 0.0f},
         .normal = {0.0f, 0.0f, 0.0f},
         .color = {0.5f, 0.5f, 0.5f, 1.0f},
-        .uv = {0.0f, 0.0f}
+        .uv = {0.0f, 1.0f}
     },
     Vertex{
         .position = {-0.5f, -0.5f, 0.0f},
         .normal = {0.0f, 0.0f, 0.0f},
         .color = {1.0f, 0.0f, 0.0f, 1.0f},
-        .uv = {0.0f, 0.0f}
+        .uv = {1.0f, 0.0f}
     },
     Vertex{
         .position = {-0.5f, 0.5f, 0.0f},
         .normal = {0.0f, 0.0f, 0.0f},
         .color = {0.0f, 1.0f, 0.0f, 1.0f},
-        .uv = {0.0f, 0.0f}
+        .uv = {1.0f, 1.0f}
     },
 };
 
@@ -74,6 +76,7 @@ private:
     void createVertexBuffer();
     void createIndexBuffer();
     void createDescriptor();
+    void createTexture();
     void createImmediateCommandBuffer();
     void submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function);
     void initImGui();
@@ -91,13 +94,15 @@ private:
     Buffer vertexBuffer_;
     Buffer indexBuffer_;
 
+    Image texture_;
+    vk::raii::ImageView imageView_ = nullptr;
+    vk::raii::Sampler sampler_ = nullptr;
+
     vk::raii::CommandPool immediateCommandPool_ = nullptr;
     vk::raii::CommandBuffer immediateCommandBuffer_ = nullptr;
     vk::raii::Fence immediateCommandFence_ = nullptr;
 
-    vk::raii::DescriptorPool imguiPool_ = nullptr;
-    DescriptorAllocator descriptorAllocator_;
-    vk::raii::DescriptorSetLayout descriptorSetLayout_ = nullptr;
+    BindlessSetManager bindlessSetManager_;
 };
 
 }
