@@ -5,3 +5,8 @@ FixNamespaceComments: false
 IndentWidth: 4
 IndentAccessModifiers: false
 AccessModifierOffset: -4
+AlignAfterOpenBracket: BlockIndent
+AlignArrayOfStructures: Right
+AlignEscapedNewlines: Left
+BinPackParameters: false
+

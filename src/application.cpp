@@ -118,15 +118,20 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
 void Application::onEvent(Event& e) {
     EventDispatcher dispatcher(e);
     dispatcher.dispatch<WindowCloseEvent>(
-        UB_BIND_EVENT_FN(Application::onWindowClose));
+        UB_BIND_EVENT_FN(Application::onWindowClose)
+    );
     dispatcher.dispatch<WindowResizeEvent>(
-        UB_BIND_EVENT_FN(Application::onWindowResize));
+        UB_BIND_EVENT_FN(Application::onWindowResize)
+    );
     dispatcher.dispatch<KeyPressedEvent>(
-        UB_BIND_EVENT_FN(Application::onKeyPress));
+        UB_BIND_EVENT_FN(Application::onKeyPress)
+    );
     dispatcher.dispatch<KeyReleasedEvent>(
-        UB_BIND_EVENT_FN(Application::onKeyRelease));
+        UB_BIND_EVENT_FN(Application::onKeyRelease)
+    );
     dispatcher.dispatch<MouseMovedEvent>(
-        UB_BIND_EVENT_FN(Application::onMouseMove));
+        UB_BIND_EVENT_FN(Application::onMouseMove)
+    );
 }
 
 void Application::run() {
