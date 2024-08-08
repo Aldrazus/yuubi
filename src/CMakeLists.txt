@@ -8,6 +8,7 @@ target_sources(
     "renderer/descriptor_allocator.cpp"
     "renderer/descriptor_layout_builder.cpp"
     "renderer/device.cpp"
+    "renderer/immediate_command_executor.cpp"
     "renderer/instance.cpp"
     "renderer/pipeline_builder.cpp"
     "renderer/renderer.cpp"

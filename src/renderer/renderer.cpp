@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_raii.hpp>
+#include "renderer/immediate_command_executor.h"
 
 // TODO: FIX!!!
 #define STB_IMAGE_IMPLEMENTATION
@@ -67,10 +68,10 @@ Renderer::Renderer(const Window& window) : window_(window) {
 
     surface_ = std::make_shared<vk::raii::SurfaceKHR>(instance_, tmp);
     device_ = std::make_shared<Device>(instance_, *surface_);
+    immediateCommandExecutor_ = ImmediateCommandExecutor{device_};
     viewport_ = Viewport{surface_, device_};
     bindlessSetManager_ = BindlessSetManager(device_);
 
-    createImmediateCommandBuffer();
     createVertexBuffer();
     createIndexBuffer();
     createTexture();
@@ -331,7 +332,7 @@ void Renderer::createVertexBuffer() {
     vertexBuffer_ = device_->createBuffer(vertexBufferCreateInfo,
                                           vertexBufferAllocCreateInfo);
 
-    submitImmediateCommands([this, &stagingBuffer, bufferSize](
+    immediateCommandExecutor_.submitImmediateCommands([this, &stagingBuffer, bufferSize](
                                 const vk::raii::CommandBuffer& commandBuffer) {
         vk::BufferCopy copyRegion{.size = bufferSize};
         commandBuffer.copyBuffer(*stagingBuffer.getBuffer(),
@@ -373,7 +374,7 @@ void Renderer::createIndexBuffer() {
     indexBuffer_ = device_->createBuffer(indexBufferCreateInfo,
                                          indexBufferAllocCreateInfo);
 
-    submitImmediateCommands([this, &stagingBuffer, bufferSize](
+    immediateCommandExecutor_.submitImmediateCommands([this, &stagingBuffer, bufferSize](
                                 const vk::raii::CommandBuffer& commandBuffer) {
         vk::BufferCopy copyRegion{.size = bufferSize};
         commandBuffer.copyBuffer(*stagingBuffer.getBuffer(),
@@ -415,7 +416,7 @@ void Renderer::createTexture() {
         vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    submitImmediateCommands([this, &stagingBuffer, texWidth, texHeight](
+    immediateCommandExecutor_.submitImmediateCommands([this, &stagingBuffer, texWidth, texHeight](
                                 const vk::raii::CommandBuffer& commandBuffer) {
 
         transitionImage(commandBuffer, *texture_.getImage(), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
@@ -467,52 +468,6 @@ void Renderer::createTexture() {
         .borderColor = vk::BorderColor::eIntOpaqueBlack,
         .unnormalizedCoordinates = vk::False,
     });
-}
-
-void Renderer::createImmediateCommandBuffer() {
-    immediateCommandPool_ = vk::raii::CommandPool{
-        device_->getDevice(),
-        {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-         .queueFamilyIndex = device_->getQueue().familyIndex}};
-
-    // TODO: wtf?
-    vk::CommandBufferAllocateInfo allocInfo{
-        .commandPool = *immediateCommandPool_,
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1};
-    immediateCommandBuffer_ =
-        std::move(device_->getDevice().allocateCommandBuffers(allocInfo)[0]);
-
-    immediateCommandFence_ = vk::raii::Fence{
-        device_->getDevice(),
-        vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}};
-}
-
-void Renderer::submitImmediateCommands(
-    std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&&
-        function) {
-    device_->getDevice().resetFences(*immediateCommandFence_);
-    immediateCommandBuffer_.reset();
-
-    immediateCommandBuffer_.begin(vk::CommandBufferBeginInfo{
-        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-
-    function(immediateCommandBuffer_);
-
-    immediateCommandBuffer_.end();
-
-    vk::CommandBufferSubmitInfo commandBufferSubmitInfo{
-        .commandBuffer = *immediateCommandBuffer_,
-    };
-    device_->getQueue().queue.submit2(
-        {vk::SubmitInfo2{
-            .commandBufferInfoCount = 1,
-            .pCommandBufferInfos = &commandBufferSubmitInfo,
-        }},
-        *immediateCommandFence_);
-
-    device_->getDevice().waitForFences({*immediateCommandFence_}, vk::True,
-                                       std::numeric_limits<uint64_t>::max());
 }
 
 }

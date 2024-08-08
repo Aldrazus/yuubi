@@ -3,6 +3,7 @@
 #include "renderer/camera.h"
 #include "renderer/descriptor_allocator.h"
 #include "renderer/device.h"
+#include "renderer/immediate_command_executor.h"
 #include "renderer/instance.h"
 #include "renderer/viewport.h"
 #include "renderer/vma/buffer.h"
@@ -77,8 +78,6 @@ private:
     void createIndexBuffer();
     void createDescriptor();
     void createTexture();
-    void createImmediateCommandBuffer();
-    void submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function);
     void initImGui();
 
     const Window& window_;
@@ -87,6 +86,8 @@ private:
     std::shared_ptr<vk::raii::SurfaceKHR> surface_;
     std::shared_ptr<Device> device_;
     Viewport viewport_;
+
+    ImmediateCommandExecutor immediateCommandExecutor_;
 
     vk::raii::PipelineLayout pipelineLayout_ = nullptr;
     vk::raii::Pipeline graphicsPipeline_ = nullptr;
@@ -97,10 +98,6 @@ private:
     Image texture_;
     vk::raii::ImageView imageView_ = nullptr;
     vk::raii::Sampler sampler_ = nullptr;
-
-    vk::raii::CommandPool immediateCommandPool_ = nullptr;
-    vk::raii::CommandBuffer immediateCommandBuffer_ = nullptr;
-    vk::raii::Fence immediateCommandFence_ = nullptr;
 
     BindlessSetManager bindlessSetManager_;
 };
