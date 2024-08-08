@@ -2,28 +2,33 @@
 
 namespace yuubi {
 
-// Non-copyable mixin to be inherited by classes that should not be copied, e.g. Device.
-// https://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Non-copyable_Mixin
-#if 0
+// From Google's C++ style guide:
+// https://google.github.io/styleguide/cppguide.html#Copyable_Movable_Types
+class Copyable {
+public:
+    Copyable() = default;
+    Copyable(const Copyable&) = default;
+    Copyable& operator=(const Copyable&) = default;
+};
+
 class NonCopyable {
 public:
+    NonCopyable() = default;
     NonCopyable(const NonCopyable&) = delete;
     NonCopyable& operator=(const NonCopyable&) = delete;
 
-protected:
-    NonCopyable() = default;
-    ~NonCopyable() = default;
+    NonCopyable(NonCopyable&&) = default;
+    NonCopyable& operator=(NonCopyable&&) = default;
 };
-#endif
 
-// TODO: why does this not delete move constructors
-struct NonCopyable {
-  NonCopyable() = default;
-  NonCopyable(NonCopyable const&) = delete;
-  NonCopyable& operator=(NonCopyable const&) = delete;
-  NonCopyable(NonCopyable&&) = default;
-  NonCopyable& operator=(NonCopyable&&) = default;
+class NonCopyableOrMovable {
+public:
+    NonCopyableOrMovable() = default;
+    NonCopyableOrMovable(const NonCopyableOrMovable&) = delete;
+    NonCopyableOrMovable& operator=(const NonCopyableOrMovable&) = delete;
+
+    NonCopyableOrMovable(NonCopyableOrMovable&&) = delete;
+    NonCopyableOrMovable& operator=(NonCopyableOrMovable&&) = delete;
 };
 
 }
-
