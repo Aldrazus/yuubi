@@ -6,11 +6,8 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_raii.hpp>
+#include "core/io/image.h"
 #include "renderer/immediate_command_executor.h"
-
-// TODO: FIX!!!
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 #include "core/io/file.h"
 #include "renderer/camera.h"
@@ -383,11 +380,9 @@ void Renderer::createIndexBuffer() {
 }
 
 void Renderer::createTexture() {
-    int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight,
-                                &texChannels, STBI_rgb_alpha);
+    auto textureData = loadImage("textures/texture.jpg");
 
-    vk::DeviceSize imageSize = texWidth * texHeight * 4;
+    vk::DeviceSize imageSize = textureData.width() * textureData.height() * 4;
 
     // Create staging buffer.
     vk::BufferCreateInfo stagingBufferCreateInfo{
@@ -405,18 +400,16 @@ void Renderer::createTexture() {
                                                  stagingBufferAllocCreateInfo);
 
     // Copy image data onto mapped memory in staging buffer.
-    std::memcpy(stagingBuffer.getMappedMemory(), pixels,
+    std::memcpy(stagingBuffer.getMappedMemory(), textureData.pixels(),
                 static_cast<size_t>(imageSize));
 
-    stbi_image_free(pixels);
-
     texture_ = device_->createImage(
-        static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight),
+        static_cast<uint32_t>(textureData.width()), static_cast<uint32_t>(textureData.height()),
         vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal,
         vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    immediateCommandExecutor_.submitImmediateCommands([this, &stagingBuffer, texWidth, texHeight](
+    immediateCommandExecutor_.submitImmediateCommands([this, &stagingBuffer, &textureData](
                                 const vk::raii::CommandBuffer& commandBuffer) {
 
         transitionImage(commandBuffer, *texture_.getImage(), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
@@ -433,8 +426,8 @@ void Renderer::createTexture() {
                     .layerCount = 1},
             .imageOffset = {0, 0, 0},
             .imageExtent =
-                vk::Extent3D{.width = static_cast<uint32_t>(texWidth),
-                             .height = static_cast<uint32_t>(texHeight),
+                vk::Extent3D{.width = static_cast<uint32_t>(textureData.width()),
+                             .height = static_cast<uint32_t>(textureData.height()),
                              .depth = 1}};
         commandBuffer.copyBufferToImage(
             *stagingBuffer.getBuffer(), *texture_.getImage(),

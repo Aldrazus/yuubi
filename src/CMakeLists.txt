@@ -2,6 +2,7 @@ target_sources(
     ${PROJECT_NAME}
     PRIVATE
     "core/io/file.cpp"
+    "core/io/image.cpp"
     "core/log.cpp"
     "renderer/bindless_set_manager.cpp"
     "renderer/camera.cpp"
