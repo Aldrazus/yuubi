@@ -3,12 +3,11 @@
 #include "renderer/camera.h"
 #include "renderer/descriptor_allocator.h"
 #include "renderer/device.h"
-#include "renderer/immediate_command_executor.h"
 #include "renderer/instance.h"
 #include "renderer/viewport.h"
 #include "renderer/vma/buffer.h"
-#include "renderer/vma/image.h"
 #include "renderer/bindless_set_manager.h"
+#include "renderer/resources/texture.h"
 #include "window.h"
 #include "pch.h"
 
@@ -70,14 +69,10 @@ public:
     void renderScene(std::function<void(Renderer&)> f);
 
 private:
-    // TODO: maybe move to utils
-    void transitionImage(const vk::raii::CommandBuffer& commandBuffer, const vk::Image& image, const vk::ImageLayout& currentLayout, const vk::ImageLayout& newLayout);
-
     void createGraphicsPipeline();
     void createVertexBuffer();
     void createIndexBuffer();
     void createDescriptor();
-    void createTexture();
     void initImGui();
 
     const Window& window_;
@@ -87,17 +82,13 @@ private:
     std::shared_ptr<Device> device_;
     Viewport viewport_;
 
-    ImmediateCommandExecutor immediateCommandExecutor_;
-
     vk::raii::PipelineLayout pipelineLayout_ = nullptr;
     vk::raii::Pipeline graphicsPipeline_ = nullptr;
 
     Buffer vertexBuffer_;
     Buffer indexBuffer_;
 
-    Image texture_;
-    vk::raii::ImageView imageView_ = nullptr;
-    vk::raii::Sampler sampler_ = nullptr;
+    Texture texture_;
 
     BindlessSetManager bindlessSetManager_;
 };

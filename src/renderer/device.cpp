@@ -1,6 +1,8 @@
 #include "renderer/device.h"
+#include "renderer/vulkan_usage.h"
 #include "renderer/vma/allocator.h"
 #include "renderer/vma/image.h"
+#include "renderer/vma/buffer.h"
 
 namespace util {
 uint32_t findGraphicsQueueFamilyIndex(
@@ -24,6 +26,7 @@ Device::Device(const vk::raii::Instance& instance,
                const vk::raii::SurfaceKHR& surface) {
     selectPhysicalDevice(instance, surface);
     createLogicalDevice(instance);
+    createImmediateCommandResources();
 }
 
 void Device::selectPhysicalDevice(const vk::raii::Instance& instance,
@@ -131,30 +134,6 @@ void Device::createLogicalDevice(const vk::raii::Instance& instance) {
         std::make_shared<Allocator>(instance, physicalDevice_, device_);
 }
 
-Image Device::createImage(uint32_t width, uint32_t height, vk::Format format,
-                          vk::ImageTiling tiling, vk::ImageUsageFlags usage,
-                          vk::MemoryPropertyFlags properties) {
-    vk::ImageCreateInfo imageInfo{
-        .imageType = vk::ImageType::e2D,
-        .format = format,
-        .extent = {.width = width, .height = height, .depth = 1},
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = vk::SampleCountFlagBits::e1,
-        .tiling = tiling,
-        .usage = usage,
-        .sharingMode = vk::SharingMode::eExclusive,
-        .initialLayout = vk::ImageLayout::eUndefined,
-    };
-
-    return Image{allocator_, imageInfo};
-}
-
-Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo,
-                            const VmaAllocationCreateInfo& allocInfo) {
-    return Buffer{allocator_, createInfo, allocInfo};
-}
-
 vk::raii::ImageView Device::createImageView(const vk::Image& image,
                                             const vk::Format& format,
                                             vk::ImageAspectFlags aspectFlags) {
@@ -173,6 +152,70 @@ vk::raii::ImageView Device::createImageView(const vk::Image& image,
     };
 
     return device_.createImageView(viewInfo);
+}
+
+Image Device::createImage(const ImageCreateInfo& createInfo)
+{
+    return Image{allocator_.get(), createInfo};
+}
+
+Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo,
+                            const VmaAllocationCreateInfo& allocInfo) {
+    return Buffer{allocator_.get(), createInfo, allocInfo};
+}
+
+void Device::createImmediateCommandResources() {
+    immediateCommandPool_ = vk::raii::CommandPool{
+        device_,
+        {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                       .queueFamilyIndex = graphicsQueue_.familyIndex}
+    };
+
+    // TODO: wtf?
+    vk::CommandBufferAllocateInfo allocInfo{
+        .commandPool = *immediateCommandPool_,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1
+    };
+    immediateCommandBuffer_ =
+        std::move(device_.allocateCommandBuffers(allocInfo)[0]);
+
+    immediateCommandFence_ = vk::raii::Fence{
+        device_,
+        vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}
+    };
+}
+
+void Device::submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function)
+{
+    device_.resetFences(*immediateCommandFence_);
+    immediateCommandBuffer_.reset();
+
+    immediateCommandBuffer_.begin(vk::CommandBufferBeginInfo{
+        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+    });
+
+    function(immediateCommandBuffer_);
+
+    immediateCommandBuffer_.end();
+
+    vk::CommandBufferSubmitInfo commandBufferSubmitInfo{
+        .commandBuffer = *immediateCommandBuffer_,
+    };
+    graphicsQueue_.queue.submit2(
+        {
+            vk::SubmitInfo2{
+                            .commandBufferInfoCount = 1,
+                            .pCommandBufferInfos = &commandBufferSubmitInfo,
+                            }
+    },
+        *immediateCommandFence_
+    );
+
+    device_.waitForFences(
+        {*immediateCommandFence_}, vk::True,
+        std::numeric_limits<uint64_t>::max()
+    );
 }
 
 const vk::StructureChain<

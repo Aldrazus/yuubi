@@ -18,26 +18,18 @@ Viewport::Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface,
 }
 
 Viewport& Viewport::operator=(Viewport&& rhs) {
-    // Destroy this (done automatically)
-
-    // Move from rhs to this
-    surface_ = rhs.surface_;
-    device_ = rhs.device_;
-    swapChain_ = std::move(rhs.swapChain_);
-    images_ = std::move(rhs.images_);
-    swapChainImageFormat_ = rhs.swapChainImageFormat_;
-    swapChainExtent_ = rhs.swapChainExtent_;
-    depthImage_ = std::move(rhs.depthImage_);
-    depthImageView_ = std::move(rhs.depthImageView_);
-    depthImageFormat_ = rhs.depthImageFormat_;
-    frames_ = std::move(rhs.frames_);
-
-    // Invalidate rhs
-    rhs.device_ = nullptr;
-    rhs.surface_ = nullptr;
-    rhs.swapChain_ = nullptr;
-    rhs.depthImage_ = Image{}; 
-
+    if (this != &rhs) {
+        std::swap(surface_, rhs.surface_);
+        std::swap(device_, rhs.device_);
+        std::swap(swapChain_, rhs.swapChain_);
+        std::swap(swapChainImageFormat_, rhs.swapChainImageFormat_);
+        std::swap(swapChainExtent_, rhs.swapChainExtent_);
+        std::swap(images_, rhs.images_);
+        std::swap(depthImage_, rhs.depthImage_);
+        std::swap(depthImageView_, rhs.depthImageView_);
+        std::swap(depthImageFormat_, rhs.depthImageFormat_);
+        std::swap(frames_, rhs.frames_);
+    }
     return *this;
 }
 
@@ -114,7 +106,14 @@ void Viewport::createImageViews() {
 void Viewport::createDepthStencil() {
     depthImageFormat_ = findDepthFormat();
 
-    depthImage_ = device_->createImage(swapChainExtent_.width, swapChainExtent_.height, depthImageFormat_, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    depthImage_ = Image(&device_->allocator(), ImageCreateInfo{
+        .width = swapChainExtent_.width,
+        .height = swapChainExtent_.height,
+        .format = depthImageFormat_, 
+        .tiling = vk::ImageTiling::eOptimal, 
+        .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment, 
+        .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+    });
     
     depthImageView_ = device_->createImageView(*depthImage_.getImage(), depthImageFormat_, vk::ImageAspectFlagBits::eDepth);
 }

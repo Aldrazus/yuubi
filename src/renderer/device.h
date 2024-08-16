@@ -6,12 +6,16 @@
 #include "renderer/vma/buffer.h"
 
 namespace yuubi {
+
+class Buffer;
+class Image;
+struct ImageCreateInfo;
+
 struct Queue {
     vk::raii::Queue queue = nullptr;
     uint32_t familyIndex;
 };
 
-class Image;
 class Device : NonCopyable {
 public:
     Device() = default;
@@ -23,27 +27,34 @@ public:
     const vk::raii::Device& getDevice() const { return device_; }
     const vk::raii::PhysicalDevice& getPhysicalDevice() const { return physicalDevice_; }
 
-    Image createImage(uint32_t width, uint32_t height, vk::Format format,
-                      vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties);
-
     vk::raii::ImageView createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags);
-
-    Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo);
 
     const Queue& getQueue() {
         return graphicsQueue_;
     }
+
+    inline Allocator& allocator() const { return *allocator_; } 
+
+    Image createImage(const ImageCreateInfo& createInfo);
+    Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo);
+    void submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function);
 
 private:
     void selectPhysicalDevice(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface);
     bool isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice, const vk::raii::SurfaceKHR& surface);
     bool supportsFeatures(const vk::raii::PhysicalDevice& physicalDevice);
     void createLogicalDevice(const vk::raii::Instance& instance);
+    void createImmediateCommandResources();
 
     vk::raii::PhysicalDevice physicalDevice_ = nullptr;
     vk::raii::Device device_ = nullptr;
     Queue graphicsQueue_;
     std::shared_ptr<Allocator> allocator_ = nullptr;
+
+    // Immediate Commands
+    vk::raii::CommandPool immediateCommandPool_ = nullptr;
+    vk::raii::CommandBuffer immediateCommandBuffer_ = nullptr;
+    vk::raii::Fence immediateCommandFence_ = nullptr;
     
     static const vk::StructureChain<
         vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,

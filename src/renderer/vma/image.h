@@ -8,11 +8,20 @@ namespace yuubi {
 
 class Allocator;
 
+struct ImageCreateInfo {
+    uint32_t width;
+    uint32_t height;
+    vk::Format format;
+    vk::ImageTiling tiling;
+    vk::ImageUsageFlags usage;
+    vk::MemoryPropertyFlags properties;
+};
+
 class Image : NonCopyable {
 public:
-    Image() {};
-    Image(std::shared_ptr<Allocator> allocator, const VkImageCreateInfo& createInfo);
-    Image(Image&& rhs) = default;
+    Image(){};
+    Image(Allocator* allocator, ImageCreateInfo createInfo);
+    Image(Image&& rhs);
     Image& operator=(Image&& rhs);
     ~Image();
 
@@ -22,7 +31,13 @@ private:
     void destroy();
 
     vk::raii::Image image_ = nullptr;
-    std::shared_ptr<Allocator> allocator_ = nullptr;
+
+    // WARNING: raw pointer used here. This *should* be safe, assuming
+    // all images are managed by the ImageManager. Any images created
+    // outside of the context of the ImageManager may live beyond the
+    // lifetime of the Allocator/Device that created it, potentially
+    // causing a memory leak or crash.
+    Allocator* allocator_ = nullptr;
     VmaAllocation allocation_;
 };
 }

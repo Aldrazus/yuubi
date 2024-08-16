@@ -3,7 +3,7 @@
 
 namespace yuubi {
 
-Buffer::Buffer(std::shared_ptr<Allocator> allocator,
+Buffer::Buffer(Allocator* allocator,
                const VkBufferCreateInfo& createInfo,
                const VmaAllocationCreateInfo& allocCreateInfo)
     : allocator_(allocator) {

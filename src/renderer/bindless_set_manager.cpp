@@ -1,6 +1,7 @@
 #include "renderer/bindless_set_manager.h"
 #include "renderer/descriptor_layout_builder.h"
 #include "renderer/device.h"
+#include "renderer/resources/texture.h"
 
 namespace yuubi {
 
@@ -62,12 +63,12 @@ BindlessSetManager::BindlessSetManager(const std::shared_ptr<Device>& device) : 
     set_ = vk::raii::DescriptorSet(std::move(sets[0]));
 }
 
-uint32_t BindlessSetManager::addImage(const vk::raii::Sampler& sampler, const vk::raii::ImageView& imageView)
+uint32_t BindlessSetManager::addImage(const Texture& texture)
 {
     static uint32_t id = 0;
     vk::DescriptorImageInfo imageInfo{
-        .sampler = *sampler,
-        .imageView = *imageView,
+        .sampler = *texture.getSampler(),
+        .imageView = *texture.getImageView(),
         .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
     };
 
