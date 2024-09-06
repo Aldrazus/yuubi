@@ -26,7 +26,7 @@ public:
     PipelineBuilder& disableBlending();
     PipelineBuilder& setColorAttachmentFormat(vk::Format format);
     PipelineBuilder& setDepthFormat(vk::Format format);
-    PipelineBuilder& disableDepthTest();
+    PipelineBuilder& setDepthTest(bool enable);
     PipelineBuilder& setVertexInputInfo(std::span<vk::VertexInputBindingDescription> bindingDescriptions, std::span<vk::VertexInputAttributeDescription> attributeDescriptions);
     
 private:

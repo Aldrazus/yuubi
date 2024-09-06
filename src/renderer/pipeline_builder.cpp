@@ -5,34 +5,46 @@
 
 namespace yuubi {
 
-vk::raii::ShaderModule loadShader(std::string_view filename,
-                                  const Device& device) {
+vk::raii::ShaderModule loadShader(
+    std::string_view filename, const Device& device
+) {
     auto shaderCode = yuubi::readFile(filename);
 
     return vk::raii::ShaderModule(
         device.getDevice(),
         {.codeSize = shaderCode.size(),
-         .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())});
+         .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())}
+    );
 }
 
-vk::raii::PipelineLayout createPipelineLayout(const Device& device, std::span<vk::DescriptorSetLayout> layouts, std::span<vk::PushConstantRange> pushConstantRanges) {
+vk::raii::PipelineLayout createPipelineLayout(
+    const Device& device,
+    std::span<vk::DescriptorSetLayout> layouts,
+    std::span<vk::PushConstantRange> pushConstantRanges
+) {
     // TODO: Use array proxy?
-    return vk::raii::PipelineLayout(device.getDevice(), vk::PipelineLayoutCreateInfo{
-        .setLayoutCount = static_cast<uint32_t>(layouts.size()),
-        .pSetLayouts = layouts.data(),
-        .pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size()),
-        .pPushConstantRanges = pushConstantRanges.data()
-    });
+    return vk::raii::PipelineLayout(
+        device.getDevice(),
+        vk::PipelineLayoutCreateInfo{
+            .setLayoutCount = static_cast<uint32_t>(layouts.size()),
+            .pSetLayouts = layouts.data(),
+            .pushConstantRangeCount =
+                static_cast<uint32_t>(pushConstantRanges.size()),
+            .pPushConstantRanges = pushConstantRanges.data()
+        }
+    );
 }
 
 vk::raii::Pipeline PipelineBuilder::build(const Device& device) {
-    vk::PipelineViewportStateCreateInfo viewportState{.viewportCount = 1,
-                                                      .scissorCount = 1};
+    vk::PipelineViewportStateCreateInfo viewportState{
+        .viewportCount = 1, .scissorCount = 1
+    };
 
     vk::PipelineColorBlendStateCreateInfo colorBlending{
         .logicOpEnable = vk::False,
         .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment_};
+        .pAttachments = &colorBlendAttachment_
+    };
 
     std::vector<vk::DynamicState> dynamicStates = {
         vk::DynamicState::eViewport,
@@ -41,7 +53,8 @@ vk::raii::Pipeline PipelineBuilder::build(const Device& device) {
 
     vk::PipelineDynamicStateCreateInfo dynamicState{
         .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
-        .pDynamicStates = dynamicStates.data()};
+        .pDynamicStates = dynamicStates.data()
+    };
 
     vk::GraphicsPipelineCreateInfo pipelineInfo{
         .pNext = &renderInfo_,
@@ -74,23 +87,27 @@ void PipelineBuilder::clear() {
 
 PipelineBuilder& PipelineBuilder::setShaders(
     const vk::raii::ShaderModule& vertexShader,
-    const vk::raii::ShaderModule& fragmentShader) {
+    const vk::raii::ShaderModule& fragmentShader
+) {
     shaderStages_.clear();
     shaderStages_.push_back(vk::PipelineShaderStageCreateInfo{
         .stage = vk::ShaderStageFlagBits::eVertex,
         .module = *vertexShader,
-        .pName = "main"});
+        .pName = "main"
+    });
 
     shaderStages_.push_back(vk::PipelineShaderStageCreateInfo{
         .stage = vk::ShaderStageFlagBits::eFragment,
         .module = *fragmentShader,
-        .pName = "main"});
+        .pName = "main"
+    });
 
     return *this;
 }
 
 PipelineBuilder& PipelineBuilder::setInputTopology(
-    vk::PrimitiveTopology topology) {
+    vk::PrimitiveTopology topology
+) {
     inputAssembly_.topology = topology;
     inputAssembly_.primitiveRestartEnable = vk::False;
     return *this;
@@ -102,8 +119,9 @@ PipelineBuilder& PipelineBuilder::setPolygonMode(vk::PolygonMode mode) {
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::setCullMode(vk::CullModeFlags cullMode,
-                                              vk::FrontFace frontFace) {
+PipelineBuilder& PipelineBuilder::setCullMode(
+    vk::CullModeFlags cullMode, vk::FrontFace frontFace
+) {
     rasterizer_.cullMode = cullMode;
     rasterizer_.frontFace = frontFace;
     return *this;
@@ -139,23 +157,31 @@ PipelineBuilder& PipelineBuilder::setDepthFormat(vk::Format format) {
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::disableDepthTest() {
-    depthStencil_.depthTestEnable = vk::False;
-    depthStencil_.depthWriteEnable = vk::False;
-    depthStencil_.depthCompareOp = vk::CompareOp::eNever;
+PipelineBuilder& PipelineBuilder::setDepthTest(bool enable) {
+    if (enable) {
+        depthStencil_.depthTestEnable = vk::True;
+        depthStencil_.depthWriteEnable = vk::True;
+        depthStencil_.depthCompareOp = vk::CompareOp::eLess;
+    } else {
+        depthStencil_.depthTestEnable = vk::False;
+        depthStencil_.depthWriteEnable = vk::False;
+        depthStencil_.depthCompareOp = vk::CompareOp::eNever;
+    }
+
     depthStencil_.depthBoundsTestEnable = vk::False;
-    depthStencil_.stencilTestEnable = vk::False;
     depthStencil_.front = {};
     depthStencil_.back = {};
     depthStencil_.minDepthBounds = 0.f;
     depthStencil_.maxDepthBounds = 1.f;
+    depthStencil_.stencilTestEnable = vk::False;
+
     return *this;
 }
 
 PipelineBuilder& PipelineBuilder::setVertexInputInfo(
     std::span<vk::VertexInputBindingDescription> bindingDescriptions,
-    const std::span<vk::VertexInputAttributeDescription>
-        attributeDescriptions) {
+    const std::span<vk::VertexInputAttributeDescription> attributeDescriptions
+) {
     vertexInputInfo_.vertexBindingDescriptionCount =
         static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo_.pVertexBindingDescriptions = bindingDescriptions.data();

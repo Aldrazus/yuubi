@@ -41,7 +41,7 @@ glm::mat4 Camera::getRotationMatrix() const {
 
 void Camera::updatePosition(float deltaTime) {
     const auto cameraRotation = getRotationMatrix();
-    const float moveSpeed = 1.0f;
+    const float moveSpeed = 10.0f;
     position_ +=
         glm::vec3(cameraRotation * glm::vec4(velocity * moveSpeed, 0.0f)) *
         deltaTime;

@@ -49,3 +49,7 @@ target_link_libraries(${PROJECT_NAME} stb_image)
 # spdlog
 add_subdirectory(spdlog)
 target_link_libraries(${PROJECT_NAME} spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+
+# fastgltf
+add_subdirectory(fastgltf)
+target_link_libraries(${PROJECT_NAME} fastgltf)
