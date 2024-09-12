@@ -49,6 +49,8 @@ private:
     Texture texture_;
 
     BindlessSetManager bindlessSetManager_;
+
+    vk::raii::DescriptorPool imguiDescriptorPool_ = nullptr;
 };
 
 }
