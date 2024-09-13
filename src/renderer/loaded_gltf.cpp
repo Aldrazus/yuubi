@@ -130,13 +130,13 @@ Mesh& Mesh::operator=(Mesh&& rhs) noexcept {
 std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(
     Device& device, const std::filesystem::path& path
 ) {
-    std::println("Loading GLTF: {}", path.string());
+    UB_INFO("Loading GLTF file: {}", path.string());
 
     fastgltf::Parser parser;
 
     auto data = fastgltf::GltfDataBuffer::FromPath(path);
     if (data.error() != fastgltf::Error::None) {
-        std::println("Unable to load file.");
+        UB_ERROR("Unable to load file: {}", path.string());
         return {};
     }
 
@@ -145,7 +145,7 @@ std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(
         data.get(), path.parent_path(), gltfOptions
     );
     if (auto error = asset.error(); error != fastgltf::Error::None) {
-        std::println("Unable to parse file.");
+        UB_ERROR("Unable to parse file: {}", path.string());
         return {};
     }
 
@@ -260,8 +260,8 @@ std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(
         );
     }
 
-    std::println("Successfully parsed GLTF file.");
-    std::println("Num indices: {}, numVertices: {}", indices.size(), vertices.size());
+    UB_INFO("Successfully parsed GLTF file.");
+    UB_INFO("Num indices: {}, numVertices: {}", indices.size(), vertices.size());
     return meshes;
 }
 }

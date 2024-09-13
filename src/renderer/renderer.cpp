@@ -41,7 +41,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     bindlessSetManager_ = BindlessSetManager(device_);
 
     auto meshes = loadGltfMeshes(*device_, "assets/sponza/Sponza.gltf").value();
-    std::println("Number of meshes: {}", meshes.size());
+    UB_INFO("Number of meshes: {}", meshes.size());
     mesh_ = meshes[0];
     texture_ = Texture{*device_, "textures/texture.jpg"};
     bindlessSetManager_.addImage(texture_);

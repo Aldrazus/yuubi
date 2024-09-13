@@ -15,8 +15,17 @@ private:
     static std::shared_ptr<spdlog::logger> logger_;
 };
 
+
+#if UB_DEBUG
 #define UB_TRACE(...) Log::GetLogger()->trace(__VA_ARGS__)
 #define UB_INFO(...) Log::GetLogger()->info(__VA_ARGS__)
 #define UB_WARN(...) Log::GetLogger()->warn(__VA_ARGS__)
 #define UB_ERROR(...) Log::GetLogger()->error(__VA_ARGS__)
 #define UB_CRITICAL(...) Log::GetLogger()->critical(__VA_ARGS__)
+#else
+#define UB_TRACE(...)
+#define UB_INFO(...)
+#define UB_WARN(...)
+#define UB_ERROR(...)
+#define UB_CRITICAL(...)
+#endif
