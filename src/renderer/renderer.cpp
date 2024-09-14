@@ -44,7 +44,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     UB_INFO("Number of meshes: {}", meshes.size());
     mesh_ = meshes[0];
     texture_ = Texture{*device_, "textures/texture.jpg"};
-    bindlessSetManager_.addImage(texture_);
+    bindlessSetManager_.addTexture(texture_);
     createGraphicsPipeline();
     initImGui();
 }
@@ -155,7 +155,7 @@ void Renderer::draw(const Camera& camera) {
 
                 frame.commandBuffer.bindDescriptorSets(
                     vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0,
-                    {*bindlessSetManager_.getDescriptorSet()}, {}
+                    {*bindlessSetManager_.getTextureSet()}, {}
                 );
 
                 for (const auto& surface : mesh_->surfaces()) {
@@ -216,7 +216,7 @@ void Renderer::createGraphicsPipeline() {
     };
 
     std::vector<vk::DescriptorSetLayout> setLayouts = {
-        *bindlessSetManager_.getDescriptorSetLayout()
+        *bindlessSetManager_.getTextureSetLayout()
     };
 
     pipelineLayout_ =

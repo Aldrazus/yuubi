@@ -13,7 +13,7 @@ BindlessSetManager::BindlessSetManager(const std::shared_ptr<Device>& device) : 
         vk::DescriptorBindingFlagBits::ePartiallyBound |
         vk::DescriptorBindingFlagBits::eUpdateAfterBind;
 
-    layout_ =
+    textureSetLayout_ =
         layoutBuilder
             .addBinding(vk::DescriptorSetLayoutBinding{
                 .binding = 0,
@@ -39,6 +39,10 @@ BindlessSetManager::BindlessSetManager(const std::shared_ptr<Device>& device) : 
         vk::DescriptorPoolSize{
             .type = vk::DescriptorType::eSampler,
             .descriptorCount = 1024
+        },
+        vk::DescriptorPoolSize{
+            .type = vk::DescriptorType::eCombinedImageSampler,
+            .descriptorCount = 1024
         }
     };
 
@@ -56,14 +60,14 @@ BindlessSetManager::BindlessSetManager(const std::shared_ptr<Device>& device) : 
     vk::DescriptorSetAllocateInfo allocInfo {
         .descriptorPool = *pool_,
         .descriptorSetCount = 1,
-        .pSetLayouts = &*layout_
+        .pSetLayouts = &*textureSetLayout_
     };
 
     vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
-    set_ = vk::raii::DescriptorSet(std::move(sets[0]));
+    textureSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
 }
 
-uint32_t BindlessSetManager::addImage(const Texture& texture)
+uint32_t BindlessSetManager::addTexture(const Texture& texture)
 {
     static uint32_t id = 0;
     vk::DescriptorImageInfo imageInfo{
@@ -74,7 +78,7 @@ uint32_t BindlessSetManager::addImage(const Texture& texture)
 
     device_->getDevice().updateDescriptorSets({
         vk::WriteDescriptorSet{
-            .dstSet = *set_,
+            .dstSet = *textureSet_,
             .dstBinding = 0,
             .dstArrayElement = id,
             .descriptorCount = 1,

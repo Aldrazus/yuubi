@@ -5,23 +5,32 @@
 
 namespace yuubi {
 
+using TextureHandle = uint32_t;
+
 class Device;
+class Image;
 class Texture;
 class BindlessSetManager {
 public:
-    BindlessSetManager() {};
-    BindlessSetManager(const std::shared_ptr<Device>& device);
+    BindlessSetManager() = default;
+    explicit BindlessSetManager(const std::shared_ptr<Device>& device);
 
-    uint32_t addImage(const Texture& texture);
+    TextureHandle addTexture(const Texture& texture);
 
-    const vk::raii::DescriptorSetLayout& getDescriptorSetLayout() const { return layout_; }
-    const vk::raii::DescriptorSet& getDescriptorSet() const { return set_; }
-    
+    [[nodiscard]] const vk::raii::DescriptorSetLayout& getTextureSetLayout(
+    ) const {
+        return textureSetLayout_;
+    }
+
+    [[nodiscard]] const vk::raii::DescriptorSet& getTextureSet() const {
+        return textureSet_;
+    }
+
 private:
     std::shared_ptr<Device> device_ = nullptr;
     vk::raii::DescriptorPool pool_ = nullptr;
-    vk::raii::DescriptorSetLayout layout_ = nullptr;
-    vk::raii::DescriptorSet set_ = nullptr;
+    vk::raii::DescriptorSetLayout textureSetLayout_ = nullptr;
+    vk::raii::DescriptorSet textureSet_ = nullptr;
 };
 
 }

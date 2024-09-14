@@ -27,19 +27,32 @@ struct SwapchainImage : NonCopyable {
 class Viewport : NonCopyable {
 public:
     Viewport(){};
-    Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface,
-             std::shared_ptr<Device> device);
+    Viewport(
+        std::shared_ptr<vk::raii::SurfaceKHR> surface,
+        std::shared_ptr<Device> device
+    );
 
     Viewport(Viewport&&) = default;
     Viewport& operator=(Viewport&& rhs);
     ~Viewport() = default;
     void recreateSwapChain();
     bool doFrame(std::function<void(const Frame&, const SwapchainImage&)> f);
-    inline const Image& getDepthImage() const { return depthImage_; }
-    inline const vk::raii::ImageView& getDepthImageView() const { return depthImageView_; }
-    inline const vk::Extent2D& getExtent() const { return swapChainExtent_; }
-    inline const vk::Format& getSwapChainImageFormat() const { return swapChainImageFormat_; }
-    inline const vk::Format& getDepthFormat() const { return depthImageFormat_; }
+    [[nodiscard]] inline const Image& getDepthImage() const {
+        return depthImage_;
+    }
+    [[nodiscard]] inline const vk::raii::ImageView& getDepthImageView() const {
+        return depthImageView_;
+    }
+    [[nodiscard]] inline const vk::Extent2D& getExtent() const {
+        return swapChainExtent_;
+    }
+    [[nodiscard]] inline const vk::Format& getSwapChainImageFormat() const {
+        return swapChainImageFormat_;
+    }
+    [[nodiscard]] inline const vk::Format& getDepthFormat() const {
+        return depthImageFormat_;
+    }
+    static const uint32_t maxFramesInFlight = 2;
 
 private:
     void createSwapChain();
@@ -50,9 +63,11 @@ private:
     vk::PresentModeKHR chooseSwapPresentMode() const;
     vk::Extent2D chooseSwapExtent() const;
     vk::Format findDepthFormat() const;
-    vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates,
-                                   vk::ImageTiling tiling,
-                                   vk::FormatFeatureFlags features) const;
+    vk::Format findSupportedFormat(
+        const std::vector<vk::Format>& candidates,
+        vk::ImageTiling tiling,
+        vk::FormatFeatureFlags features
+    ) const;
     inline const Frame& currentFrame() const { return frames_[currentFrame_]; }
 
     std::shared_ptr<vk::raii::SurfaceKHR> surface_;
@@ -64,9 +79,8 @@ private:
     Image depthImage_;
     vk::raii::ImageView depthImageView_ = nullptr;
     vk::Format depthImageFormat_;
-    
-    static const uint32_t maxFramesInFlight_ = 2;
-    std::array<Frame, maxFramesInFlight_> frames_;
+
+    std::array<Frame, maxFramesInFlight> frames_;
     uint32_t currentFrame_ = 0;
     bool frameBufferResized_ = false;
 };

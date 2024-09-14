@@ -254,7 +254,7 @@ bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&)> 
         recreateSwapChain();
     }
 
-    currentFrame_ = (currentFrame_ + 1) % maxFramesInFlight_;
+    currentFrame_ = (currentFrame_ + 1) % maxFramesInFlight;
     return true;
 }
 

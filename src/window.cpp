@@ -1,8 +1,10 @@
 #include "window.h"
 
+#include "core/log.h"
 #include "event/window_event.h"
 #include "event/key_event.h"
 #include "event/mouse_event.h"
+#include "imgui.h"
 #include "pch.h"
 
 #include <GLFW/glfw3.h>
@@ -14,7 +16,7 @@ Window::Window(uint32_t width, uint32_t height, std::string_view title)
     window_ =
         glfwCreateWindow(width_, height_, title_.data(), nullptr, nullptr);
     glfwSetWindowUserPointer(window_, this);
-    glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     initCallbacks();
 }
 
@@ -40,6 +42,11 @@ void Window::initCallbacks() {
     glfwSetKeyCallback(
         window_,
         [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+            auto& io = ImGui::GetIO();
+            if (io.WantCaptureKeyboard) {
+                return;
+            }
+
             Window* w =
                 reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 
@@ -66,6 +73,11 @@ void Window::initCallbacks() {
     glfwSetCharCallback(
         window_,
         [](GLFWwindow* window, unsigned int codepoint) {
+            auto& io = ImGui::GetIO();
+            if (io.WantCaptureKeyboard) {
+                return;
+            }
+
             Window* w =
                 reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
             KeyTypedEvent event(codepoint);
@@ -76,6 +88,11 @@ void Window::initCallbacks() {
     glfwSetCursorPosCallback(
         window_,
         [](GLFWwindow* window, double xpos, double ypos) {
+            auto& io = ImGui::GetIO();
+            if (io.WantCaptureMouse) {
+                return;
+            }
+
             Window* w =
                 reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
             MouseMovedEvent event(xpos, ypos);
@@ -86,6 +103,11 @@ void Window::initCallbacks() {
     glfwSetMouseButtonCallback(
         window_,
         [](GLFWwindow* window, int button, int action, int mods) {
+            auto& io = ImGui::GetIO();
+            if (io.WantCaptureMouse) {
+                return;
+            }
+
             Window* w =
                 reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
             switch (action) {
@@ -106,6 +128,11 @@ void Window::initCallbacks() {
     glfwSetScrollCallback(
         window_,
         [](GLFWwindow* window, double xoffset, double yoffset) {
+            auto& io = ImGui::GetIO();
+            if (io.WantCaptureMouse) {
+                return;
+            }
+
             Window* w =
                 reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
             MouseScrollEvent event(xoffset, yoffset);

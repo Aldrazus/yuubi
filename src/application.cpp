@@ -6,6 +6,7 @@
 #include "event/mouse_event.h"
 #include "key_codes.h"
 #include "pch.h"
+#include "renderer/camera.h"
 
 #define UB_BIND_EVENT_FN(fn)                                    \
     [this](auto&&... args) -> decltype(auto) {                  \
@@ -46,6 +47,10 @@ bool Application::onWindowResize(WindowResizeEvent& e) {
         return false;
     }
     minimized_ = false;
+    camera_ = yuubi::Camera(
+        glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f,
+        (float)e.getWidth() / (float)e.getHeight()
+    );
     // TODO: let renderer resize
     // renderer_.resize();
     return false;
