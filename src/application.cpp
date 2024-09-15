@@ -19,10 +19,10 @@
 Application* Application::instance_ = nullptr;
 
 Application::Application()
-    : window_(800, 600, "Yuubi"),
+    : window_(1600, 900, "Yuubi"),
       renderer_(window_),
       // TODO: initialize camera with aspect ratio calculated using viewport
-      camera_(glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f) {
+      camera_(glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f, (float)1600 / (float)900) {
     if (instance_ != nullptr) {
         UB_ERROR("Application already exists");
         exit(1);
@@ -33,7 +33,7 @@ Application::Application()
     UB_INFO("Starting application");
 }
 
-Application::~Application() {}
+Application::~Application() = default;
 
 bool Application::onWindowClose(WindowCloseEvent& e) {
     running_ = false;
