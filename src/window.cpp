@@ -151,4 +151,4 @@ Window::~Window() {
     glfwTerminate();
 }
 
-void Window::onUpdate() { glfwPollEvents(); }
+void Window::processInput() { glfwPollEvents(); }

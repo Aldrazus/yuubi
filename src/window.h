@@ -12,7 +12,7 @@ public:
 
     ~Window();
 
-    void onUpdate();
+    void processInput();
 
     void setEventCallback(EventCallbackFn);
 

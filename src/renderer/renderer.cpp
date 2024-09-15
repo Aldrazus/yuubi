@@ -55,12 +55,14 @@ Renderer::~Renderer() {
 
 }
 
-void Renderer::draw(const Camera& camera) {
+void Renderer::draw(const Camera& camera, float averageFPS) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::ShowDemoWindow();
+    ImGui::Begin("Average FPS");
+    ImGui::Text("Average FPS: %d", (uint32_t)averageFPS);
+    ImGui::End();
 
     ImGui::Render();
 

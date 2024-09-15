@@ -26,7 +26,7 @@ public:
     explicit Renderer(const Window& window);
     ~Renderer();
 
-    void draw(const Camera& camera);
+    void draw(const Camera& camera, float averageFPS);
     void renderScene(std::function<void(Renderer&)> f);
 
 private:

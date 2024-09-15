@@ -1,6 +1,9 @@
 #include "application.h"
 #include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <limits>
+#include <thread>
 #include "event/event.h"
 #include "event/key_event.h"
 #include "event/mouse_event.h"
@@ -22,14 +25,19 @@ Application::Application()
     : window_(1600, 900, "Yuubi"),
       renderer_(window_),
       // TODO: initialize camera with aspect ratio calculated using viewport
-      camera_(glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f, (float)1600 / (float)900) {
+      camera_(
+          glm::vec3(2.0f, 0.0f, 2.0f),
+          glm::vec3(0.0f),
+          0.0f,
+          0.0f,
+          (float)1600 / (float)900
+      ) {
     if (instance_ != nullptr) {
         UB_ERROR("Application already exists");
         exit(1);
     }
     instance_ = this;
     window_.setEventCallback(UB_BIND_EVENT_FN(onEvent));
-    previousFrameTime = std::chrono::high_resolution_clock::now();
     UB_INFO("Starting application");
 }
 
@@ -107,11 +115,11 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
     const double deltaX = e.xPos - oldX;
     const double deltaY = e.yPos - oldY;
 
-    const float sensitivity = 100.0f;
+    const float sensitivity = 1.0f;
 
-    camera_.yaw += deltaX * deltaTime * sensitivity;
+    camera_.yaw += deltaX * sensitivity;
 
-    camera_.pitch -= deltaY * deltaTime * sensitivity;
+    camera_.pitch -= deltaY * sensitivity;
     camera_.pitch = std::clamp(camera_.pitch, -89.0f, 89.0f);
 
     oldX = e.xPos;
@@ -142,15 +150,60 @@ void Application::onEvent(Event& e) {
 void Application::run() {
     running_ = true;
     UB_INFO("Running application");
-    while (running_) {
-        currentFrameTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> elapsedTime =
-            currentFrameTime - previousFrameTime;
-        deltaTime = elapsedTime.count();
-        previousFrameTime = currentFrameTime;
 
-        window_.onUpdate();
-        camera_.updatePosition(deltaTime);
-        renderer_.draw(camera_);
+    // Game loop based on Glenn Fiedler's "Fix Your Timestep!" blog post:
+    // https://gafferongames.com/post/fix_your_timestep/
+
+    const float simulationFramesPerSecond = 60.0f;
+    const float fixedTimestep = 1.0f / simulationFramesPerSecond;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock>
+        previousFrameTime = std::chrono::high_resolution_clock::now();
+
+    float accumulator = 0.0f;
+
+    while (running_) {
+        // 0. Manage time and frame rate.
+        std::chrono::time_point<std::chrono::high_resolution_clock>
+            currentFrameTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> frameTime =
+            currentFrameTime - previousFrameTime;
+        previousFrameTime = currentFrameTime;
+        deltaTime_ = frameTime.count();
+        accumulator += deltaTime_;
+
+        // Calculate exponential moving average for FPS.
+        float currentFPS = 1.0f / deltaTime_;
+        if (currentFPS == std::numeric_limits<float>::infinity()) {
+            currentFPS = 0;
+        }
+        averageFPS_ = std::lerp(averageFPS_, currentFPS, 0.1f);
+
+        // 1. Handle input.
+        window_.processInput();
+
+        while (accumulator >= fixedTimestep) {
+            // 2. Update game logic.
+            // TODO: Use fixed-rate updates for physics.
+            // Use per-frame variable-rate updates for input and rendering.
+            camera_.updatePosition(fixedTimestep);
+
+            accumulator -= fixedTimestep;
+        }
+
+        // 3. Render.
+        renderer_.draw(camera_, averageFPS_);
+
+        // Limit frame rate.
+        {
+            const auto now = std::chrono::high_resolution_clock::now();
+            const auto frameTime =
+                std::chrono::duration<float>(now - previousFrameTime).count();
+            if (fixedTimestep > frameTime) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(
+                    int((fixedTimestep - frameTime) * 1000.0)
+                ));
+            }
+        }
     }
 }

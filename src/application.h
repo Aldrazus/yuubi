@@ -35,9 +35,7 @@ private:
     yuubi::Renderer renderer_;
     yuubi::Camera camera_;
 
-    float deltaTime = 0.0f;
-    std::chrono::time_point<std::chrono::high_resolution_clock>
-        previousFrameTime;
-    std::chrono::time_point<std::chrono::high_resolution_clock>
-        currentFrameTime;
+    float deltaTime_ = 0.0f;
+    float averageFPS_ = 0.0f;
+    ;
 };
