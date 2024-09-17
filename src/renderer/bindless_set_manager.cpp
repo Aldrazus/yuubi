@@ -69,6 +69,7 @@ BindlessSetManager::BindlessSetManager(const std::shared_ptr<Device>& device) : 
 
 uint32_t BindlessSetManager::addTexture(const Texture& texture)
 {
+    // TODO: Maintain a free list of IDs when handling texture unloading.
     static uint32_t id = 0;
     vk::DescriptorImageInfo imageInfo{
         .sampler = *texture.getSampler(),
