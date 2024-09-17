@@ -39,8 +39,9 @@ Mesh::Mesh(
         // Create vertex buffer.
         vk::BufferCreateInfo vertexBufferCreateInfo{
             .size = bufferSize,
-            .usage = vk::BufferUsageFlagBits::eVertexBuffer |
-                     vk::BufferUsageFlagBits::eTransferDst
+            .usage = vk::BufferUsageFlagBits::eStorageBuffer |
+                     vk::BufferUsageFlagBits::eTransferDst |
+                    vk::BufferUsageFlagBits::eShaderDeviceAddress
         };
 
         VmaAllocationCreateInfo vertexBufferAllocCreateInfo{
@@ -140,7 +141,7 @@ std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(
         return {};
     }
 
-    constexpr auto gltfOptions  = fastgltf::Options::LoadGLBBuffers | fastgltf::Options::LoadExternalBuffers;
+    constexpr auto gltfOptions  = fastgltf::Options::LoadExternalBuffers;
     auto asset = parser.loadGltf(
         data.get(), path.parent_path(), gltfOptions
     );
@@ -159,7 +160,7 @@ std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(
         vertices.clear();
 
         for (auto&& primitive : mesh.primitives) {
-            GeoSurface newSurface;
+            GeoSurface newSurface{};
             newSurface.startIndex = indices.size();
 
             size_t initialVertex = vertices.size();
@@ -192,9 +193,10 @@ std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(
                     [&](glm::vec3 v, size_t index) {
                         Vertex vertex{
                             .position = v,
+                            .uv_x = 0.0f,
                             .normal = {1.0f, 0.0f, 0.0f},
+                            .uv_y = 0.0f,
                             .color = glm::vec4{1.0f},
-                            .uv = glm::vec2{0.0f, 0.0f}
                         };
 
                         vertices[initialVertex + index] = vertex;
@@ -226,7 +228,8 @@ std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(
                     fastgltf::iterateAccessorWithIndex<glm::vec2>(
                         asset.get(), texCoordAccessor,
                         [&](glm::vec2 texCoords, size_t index) {
-                            vertices[initialVertex + index].uv = texCoords;
+                            vertices[initialVertex + index].uv_x = texCoords.x;
+                            vertices[initialVertex + index].uv_y = texCoords.y;
                         }
                     );
                 }

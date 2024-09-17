@@ -6,7 +6,8 @@
 
 namespace util {
 uint32_t findGraphicsQueueFamilyIndex(
-    const vk::raii::PhysicalDevice& physicalDevice) {
+    const vk::raii::PhysicalDevice& physicalDevice
+) {
     auto properties = physicalDevice.getQueueFamilyProperties();
 
     for (const auto [i, p] : std::views::enumerate(properties)) {
@@ -22,27 +23,32 @@ uint32_t findGraphicsQueueFamilyIndex(
 
 namespace yuubi {
 
-Device::Device(const vk::raii::Instance& instance,
-               const vk::raii::SurfaceKHR& surface) {
+Device::Device(
+    const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface
+) {
     selectPhysicalDevice(instance, surface);
     createLogicalDevice(instance);
     createImmediateCommandResources();
 }
 
-void Device::selectPhysicalDevice(const vk::raii::Instance& instance,
-                                  const vk::raii::SurfaceKHR& surface) {
+void Device::selectPhysicalDevice(
+    const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface
+) {
     vk::raii::PhysicalDevices physicalDevices{instance};
-    std::partition(physicalDevices.begin(), physicalDevices.end(),
-                   [](const vk::raii::PhysicalDevice& device) {
-                       return device.getProperties().deviceType ==
-                              vk::PhysicalDeviceType::eDiscreteGpu;
-                   });
+    std::partition(
+        physicalDevices.begin(), physicalDevices.end(),
+        [](const vk::raii::PhysicalDevice& device) {
+            return device.getProperties().deviceType ==
+                   vk::PhysicalDeviceType::eDiscreteGpu;
+        }
+    );
 
-    auto suitableDeviceIter =
-        std::find_if(physicalDevices.begin(), physicalDevices.end(),
-                     [this, &surface](const vk::raii::PhysicalDevice device) {
-                         return isDeviceSuitable(device, surface);
-                     });
+    auto suitableDeviceIter = std::find_if(
+        physicalDevices.begin(), physicalDevices.end(),
+        [this, &surface](const vk::raii::PhysicalDevice device) {
+            return isDeviceSuitable(device, surface);
+        }
+    );
 
     if (suitableDeviceIter == physicalDevices.end()) {
         UB_ERROR("Failed to find a suitable GPU!");
@@ -52,8 +58,10 @@ void Device::selectPhysicalDevice(const vk::raii::Instance& instance,
     physicalDevice_ = std::move(*suitableDeviceIter);
 }
 
-bool Device::isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice,
-                              const vk::raii::SurfaceKHR& surface) {
+bool Device::isDeviceSuitable(
+    const vk::raii::PhysicalDevice& physicalDevice,
+    const vk::raii::SurfaceKHR& surface
+) {
     bool isGraphicsCapable = false;
     std::vector<vk::QueueFamilyProperties> properties =
         physicalDevice.getQueueFamilyProperties();
@@ -70,11 +78,10 @@ bool Device::isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice,
 }
 
 bool Device::supportsFeatures(const vk::raii::PhysicalDevice& physicalDevice) {
-    auto supportedFeatures =
-        physicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2,
-                                    vk::PhysicalDeviceVulkan11Features,
-                                    vk::PhysicalDeviceVulkan12Features,
-                                    vk::PhysicalDeviceVulkan13Features>();
+    auto supportedFeatures = physicalDevice.getFeatures2<
+        vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
+        vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>(
+    );
 
     // TODO: compare all features
     auto availableFeatures11 =
@@ -88,6 +95,9 @@ bool Device::supportsFeatures(const vk::raii::PhysicalDevice& physicalDevice) {
         requiredFeatures_.get<vk::PhysicalDeviceVulkan12Features>();
     if (requiredFeatures12.descriptorIndexing &&
         !availableFeatures12.descriptorIndexing)
+        return false;
+    if (requiredFeatures12.bufferDeviceAddress &&
+        !availableFeatures12.bufferDeviceAddress)
         return false;
 
     auto availableFeatures13 =
@@ -112,7 +122,8 @@ void Device::createLogicalDevice(const vk::raii::Instance& instance) {
     vk::DeviceQueueCreateInfo queueCreateInfo{
         .queueFamilyIndex = graphicsFamilyIndex,
         .queueCount = 1,
-        .pQueuePriorities = &priority};
+        .pQueuePriorities = &priority
+    };
 
     vk::DeviceCreateInfo createInfo{
         .pNext = &requiredFeatures_.get(),
@@ -121,46 +132,52 @@ void Device::createLogicalDevice(const vk::raii::Instance& instance) {
         .enabledLayerCount = 0,
         .enabledExtensionCount =
             static_cast<uint32_t>(requiredExtensions_.size()),
-        .ppEnabledExtensionNames = requiredExtensions_.data()};
+        .ppEnabledExtensionNames = requiredExtensions_.data()
+    };
 
     device_ = vk::raii::Device{physicalDevice_, createInfo};
 
     graphicsQueue_ = {
         .queue = device_.getQueue2(
-            {.queueFamilyIndex = graphicsFamilyIndex, .queueIndex = 0}),
-        .familyIndex = graphicsFamilyIndex};
+            {.queueFamilyIndex = graphicsFamilyIndex, .queueIndex = 0}
+        ),
+        .familyIndex = graphicsFamilyIndex
+    };
 
     allocator_ =
         std::make_shared<Allocator>(instance, physicalDevice_, device_);
 }
 
-vk::raii::ImageView Device::createImageView(const vk::Image& image,
-                                            const vk::Format& format,
-                                            vk::ImageAspectFlags aspectFlags) {
+vk::raii::ImageView Device::createImageView(
+    const vk::Image& image,
+    const vk::Format& format,
+    vk::ImageAspectFlags aspectFlags
+) {
     vk::ImageViewCreateInfo viewInfo{
         .image = image,
         .viewType = vk::ImageViewType::e2D,
         .format = format,
         .subresourceRange =
             {
-                .aspectMask = aspectFlags,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
+                               .aspectMask = aspectFlags,
+                               .baseMipLevel = 0,
+                               .levelCount = 1,
+                               .baseArrayLayer = 0,
+                               .layerCount = 1,
+                               },
     };
 
     return device_.createImageView(viewInfo);
 }
 
-Image Device::createImage(const ImageCreateInfo& createInfo)
-{
+Image Device::createImage(const ImageCreateInfo& createInfo) {
     return Image{allocator_.get(), createInfo};
 }
 
-Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo,
-                            const VmaAllocationCreateInfo& allocInfo) {
+Buffer Device::createBuffer(
+    const vk::BufferCreateInfo& createInfo,
+    const VmaAllocationCreateInfo& allocInfo
+) {
     return Buffer{allocator_.get(), createInfo, allocInfo};
 }
 
@@ -168,7 +185,7 @@ void Device::createImmediateCommandResources() {
     immediateCommandPool_ = vk::raii::CommandPool{
         device_,
         {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-                       .queueFamilyIndex = graphicsQueue_.familyIndex}
+          .queueFamilyIndex = graphicsQueue_.familyIndex}
     };
 
     // TODO: wtf?
@@ -186,8 +203,9 @@ void Device::createImmediateCommandResources() {
     };
 }
 
-void Device::submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function)
-{
+void Device::submitImmediateCommands(
+    std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function
+) {
     device_.resetFences(*immediateCommandFence_);
     immediateCommandBuffer_.reset();
 
@@ -219,23 +237,29 @@ void Device::submitImmediateCommands(std::function<void(const vk::raii::CommandB
 }
 
 const vk::StructureChain<
-    vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
-    vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
+    vk::PhysicalDeviceFeatures2,
+    vk::PhysicalDeviceVulkan11Features,
+    vk::PhysicalDeviceVulkan12Features,
+    vk::PhysicalDeviceVulkan13Features>
     Device::requiredFeatures_{
         vk::PhysicalDeviceFeatures2{
-            .features = {.samplerAnisotropy = vk::True}
+                                    .features = {.samplerAnisotropy = vk::True}
         },
         vk::PhysicalDeviceVulkan11Features{},
         vk::PhysicalDeviceVulkan12Features{
-            .descriptorIndexing = vk::True,
-            .descriptorBindingSampledImageUpdateAfterBind = vk::True,
-            .descriptorBindingPartiallyBound = vk::True
+                                    .descriptorIndexing = vk::True,
+                                    .descriptorBindingSampledImageUpdateAfterBind = vk::True,
+                                    .descriptorBindingPartiallyBound = vk::True,
+                                    .bufferDeviceAddress = vk::True,
+                                    .bufferDeviceAddressCaptureReplay = vk::True
         },
-        vk::PhysicalDeviceVulkan13Features{.synchronization2 = vk::True,
-                                           .dynamicRendering = vk::True},
-    };
+        vk::PhysicalDeviceVulkan13Features{
+                                    .synchronization2 = vk::True, .dynamicRendering = vk::True
+        },
+};
 
 const std::vector<const char*> Device::requiredExtensions_{
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+};
 
 }

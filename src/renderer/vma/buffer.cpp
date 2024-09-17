@@ -11,29 +11,24 @@ Buffer::Buffer(Allocator* allocator,
     VkBuffer buffer;
     vmaCreateBuffer(allocator_->getAllocator(), &createInfo, &allocCreateInfo, &buffer, &allocation_, &allocationInfo_);
     buffer_ = vk::raii::Buffer(allocator_->getDevice(), buffer);
+
+    if (createInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+        address_ = allocator_->getDevice().getBufferAddress(vk::BufferDeviceAddressInfo{
+            .buffer = *buffer_
+        });
+    }
 }
 
 
-Buffer& Buffer::operator=(Buffer&& rhs) {
+Buffer& Buffer::operator=(Buffer&& rhs) noexcept {
     // If rhs is this, no-op.
-    if (this == &rhs) {
-        return *this;
+    if (this != &rhs) {
+        std::swap(buffer_, rhs.buffer_);
+        std::swap(allocator_, rhs.allocator_);
+        std::swap(allocation_, rhs.allocation_);
+        std::swap(allocationInfo_, rhs.allocationInfo_);
+        std::swap(address_, rhs.address_);
     }
-
-    // Destroy this.
-    destroy();
-
-    // Move from rhs to this.
-    buffer_ = std::move(rhs.buffer_);
-    allocator_ = rhs.allocator_;
-    allocation_ = rhs.allocation_;
-    allocationInfo_ = rhs.allocationInfo_;
-
-    // Invalidate rhs.
-    rhs.buffer_ = nullptr;
-    rhs.allocator_ = nullptr;
-    rhs.allocation_ = nullptr;
-    rhs.allocationInfo_ = VmaAllocationInfo{};
 
     return *this;
 }

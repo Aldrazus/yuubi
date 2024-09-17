@@ -13,7 +13,6 @@ target_sources(
     "renderer/loaded_gltf.cpp"
     "renderer/pipeline_builder.cpp"
     "renderer/renderer.cpp"
-    "renderer/vertex.cpp"
     "renderer/viewport.cpp"
     "renderer/vulkan_usage.cpp"
     "renderer/resources/texture.cpp"

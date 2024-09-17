@@ -48,6 +48,9 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
     # Set 'yuubi' as the startup project in VS
     set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT ${CMAKE_PROJECT_NAME})
+
+    message(CMAKE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+    set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     
     # set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:$<PROJECT_NAME>>")
     # Make this a Win32 app (no console) which uses WinMain() as the entry point

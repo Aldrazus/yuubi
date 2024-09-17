@@ -19,6 +19,7 @@ namespace yuubi {
 
 struct PushConstants {
     glm::mat4 mvp;
+    vk::DeviceAddress vertexBuffer;
 };
 
 class Renderer {

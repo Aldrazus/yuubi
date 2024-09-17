@@ -8,12 +8,10 @@ namespace yuubi {
 
 struct Vertex {
     glm::vec3 position;
+    float uv_x;
     glm::vec3 normal;
+    float uv_y;
     glm::vec4 color;
-    glm::vec2 uv;
-
-    static const vk::VertexInputBindingDescription getBindingDescription();
-    static const std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions();
 };
 
 }

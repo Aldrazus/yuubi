@@ -7,6 +7,7 @@ Allocator::Allocator(const vk::raii::Instance& instance,
               const vk::raii::Device& device) : device_(&device)
 {
     VmaAllocatorCreateInfo allocatorInfo{
+        .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
         .physicalDevice = *physicalDevice,
         .device = *device,
         .instance = *instance,

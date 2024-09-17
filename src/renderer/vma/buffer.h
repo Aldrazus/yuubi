@@ -10,16 +10,17 @@ class Allocator;
 
 class Buffer : NonCopyable {
 public:
-    Buffer() {}
+    Buffer() = default;
     Buffer(Allocator* allocator,
            const VkBufferCreateInfo& createInfo,
            const VmaAllocationCreateInfo& allocCreateInfo);
     Buffer(Buffer&& rhs) = default;
-    Buffer& operator=(Buffer&& rhs);
+    Buffer& operator=(Buffer&& rhs) noexcept;
     ~Buffer();
 
-    inline const vk::raii::Buffer& getBuffer() const { return buffer_; }
-    inline void* getMappedMemory() { return allocationInfo_.pMappedData; }
+    [[nodiscard]] inline const vk::raii::Buffer& getBuffer() const { return buffer_; }
+    [[nodiscard]] inline void* getMappedMemory() const { return allocationInfo_.pMappedData; }
+    [[nodiscard]] inline const vk::DeviceAddress& getAddress() const { return address_; }
 private:
     void destroy();
 
@@ -27,6 +28,7 @@ private:
     Allocator* allocator_ = nullptr;
     VmaAllocation allocation_;
     VmaAllocationInfo allocationInfo_;
+    vk::DeviceAddress address_;
 };
 
 }

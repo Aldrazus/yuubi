@@ -40,6 +40,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     viewport_ = Viewport{surface_, device_};
     bindlessSetManager_ = BindlessSetManager(device_);
 
+    // auto meshes = loadGltfMeshes(*device_, "assets/monkey/monkey.glb").value();
     auto meshes = loadGltfMeshes(*device_, "assets/sponza/Sponza.gltf").value();
     UB_INFO("Number of meshes: {}", meshes.size());
     mesh_ = meshes[0];
@@ -121,17 +122,13 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                     vk::PipelineBindPoint::eGraphics, *graphicsPipeline_
                 );
 
-                frame.commandBuffer.bindVertexBuffers(
-                    0, {*mesh_->vertexBuffer().getBuffer()}, {0}
-                );
-
                 frame.commandBuffer.bindIndexBuffer(
                     *mesh_->indexBuffer().getBuffer(), 0, vk::IndexType::eUint32
                 );
 
                 frame.commandBuffer.pushConstants<PushConstants>(
                     *pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                    {PushConstants{camera.getViewProjectionMatrix()}}
+                    {PushConstants{camera.getViewProjectionMatrix(), mesh_->vertexBuffer().getAddress()}}
                 );
 
                 // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
@@ -224,10 +221,6 @@ void Renderer::createGraphicsPipeline() {
     pipelineLayout_ =
         createPipelineLayout(*device_, setLayouts, pushConstantRanges);
     PipelineBuilder builder(pipelineLayout_);
-    std::array<vk::VertexInputBindingDescription, 1> bindingDescriptions{
-        Vertex::getBindingDescription()
-    };
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
     graphicsPipeline_ =
         builder.setShaders(vertShader, fragShader)
             .setInputTopology(vk::PrimitiveTopology::eTriangleList)
@@ -240,7 +233,6 @@ void Renderer::createGraphicsPipeline() {
             .setDepthTest(true)
             .setColorAttachmentFormat(viewport_.getSwapChainImageFormat())
             .setDepthFormat(viewport_.getDepthFormat())
-            .setVertexInputInfo(bindingDescriptions, attributeDescriptions)
             .build(*device_);
 }
 
