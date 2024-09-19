@@ -19,6 +19,7 @@ namespace yuubi {
 
 struct PushConstants {
     glm::mat4 mvp;
+    vk::DeviceAddress sceneDataBuffer;
     vk::DeviceAddress vertexBuffer;
 };
 
@@ -52,6 +53,7 @@ private:
     BindlessSetManager bindlessSetManager_;
 
     vk::raii::DescriptorPool imguiDescriptorPool_ = nullptr;
+    Buffer shaderDataBuffer_;
 };
 
 }

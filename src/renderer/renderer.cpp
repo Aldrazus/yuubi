@@ -46,6 +46,25 @@ Renderer::Renderer(const Window& window) : window_(window) {
     mesh_ = meshes[0];
     texture_ = Texture{*device_, "textures/texture.jpg"};
     bindlessSetManager_.addTexture(texture_);
+
+    {
+    vk::DeviceSize bufferSize = 1024;
+        vk::BufferCreateInfo bufferCreateInfo{
+            .size = bufferSize,
+            .usage = vk::BufferUsageFlagBits::eStorageBuffer |
+                     vk::BufferUsageFlagBits::eTransferDst |
+                    vk::BufferUsageFlagBits::eShaderDeviceAddress
+        };
+
+        VmaAllocationCreateInfo shaderDataBufferAllocInfo {
+            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        };
+
+        shaderDataBuffer_ = device_->createBuffer(
+            bufferCreateInfo, shaderDataBufferAllocInfo 
+        );
+    }
+
     createGraphicsPipeline();
     initImGui();
 }
@@ -128,7 +147,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
 
                 frame.commandBuffer.pushConstants<PushConstants>(
                     *pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                    {PushConstants{camera.getViewProjectionMatrix(), mesh_->vertexBuffer().getAddress()}}
+                    {PushConstants{camera.getViewProjectionMatrix(), shaderDataBuffer_.getAddress(), mesh_->vertexBuffer().getAddress()}}
                 );
 
                 // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
@@ -203,8 +222,8 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
 }
 
 void Renderer::createGraphicsPipeline() {
-    auto vertShader = loadShader("shaders/shader.vert.spv", *device_);
-    auto fragShader = loadShader("shaders/shader.frag.spv", *device_);
+    auto vertShader = loadShader("shaders/mesh.vert.spv", *device_);
+    auto fragShader = loadShader("shaders/mesh.frag.spv", *device_);
 
     std::vector<vk::PushConstantRange> pushConstantRanges = {
         vk::PushConstantRange{
