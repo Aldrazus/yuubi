@@ -4,8 +4,34 @@ namespace yuubi {
 
 Texture::Texture(Device& device, const std::string& name) {
     ImageData imageData = loadImage(name);
-    vk::DeviceSize imageSize = imageData.width() * imageData.height() * 4;
+    init(device, imageData);
+}
 
+Texture::Texture(Device& device, const ImageData& imageData)
+{
+    init(device, imageData);
+}
+
+Texture::Texture(Texture&& rhs)
+    : name_(std::exchange(rhs.name_, {})),
+      image_(std::exchange(rhs.image_, {})),
+      view_(std::exchange(rhs.view_, nullptr)),
+      sampler_(std::exchange(rhs.sampler_, nullptr)) {}
+
+Texture& Texture::operator=(Texture&& rhs) {
+    if (this != &rhs) {
+        std::swap(name_, rhs.name_);
+        std::swap(image_, rhs.image_);
+        std::swap(view_, rhs.view_);
+        std::swap(sampler_, rhs.sampler_);
+    }
+
+    return *this;
+}
+
+void Texture::init(Device& device, const ImageData& imageData)
+{
+    vk::DeviceSize imageSize = imageData.width * imageData.height * 4;
     // Create staging buffer.
     vk::BufferCreateInfo stagingBufferCreateInfo{
         .size = imageSize,
@@ -23,16 +49,17 @@ Texture::Texture(Device& device, const std::string& name) {
     );
 
     // Copy image data onto mapped memory in staging buffer.
+    std::println("mapped ptr addr: {}", stagingBuffer.getMappedMemory());
     std::memcpy(
-        stagingBuffer.getMappedMemory(), imageData.pixels(),
+        stagingBuffer.getMappedMemory(), imageData.pixels.data(),
         static_cast<size_t>(imageSize)
     );
 
     image_ = Image(
         &device.allocator(),
         ImageCreateInfo{
-            .width = static_cast<uint32_t>(imageData.width()),
-            .height = static_cast<uint32_t>(imageData.height()),
+            .width = static_cast<uint32_t>(imageData.width),
+            .height = static_cast<uint32_t>(imageData.height),
             .format = vk::Format::eR8G8B8A8Srgb,
             .tiling = vk::ImageTiling::eOptimal,
             .usage = vk::ImageUsageFlagBits::eSampled |
@@ -63,8 +90,8 @@ Texture::Texture(Device& device, const std::string& name) {
                 .imageOffset = {0, 0, 0},
                 .imageExtent =
                     vk::Extent3D{
-                                               .width = static_cast<uint32_t>(imageData.width()),
-                                               .height = static_cast<uint32_t>(imageData.height()),
+                                               .width = static_cast<uint32_t>(imageData.width),
+                                               .height = static_cast<uint32_t>(imageData.height),
                                                .depth = 1
                     }
             };
@@ -106,23 +133,6 @@ Texture::Texture(Device& device, const std::string& name) {
         .borderColor = vk::BorderColor::eIntOpaqueBlack,
         .unnormalizedCoordinates = vk::False,
     });
-}
-
-Texture::Texture(Texture&& rhs)
-    : name_(std::exchange(rhs.name_, {})),
-      image_(std::exchange(rhs.image_, {})),
-      view_(std::exchange(rhs.view_, nullptr)),
-      sampler_(std::exchange(rhs.sampler_, nullptr)) {}
-
-Texture& Texture::operator=(Texture&& rhs) {
-    if (this != &rhs) {
-        std::swap(name_, rhs.name_);
-        std::swap(image_, rhs.image_);
-        std::swap(view_, rhs.view_);
-        std::swap(sampler_, rhs.sampler_);
-    }
-
-    return *this;
 }
 
 }

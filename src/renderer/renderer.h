@@ -27,6 +27,7 @@ private:
     void createGraphicsPipeline();
     void createDescriptor();
     void initImGui();
+    void createDefaultData();
 
     const Window& window_;
     vk::raii::Context context_;

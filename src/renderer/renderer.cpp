@@ -306,4 +306,7 @@ void Renderer::initImGui() {
     ImGui_ImplVulkan_CreateFontsTexture();
 }
 
+void Renderer::createDefaultData() {
+}
+
 }

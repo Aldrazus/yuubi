@@ -15,12 +15,14 @@ public:
     Texture() {};
     // TODO: const ref?
     Texture(Device& device, const std::string& name);
+    Texture(Device& device, const ImageData& imageData);
     Texture(Texture&& other);
     Texture& operator=(Texture&& other);
 
     inline const vk::raii::Sampler& getSampler() const { return sampler_; }
     inline const vk::raii::ImageView& getImageView() const { return view_; }
 private:
+    void init(Device& device, const ImageData& imageData);
     std::string name_;
     Image image_;
     vk::raii::ImageView view_ = nullptr;

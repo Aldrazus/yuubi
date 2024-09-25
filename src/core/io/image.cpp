@@ -4,39 +4,28 @@
 
 namespace yuubi {
 
-ImageData::ImageData(std::string_view path)
-{
-    pixels_ = stbi_load(path.data(), &width_, &height_, &channels_, STBI_rgb_alpha);
-}
-ImageData::~ImageData()
-{
-    destroy();
-}
+ImageData loadImage(std::string_view path) { 
+    int width, height, channels;
+    auto* imageChars = 
+        stbi_load(path.data(), &width, &height, &channels, STBI_rgb_alpha);
 
-ImageData& ImageData::operator=(ImageData&& rhs)
-{
-    if (this == &rhs) {
-        return *this;
-    }
+    // Alpha channel is being forced due to STBI_rbg_alpha flag.
+    channels = 4;
 
-    destroy();
-    width_ = rhs.width_;
-    rhs.width_ = 0;
-    height_ = rhs.height_;
-    rhs.height_ = 0;
-    channels_ = rhs.channels_;
-    rhs.channels_ = 0;
-    pixels_ = rhs.pixels_;
-    rhs.pixels_ = nullptr;
+    const uint32_t imageSizeBytes = width * height * channels;
+    
+    ImageData data{
+        .width = static_cast<uint32_t>(width),
+        .height = static_cast<uint32_t>(height),
+        .channels = static_cast<uint32_t>(channels),
+        .pixels = std::vector<std::byte>{imageSizeBytes}
+    };
 
-    return *this;
-}
+    std::memcpy(data.pixels.data(), imageChars, imageSizeBytes);
 
-void ImageData::destroy()
-{
-    if (pixels_ != nullptr) {
-        stbi_image_free(pixels_);
-    }
+    stbi_image_free(imageChars);
+
+    return data;
 }
 
 }

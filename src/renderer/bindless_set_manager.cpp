@@ -2,6 +2,7 @@
 #include "renderer/descriptor_layout_builder.h"
 #include "renderer/device.h"
 #include "renderer/resources/texture.h"
+#include <glm/glm.hpp>
 
 namespace yuubi {
 
@@ -65,6 +66,34 @@ BindlessSetManager::BindlessSetManager(const std::shared_ptr<Device>& device) : 
 
     vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
     textureSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
+
+    // Magenta checkerboard image
+    uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+    uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
+
+    const size_t textureWidth = 16; 
+    const size_t numChannels = 4;
+
+    ImageData imageData{
+        .width = textureWidth,
+        .height = textureWidth,
+        .channels = numChannels,
+        .pixels = std::vector<std::byte>{textureWidth * textureWidth * numChannels}
+    };
+
+    for (size_t rowIdx = 0; rowIdx < textureWidth; rowIdx++) {
+        for (size_t colIdx = 0; colIdx < textureWidth; colIdx++) {
+            auto color = ((colIdx % 2) ^ (rowIdx % 2)) ? magenta : black;
+
+            for (size_t channelIdx = 0; channelIdx < numChannels; channelIdx++) {
+                const size_t byteIdx = rowIdx * textureWidth + colIdx * numChannels + channelIdx;
+                imageData.pixels[byteIdx] = std::byte((color >> (channelIdx * 8)) & 0xff);
+            }
+        }
+    }
+
+    errorCheckerboardTexture_ = Texture{*device_, imageData};
+    addTexture(errorCheckerboardTexture_);
 }
 
 uint32_t BindlessSetManager::addTexture(const Texture& texture)
