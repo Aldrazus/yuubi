@@ -13,15 +13,7 @@
 #include "renderer/vertex.h"
 #include "renderer/loaded_gltf.h"
 
-#include <glm/glm.hpp>
-
 namespace yuubi {
-
-struct PushConstants {
-    glm::mat4 mvp;
-    vk::DeviceAddress sceneDataBuffer;
-    vk::DeviceAddress vertexBuffer;
-};
 
 class Renderer {
 public:
@@ -53,7 +45,9 @@ private:
     BindlessSetManager bindlessSetManager_;
 
     vk::raii::DescriptorPool imguiDescriptorPool_ = nullptr;
-    Buffer shaderDataBuffer_;
+
+    // Global scene data updated once per frame/draw call.
+    Buffer sceneDataBuffer_;
 };
 
 }

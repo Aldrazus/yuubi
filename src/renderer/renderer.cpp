@@ -20,6 +20,7 @@
 #include "renderer/descriptor_layout_builder.h"
 #include "renderer/bindless_set_manager.h"
 #include "renderer/vulkan/util.h"
+#include "renderer/push_constants.h"
 #include "pch.h"
 
 namespace yuubi {
@@ -60,7 +61,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
             .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         };
 
-        shaderDataBuffer_ = device_->createBuffer(
+        sceneDataBuffer_ = device_->createBuffer(
             bufferCreateInfo, shaderDataBufferAllocInfo 
         );
     }
@@ -147,7 +148,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
 
                 frame.commandBuffer.pushConstants<PushConstants>(
                     *pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                    {PushConstants{camera.getViewProjectionMatrix(), shaderDataBuffer_.getAddress(), mesh_->vertexBuffer().getAddress()}}
+                    {PushConstants{camera.getViewProjectionMatrix(), sceneDataBuffer_.getAddress(), mesh_->vertexBuffer().getAddress()}}
                 );
 
                 // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
