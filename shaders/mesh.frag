@@ -11,6 +11,7 @@ layout (location = 1) in vec2 inUv;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    outColor = texture(textures, inUv);
+    MaterialData material = PushConstants.sceneData.materials.data[0];
+    outColor = texture(textures[material.diffuseTex], inUv);
     // outColor = vec4(inColor, 1.0f); 
 }

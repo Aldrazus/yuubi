@@ -74,6 +74,7 @@ Buffer::~Buffer() {
     }
 }
 
+// TODO: don't rely on immediate commands.
 void Buffer::upload(Device& device, void* data, size_t size, size_t offset) {
     auto* mappedDataBytes =
         reinterpret_cast<std::byte*>(stagingBufferAllocationInfo_.pMappedData);

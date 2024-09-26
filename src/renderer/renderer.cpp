@@ -16,6 +16,7 @@
 #include "renderer/bindless_set_manager.h"
 #include "renderer/vulkan/util.h"
 #include "renderer/push_constants.h"
+#include "renderer/gpu_data.h"
 #include "pch.h"
 
 namespace yuubi {
@@ -43,8 +44,35 @@ Renderer::Renderer(const Window& window) : window_(window) {
     texture_ = Texture{*device_, "textures/texture.jpg"};
     bindlessSetManager_.addTexture(texture_);
 
+    
     {
-    vk::DeviceSize bufferSize = 1024;
+    const vk::DeviceSize bufferSize = 1024;
+        vk::BufferCreateInfo bufferCreateInfo{
+            .size = bufferSize,
+            .usage = vk::BufferUsageFlagBits::eStorageBuffer |
+                     vk::BufferUsageFlagBits::eTransferDst |
+                    vk::BufferUsageFlagBits::eShaderDeviceAddress
+        };
+
+        VmaAllocationCreateInfo shaderDataBufferAllocInfo {
+            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        };
+
+        materialBuffer_ = device_->createBuffer(
+            bufferCreateInfo, shaderDataBufferAllocInfo 
+        );
+
+        MaterialData data{
+            .baseColor = glm::vec4{0, 0, 0, 0},
+            .diffuseTex = 0,
+            .metallicRoughnessTex = 0
+        };
+
+        materialBuffer_.upload(*device_, &data, sizeof(MaterialData), 0);
+    }
+
+    {
+        vk::DeviceSize bufferSize = 1024;
         vk::BufferCreateInfo bufferCreateInfo{
             .size = bufferSize,
             .usage = vk::BufferUsageFlagBits::eStorageBuffer |
@@ -59,6 +87,17 @@ Renderer::Renderer(const Window& window) : window_(window) {
         sceneDataBuffer_ = device_->createBuffer(
             bufferCreateInfo, shaderDataBufferAllocInfo 
         );
+
+        SceneData data {
+            .view = {},
+            .proj = {},
+            .viewproj = {},
+            .ambientColor = {},
+            .sunlightColor = {},
+            .materials = materialBuffer_.getAddress(),
+        };
+
+        sceneDataBuffer_.upload(*device_, &data, sizeof(data), 0);
     }
 
     createGraphicsPipeline();
@@ -142,7 +181,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                 );
 
                 frame.commandBuffer.pushConstants<PushConstants>(
-                    *pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
+                    *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
                     {PushConstants{camera.getViewProjectionMatrix(), sceneDataBuffer_.getAddress(), mesh_->vertexBuffer().getAddress()}}
                 );
 
@@ -223,7 +262,7 @@ void Renderer::createGraphicsPipeline() {
 
     std::vector<vk::PushConstantRange> pushConstantRanges = {
         vk::PushConstantRange{
-                              .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                              .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
                               .offset = 0,
                               .size = sizeof(PushConstants),
                               }

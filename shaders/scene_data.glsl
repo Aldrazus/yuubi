@@ -4,6 +4,8 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_buffer_reference : require
 
+#include "material.glsl"
+
 layout (buffer_reference, scalar) readonly buffer SceneDataBuffer {
     mat4 view;
     mat4 proj;
@@ -11,6 +13,7 @@ layout (buffer_reference, scalar) readonly buffer SceneDataBuffer {
     vec4 ambientColor;
     vec4 sunlightDirection; // w for sun power
     vec4 sunlightColor;
+    MaterialsBuffer materials;
 } sceneDataBuffer;
 
 #endif

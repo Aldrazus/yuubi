@@ -49,6 +49,7 @@ private:
 
     // Global scene data updated once per frame/draw call.
     Buffer sceneDataBuffer_;
+    Buffer materialBuffer_;
 };
 
 }
