@@ -36,8 +36,8 @@ Renderer::Renderer(const Window& window) : window_(window) {
     viewport_ = Viewport{surface_, device_};
     bindlessSetManager_ = BindlessSetManager(device_);
 
-    // auto meshes = loadGltfMeshes(*device_, "assets/monkey/monkey.glb").value();
-    auto meshes = loadGltfMeshes(*device_, "assets/sponza/Sponza.gltf").value();
+    auto meshes = loadGltfMeshes(*device_, "assets/monkey/monkey.glb").value();
+    // auto meshes = loadGltfMeshes(*device_, "assets/sponza/Sponza.gltf").value();
     UB_INFO("Number of meshes: {}", meshes.size());
     mesh_ = meshes[0];
     texture_ = Texture{*device_, "textures/texture.jpg"};

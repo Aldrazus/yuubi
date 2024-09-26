@@ -86,7 +86,7 @@ BindlessSetManager::BindlessSetManager(const std::shared_ptr<Device>& device) : 
             auto color = ((colIdx % 2) ^ (rowIdx % 2)) ? magenta : black;
 
             for (size_t channelIdx = 0; channelIdx < numChannels; channelIdx++) {
-                const size_t byteIdx = rowIdx * textureWidth + colIdx * numChannels + channelIdx;
+                const size_t byteIdx = numChannels * (rowIdx * textureWidth + colIdx) + channelIdx;
                 imageData.pixels[byteIdx] = std::byte((color >> (channelIdx * 8)) & 0xff);
             }
         }

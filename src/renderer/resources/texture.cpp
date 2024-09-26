@@ -49,7 +49,6 @@ void Texture::init(Device& device, const ImageData& imageData)
     );
 
     // Copy image data onto mapped memory in staging buffer.
-    std::println("mapped ptr addr: {}", stagingBuffer.getMappedMemory());
     std::memcpy(
         stagingBuffer.getMappedMemory(), imageData.pixels.data(),
         static_cast<size_t>(imageSize)
