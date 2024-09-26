@@ -14,28 +14,6 @@ Mesh::Mesh(
     {
         vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-        // Create staging buffer.
-        vk::BufferCreateInfo stagingBufferCreateInfo{
-            .size = bufferSize,
-            .usage = vk::BufferUsageFlagBits::eTransferSrc,
-        };
-
-        VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
-            .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                     VMA_ALLOCATION_CREATE_MAPPED_BIT,
-            .usage = VMA_MEMORY_USAGE_CPU_ONLY,
-        };
-
-        Buffer stagingBuffer = device.createBuffer(
-            stagingBufferCreateInfo, stagingBufferAllocCreateInfo
-        );
-
-        // Copy vertex data onto mapped memory in staging buffer.
-        std::memcpy(
-            stagingBuffer.getMappedMemory(), vertices.data(),
-            static_cast<size_t>(bufferSize)
-        );
-
         // Create vertex buffer.
         vk::BufferCreateInfo vertexBufferCreateInfo{
             .size = bufferSize,
@@ -52,43 +30,12 @@ Mesh::Mesh(
             vertexBufferCreateInfo, vertexBufferAllocCreateInfo
         );
 
-        device.submitImmediateCommands(
-            [this, &stagingBuffer,
-             bufferSize](const vk::raii::CommandBuffer& commandBuffer) {
-                vk::BufferCopy copyRegion{.size = bufferSize};
-                commandBuffer.copyBuffer(
-                    *stagingBuffer.getBuffer(), *vertexBuffer_.getBuffer(),
-                    {copyRegion}
-                );
-            }
-        );
+        vertexBuffer_.upload(device, vertices.data(), bufferSize, 0);
     }
 
     // Index buffer.
     {
         vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-        // Create staging buffer.
-        vk::BufferCreateInfo stagingBufferCreateInfo{
-            .size = bufferSize,
-            .usage = vk::BufferUsageFlagBits::eTransferSrc,
-        };
-
-        VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
-            .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                     VMA_ALLOCATION_CREATE_MAPPED_BIT,
-            .usage = VMA_MEMORY_USAGE_AUTO,
-        };
-
-        Buffer stagingBuffer = device.createBuffer(
-            stagingBufferCreateInfo, stagingBufferAllocCreateInfo
-        );
-
-        // Copy index data onto mapped memory in staging buffer.
-        std::memcpy(
-            stagingBuffer.getMappedMemory(), indices.data(),
-            static_cast<size_t>(bufferSize)
-        );
 
         // Create index buffer.
         vk::BufferCreateInfo indexBufferCreateInfo{
@@ -105,16 +52,7 @@ Mesh::Mesh(
             indexBufferCreateInfo, indexBufferAllocCreateInfo
         );
 
-        device.submitImmediateCommands(
-            [this, &stagingBuffer,
-             bufferSize](const vk::raii::CommandBuffer& commandBuffer) {
-                vk::BufferCopy copyRegion{.size = bufferSize};
-                commandBuffer.copyBuffer(
-                    *stagingBuffer.getBuffer(), *indexBuffer_.getBuffer(),
-                    {copyRegion}
-                );
-            }
-        );
+        indexBuffer_.upload(device, indices.data(), bufferSize, 0);
     }
 }
 
