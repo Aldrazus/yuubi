@@ -6,7 +6,7 @@
 
 // TODO: check push constant alignment requirements.
 layout (push_constant, scalar) uniform constants {
-    mat4 mvp;
+    mat4 transform;
     SceneDataBuffer sceneData;
     VertexBuffer vertexBuffer;
 } PushConstants;

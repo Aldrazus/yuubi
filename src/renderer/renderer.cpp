@@ -9,6 +9,7 @@
 #include "imgui_impl_vulkan.h"
 #include "renderer/camera.h"
 #include "renderer/loaded_gltf.h"
+#include "renderer/render_object.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/vulkan_usage.h"
 #include "renderer/pipeline_builder.h"
@@ -42,6 +43,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     // auto meshes = loadGltfMeshes(*device_, "assets/sponza/Sponza.gltf").value();
     UB_INFO("Number of meshes: {}", meshes.size());
     mesh_ = meshes[0];
+    loadedNodes_["Test"] = std::make_shared<MeshNode>(mesh_);
     texture_ = Texture{*device_, "textures/texture.jpg"};
     bindlessSetManager_.addTexture(texture_);
     
@@ -107,7 +109,27 @@ Renderer::~Renderer() {
     device_->getDevice().waitIdle(); 
 }
 
+void Renderer::updateScene(const Camera& camera)
+{
+    drawContext_.opaqueSurfaces.clear();
+
+    loadedNodes_["Test"]->draw(glm::mat4(1.0f), drawContext_);
+
+    SceneData data {
+        .view = camera.getViewMatrix(),
+        .proj = camera.getViewProjectionMatrix(), // TODO: only push proj matrix
+        .viewproj = camera.getViewProjectionMatrix(),
+        .ambientColor = glm::vec4(0.1f),
+        .sunlightDirection = glm::vec4(0, 1, 0.f, 1.0f),
+        .sunlightColor = glm::vec4(1.0f),
+        .materials = materialBuffer_.getAddress(),
+    };
+    sceneDataBuffer_.upload(*device_, &data, sizeof(data), 0);
+}
+
 void Renderer::draw(const Camera& camera, float averageFPS) {
+    updateScene(camera);
+
     // TODO: move to ImguiManager somehow
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -174,15 +196,6 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                     vk::PipelineBindPoint::eGraphics, *graphicsPipeline_
                 );
 
-                frame.commandBuffer.bindIndexBuffer(
-                    *mesh_->indexBuffer().getBuffer(), 0, vk::IndexType::eUint32
-                );
-
-                frame.commandBuffer.pushConstants<PushConstants>(
-                    *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
-                    {PushConstants{camera.getViewProjectionMatrix(), sceneDataBuffer_.getAddress(), mesh_->vertexBuffer().getAddress()}}
-                );
-
                 // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
                 // clip coordinate system where the origin is at the bottom left
                 // and the y-axis points upwards.
@@ -199,7 +212,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
 
                 vk::Rect2D scissor{
                     .offset = {0, 0},
-                      .extent = viewport_.getExtent()
+                    .extent = viewport_.getExtent()
                 };
 
                 frame.commandBuffer.setScissor(0, {scissor});
@@ -209,10 +222,17 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                     {*bindlessSetManager_.getTextureSet()}, {}
                 );
 
-                for (const auto& surface : mesh_->surfaces()) {
+                for (const auto& renderObject : drawContext_.opaqueSurfaces) {
+                    frame.commandBuffer.bindIndexBuffer(*renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);;
+
+                    frame.commandBuffer.pushConstants<PushConstants>(
+                        *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+                        {PushConstants{renderObject.transform, sceneDataBuffer_.getAddress(), renderObject.vertexBuffer->getAddress()}}
+                    );
+
                     frame.commandBuffer.drawIndexed(
-                        static_cast<uint32_t>(surface.count), 1,
-                        surface.startIndex, 0, 0
+                        static_cast<uint32_t>(renderObject.indexCount), 1,
+                        renderObject.firstIndex, 0, 0
                     );
                 }
 

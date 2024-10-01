@@ -10,6 +10,8 @@ Mesh::Mesh(
     const std::vector<GeoSurface>& surfaces
 )
     : surfaces_(surfaces) {
+
+    auto& allocator = device.allocator();
     // Vertex buffer.
     {
         vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
@@ -26,11 +28,9 @@ Mesh::Mesh(
             .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         };
 
-        vertexBuffer_ = device.createBuffer(
-            vertexBufferCreateInfo, vertexBufferAllocCreateInfo
-        );
+        vertexBuffer_ = std::make_shared<Buffer>(&allocator, vertexBufferCreateInfo, vertexBufferAllocCreateInfo);;
 
-        vertexBuffer_.upload(device, vertices.data(), bufferSize, 0);
+        vertexBuffer_->upload(device, vertices.data(), bufferSize, 0);
     }
 
     // Index buffer.
@@ -48,11 +48,10 @@ Mesh::Mesh(
             .usage = VMA_MEMORY_USAGE_GPU_ONLY
         };
 
-        indexBuffer_ = device.createBuffer(
-            indexBufferCreateInfo, indexBufferAllocCreateInfo
-        );
+        indexBuffer_ = std::make_shared<Buffer>(&allocator, indexBufferCreateInfo,
+                                                indexBufferAllocCreateInfo);
 
-        indexBuffer_.upload(device, indices.data(), bufferSize, 0);
+        indexBuffer_->upload(device, indices.data(), bufferSize, 0);
     }
 }
 

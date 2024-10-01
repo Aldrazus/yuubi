@@ -5,6 +5,7 @@
 #include "renderer/device.h"
 #include "renderer/imgui_manager.h"
 #include "renderer/instance.h"
+#include "renderer/render_object.h"
 #include "renderer/viewport.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/bindless_set_manager.h"
@@ -27,6 +28,7 @@ public:
 private:
     void createGraphicsPipeline();
     void createDescriptor();
+    void updateScene(const Camera& camera);
 
     const Window& window_;
     vk::raii::Context context_;
@@ -39,10 +41,10 @@ private:
     vk::raii::PipelineLayout pipelineLayout_ = nullptr;
     vk::raii::Pipeline graphicsPipeline_ = nullptr;
 
+    DrawContext drawContext_;
+    std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes_;
     std::shared_ptr<Mesh> mesh_;
-
     Texture texture_;
-
     BindlessSetManager bindlessSetManager_;
 
     // Global scene data updated once per frame/draw call.

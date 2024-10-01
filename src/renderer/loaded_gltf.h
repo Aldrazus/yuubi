@@ -25,15 +25,15 @@ public:
     Mesh(Mesh&& rhs) = default;
     Mesh& operator=(Mesh&& rhs) noexcept;
 
-    [[nodiscard]] const Buffer& vertexBuffer() const { return vertexBuffer_; }
-    [[nodiscard]] const Buffer& indexBuffer() const { return indexBuffer_; }
+    [[nodiscard]] std::shared_ptr<Buffer> vertexBuffer() const { return vertexBuffer_; }
+    [[nodiscard]] std::shared_ptr<Buffer> indexBuffer() const { return indexBuffer_; }
     [[nodiscard]] const std::vector<GeoSurface>& surfaces() const { return surfaces_; }
 
 private:
     std::string name_;
     std::vector<GeoSurface> surfaces_;
-    Buffer vertexBuffer_;
-    Buffer indexBuffer_;
+    std::shared_ptr<Buffer> vertexBuffer_;
+    std::shared_ptr<Buffer> indexBuffer_;
 };
 
 std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(

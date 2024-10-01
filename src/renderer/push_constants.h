@@ -7,7 +7,7 @@
 namespace yuubi {
 
 struct PushConstants {
-    glm::mat4 mvp;
+    glm::mat4 transform;
     vk::DeviceAddress sceneDataBuffer;
     vk::DeviceAddress vertexBuffer;
 };
