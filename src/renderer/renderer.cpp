@@ -36,6 +36,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     device_ = std::make_shared<Device>(instance_, *surface_);
     viewport_ = Viewport{surface_, device_};
     bindlessSetManager_ = BindlessSetManager(device_);
+    imguiManager_ = ImguiManager{instance_, *device_, window_, viewport_};
 
     auto meshes = loadGltfMeshes(*device_, "assets/monkey/monkey.glb").value();
     // auto meshes = loadGltfMeshes(*device_, "assets/sponza/Sponza.gltf").value();
@@ -43,7 +44,6 @@ Renderer::Renderer(const Window& window) : window_(window) {
     mesh_ = meshes[0];
     texture_ = Texture{*device_, "textures/texture.jpg"};
     bindlessSetManager_.addTexture(texture_);
-
     
     {
     const vk::DeviceSize bufferSize = 1024;
@@ -101,16 +101,14 @@ Renderer::Renderer(const Window& window) : window_(window) {
     }
 
     createGraphicsPipeline();
-    initImGui();
 }
 
 Renderer::~Renderer() { 
     device_->getDevice().waitIdle(); 
-    ImGui_ImplVulkan_Shutdown();
-
 }
 
 void Renderer::draw(const Camera& camera, float averageFPS) {
+    // TODO: move to ImguiManager somehow
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -219,6 +217,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                 }
 
                 // Draw UI.
+                // TODO: move to ImguiManager somehow
                 ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *frame.commandBuffer);
 
             }
@@ -288,64 +287,6 @@ void Renderer::createGraphicsPipeline() {
             .setColorAttachmentFormat(viewport_.getSwapChainImageFormat())
             .setDepthFormat(viewport_.getDepthFormat())
             .build(*device_);
-}
-
-void Renderer::initImGui() {
-    std::array<vk::DescriptorPoolSize, 11> poolSizes = {
-        vk::DescriptorPoolSize{             vk::DescriptorType::eSampler, 1000},
-        vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, 1000},
-        vk::DescriptorPoolSize{        vk::DescriptorType::eSampledImage, 1000},
-        vk::DescriptorPoolSize{        vk::DescriptorType::eStorageImage, 1000},
-        vk::DescriptorPoolSize{  vk::DescriptorType::eUniformTexelBuffer, 1000},
-        vk::DescriptorPoolSize{  vk::DescriptorType::eStorageTexelBuffer, 1000},
-        vk::DescriptorPoolSize{       vk::DescriptorType::eUniformBuffer, 1000},
-        vk::DescriptorPoolSize{       vk::DescriptorType::eStorageBuffer, 1000},
-        vk::DescriptorPoolSize{vk::DescriptorType::eUniformBufferDynamic, 1000},
-        vk::DescriptorPoolSize{vk::DescriptorType::eStorageBufferDynamic, 1000},
-        vk::DescriptorPoolSize{     vk::DescriptorType::eInputAttachment, 1000}
-    };
-
-    // Create descriptor pool.
-    vk::DescriptorPoolCreateInfo poolInfo{
-        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets = 1000,
-        .poolSizeCount = poolSizes.size(),
-        .pPoolSizes = poolSizes.data()
-    };
-
-    imguiDescriptorPool_ = device_->getDevice().createDescriptorPool(poolInfo);
-
-
-    // Setup Dear ImGui context.
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    // Setup platform/renderer backends.
-    ImGui_ImplGlfw_InitForVulkan(window_.getWindow(), true);
-    vk::Format colorFormat = viewport_.getSwapChainImageFormat();
-    vk::Format depthFormat = viewport_.getDepthFormat();
-    ImGui_ImplVulkan_InitInfo initInfo {
-        .Instance = *instance_.getInstance(),
-        .PhysicalDevice = *device_->getPhysicalDevice(),
-        .Device = *device_->getDevice(),
-        .QueueFamily = device_->getQueue().familyIndex,
-        .Queue = *device_->getQueue().queue,
-        .DescriptorPool = *imguiDescriptorPool_,
-        .MinImageCount = 2,
-        .ImageCount = 2,
-        .UseDynamicRendering = true,
-        .PipelineRenderingCreateInfo = vk::PipelineRenderingCreateInfo{
-            .colorAttachmentCount = 1,
-            .pColorAttachmentFormats = &colorFormat,
-            .depthAttachmentFormat = depthFormat,
-        }
-    };
-    ImGui_ImplVulkan_Init(&initInfo);
-
-    ImGui_ImplVulkan_CreateFontsTexture();
-}
-
-void Renderer::createDefaultData() {
 }
 
 }

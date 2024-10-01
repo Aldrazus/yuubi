@@ -3,6 +3,7 @@
 #include "renderer/camera.h"
 #include "renderer/descriptor_allocator.h"
 #include "renderer/device.h"
+#include "renderer/imgui_manager.h"
 #include "renderer/instance.h"
 #include "renderer/viewport.h"
 #include "renderer/vma/buffer.h"
@@ -26,8 +27,6 @@ public:
 private:
     void createGraphicsPipeline();
     void createDescriptor();
-    void initImGui();
-    void createDefaultData();
 
     const Window& window_;
     vk::raii::Context context_;
@@ -35,6 +34,7 @@ private:
     std::shared_ptr<vk::raii::SurfaceKHR> surface_;
     std::shared_ptr<Device> device_;
     Viewport viewport_;
+    ImguiManager imguiManager_;
 
     vk::raii::PipelineLayout pipelineLayout_ = nullptr;
     vk::raii::Pipeline graphicsPipeline_ = nullptr;
@@ -44,8 +44,6 @@ private:
     Texture texture_;
 
     BindlessSetManager bindlessSetManager_;
-
-    vk::raii::DescriptorPool imguiDescriptorPool_ = nullptr;
 
     // Global scene data updated once per frame/draw call.
     Buffer sceneDataBuffer_;

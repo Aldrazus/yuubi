@@ -9,6 +9,7 @@ target_sources(
     "renderer/descriptor_allocator.cpp"
     "renderer/descriptor_layout_builder.cpp"
     "renderer/device.cpp"
+    "renderer/imgui_manager.cpp"
     "renderer/instance.cpp"
     "renderer/loaded_gltf.cpp"
     "renderer/pipeline_builder.cpp"
