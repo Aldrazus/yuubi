@@ -44,8 +44,6 @@ Renderer::Renderer(const Window& window) : window_(window) {
     UB_INFO("Number of meshes: {}", meshes.size());
     mesh_ = meshes[0];
     loadedNodes_["Test"] = std::make_shared<MeshNode>(mesh_);
-    texture_ = Texture{*device_, "textures/texture.jpg"};
-    bindlessSetManager_.addTexture(texture_);
     
     {
     const vk::DeviceSize bufferSize = 1024;

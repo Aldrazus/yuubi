@@ -44,7 +44,6 @@ private:
     DrawContext drawContext_;
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes_;
     std::shared_ptr<Mesh> mesh_;
-    Texture texture_;
     BindlessSetManager bindlessSetManager_;
 
     // Global scene data updated once per frame/draw call.
