@@ -2,7 +2,11 @@
 
 #include "renderer/vma/image.h"
 #include "renderer/device.h"
-#include "fastgltf/types.hpp"
+#include <fastgltf/glm_element_traits.hpp>
+#include <fastgltf/core.hpp>
+#include <fastgltf/types.hpp>
+#include <fastgltf/tools.hpp>
+#include <ranges>
 #include "renderer/vulkan_usage.h"
 #include "renderer/vulkan/util.h"
 #include <stb_image.h>
@@ -101,7 +105,7 @@ yuubi::Image createImageFromData(yuubi::Device& device, const ImageData& data) {
 
 // PERF: Load images in parallel with stb_image.
 std::optional<yuubi::Image> loadImage(
-    yuubi::Device& device, fastgltf::Asset& asset, fastgltf::Image& image
+    yuubi::Device& device, const fastgltf::Asset& asset, const fastgltf::Image& image
 ) {
     std::optional<yuubi::Image> newImage;
 
@@ -192,11 +196,85 @@ std::optional<yuubi::Image> loadImage(
         },
         image.data
     );
+
+    return newImage;
 }
+
+std::pair<vk::Filter, vk::SamplerMipmapMode> getSamplerFilterInfo(
+    fastgltf::Filter filter
+) {
+    switch (filter) {
+        case fastgltf::Filter::Nearest:
+            return {vk::Filter::eNearest, vk::SamplerMipmapMode::eLinear};
+        case fastgltf::Filter::NearestMipMapNearest:
+            return {vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest};
+        case fastgltf::Filter::NearestMipMapLinear:
+            return {vk::Filter::eNearest, vk::SamplerMipmapMode::eLinear};
+
+        case fastgltf::Filter::Linear:
+            return {vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
+        case fastgltf::Filter::LinearMipMapNearest:
+            return {vk::Filter::eLinear, vk::SamplerMipmapMode::eNearest};
+        case fastgltf::Filter::LinearMipMapLinear:
+            return {vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear};
+
+        default:
+            return {vk::Filter::eNearest, vk::SamplerMipmapMode::eLinear};
+    }
+}
+
+std::vector<vk::raii::Sampler> loadSamplers(
+    yuubi::Device& device, std::span<fastgltf::Sampler> samplers
+) {
+    return samplers | std::views::transform([&device](auto const& sampler) {
+               auto [minFilter, minMipmapMode] = getSamplerFilterInfo(
+                   sampler.minFilter.value_or(fastgltf::Filter::Nearest)
+               );
+               auto [magFilter, _] = getSamplerFilterInfo(
+                   sampler.magFilter.value_or(fastgltf::Filter::Nearest)
+               );
+
+               return device.getDevice().createSampler(vk::SamplerCreateInfo{
+                   .magFilter = magFilter,
+                   .minFilter = minFilter,
+                   .mipmapMode = minMipmapMode,
+                   .minLod = 0,
+                   .maxLod = vk::LodClampNone,
+               });
+           }) |
+           std::ranges::to<std::vector>();
+}
+
 }
 
 namespace yuubi {
 
-GLTFAsset::GLTFAsset(Device& device, const std::filesystem::path& filePath) {}
+GLTFAsset::GLTFAsset(Device& device, const std::filesystem::path& filePath) {
+    UB_INFO("Loading GLTF file: {}", filePath.string());
 
+    fastgltf::Parser parser;
+
+    auto data = fastgltf::GltfDataBuffer::FromPath(filePath.string());
+    if (data.error() != fastgltf::Error::None) {
+        UB_ERROR("Unable to load file: {}", filePath.string());
+        // TODO: throw
+    }
+
+    constexpr auto gltfOptions =
+        fastgltf::Options::DontRequireValidAssetMember |
+        fastgltf::Options::AllowDouble | fastgltf::Options::LoadExternalBuffers;
+    auto loadedGltf =
+        parser.loadGltf(data.get(), filePath.parent_path(), gltfOptions);
+    if (auto error = loadedGltf.error(); error != fastgltf::Error::None) {
+        UB_ERROR("Unable to parse file: {}", filePath.string());
+        // TODO: throw
+    }
+    auto asset = std::move(loadedGltf.get());
+
+    // TODO: handle missing images by replacing with error checkerboard
+    auto images = asset.images | std::views::transform([&device, &asset](const fastgltf::Image& image){
+        return loadImage(device, asset, image);
+    }) | std::views::filter(); 
 }
+
+} 
