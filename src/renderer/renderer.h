@@ -3,6 +3,7 @@
 #include "renderer/camera.h"
 #include "renderer/descriptor_allocator.h"
 #include "renderer/device.h"
+#include "renderer/gltf/asset.h"
 #include "renderer/imgui_manager.h"
 #include "renderer/instance.h"
 #include "renderer/render_object.h"
@@ -42,6 +43,7 @@ private:
     vk::raii::Pipeline graphicsPipeline_ = nullptr;
 
     DrawContext drawContext_;
+    GLTFAsset asset_;
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes_;
     std::shared_ptr<Mesh> mesh_;
     BindlessSetManager bindlessSetManager_;

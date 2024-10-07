@@ -15,13 +15,14 @@ namespace yuubi {
 struct GeoSurface {
     uint32_t startIndex;
     uint32_t count;
+    uint32_t materialIndex = 0;
 };
 
 class Device;
 class Mesh : NonCopyable {
 public:
     Mesh() = default;
-    Mesh(Device& device, std::span<Vertex> vertices, std::span<uint32_t> indices, const std::vector<GeoSurface>& surfaces);
+    Mesh(std::string name, Device& device, std::span<Vertex> vertices, std::span<uint32_t> indices, std::vector<GeoSurface>&& surfaces);
     Mesh(Mesh&& rhs) = default;
     Mesh& operator=(Mesh&& rhs) noexcept;
 
@@ -35,10 +36,5 @@ private:
     std::shared_ptr<Buffer> vertexBuffer_;
     std::shared_ptr<Buffer> indexBuffer_;
 };
-
-std::optional<std::vector<std::shared_ptr<Mesh>>> loadGltfMeshes(
-    Device& device,
-    const std::filesystem::path& path
-);
 
 }

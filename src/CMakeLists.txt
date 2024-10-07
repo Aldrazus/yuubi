@@ -4,6 +4,7 @@ target_sources(
     "core/io/file.cpp"
     "core/io/image.cpp"
     "core/log.cpp"
+    "renderer/gltf/asset.cpp"
     "renderer/bindless_set_manager.cpp"
     "renderer/camera.cpp"
     "renderer/descriptor_allocator.cpp"

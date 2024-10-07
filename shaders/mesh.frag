@@ -12,6 +12,6 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     MaterialData material = PushConstants.sceneData.materials.data[0];
-    outColor = texture(textures[material.diffuseTex], inUv);
-    // outColor = vec4(inColor, 1.0f); 
+    // outColor = texture(textures[material.diffuseTex], inUv);
+    outColor = vec4(inColor, 1.0f); 
 }

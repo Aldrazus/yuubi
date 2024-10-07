@@ -29,12 +29,11 @@ class Node : public Renderable {
 public:
     virtual void draw(const glm::mat4& topMatrix, DrawContext& context) override;
     void refreshTransform(const glm::mat4& parentMatrix);
-protected:
-    std::weak_ptr<Node> parent_;
-    std::vector<std::shared_ptr<Node>> children_;
 
-    glm::mat4 localTransform_ = glm::mat4{ 1.0f};
-    glm::mat4 worldTransform_ = glm::mat4{1.0f};
+    glm::mat4 localTransform = glm::mat4{ 1.0f};
+    glm::mat4 worldTransform = glm::mat4{1.0f};
+    std::weak_ptr<Node> parent;
+    std::vector<std::shared_ptr<Node>> children;
 };
 
 class Mesh;

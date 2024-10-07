@@ -39,11 +39,8 @@ Renderer::Renderer(const Window& window) : window_(window) {
     bindlessSetManager_ = BindlessSetManager(device_);
     imguiManager_ = ImguiManager{instance_, *device_, window_, viewport_};
 
-    auto meshes = loadGltfMeshes(*device_, "assets/monkey/monkey.glb").value();
-    // auto meshes = loadGltfMeshes(*device_, "assets/sponza/Sponza.gltf").value();
-    UB_INFO("Number of meshes: {}", meshes.size());
-    mesh_ = meshes[0];
-    loadedNodes_["Test"] = std::make_shared<MeshNode>(mesh_);
+    // asset_ = GLTFAsset(*device_, "assets/monkey/monkey.glb");
+    asset_ = GLTFAsset(*device_, "assets/sponza/Sponza.gltf");
     
     {
     const vk::DeviceSize bufferSize = 1024;
@@ -111,7 +108,7 @@ void Renderer::updateScene(const Camera& camera)
 {
     drawContext_.opaqueSurfaces.clear();
 
-    loadedNodes_["Test"]->draw(glm::mat4(1.0f), drawContext_);
+    asset_.draw(glm::mat4(1.0f), drawContext_);
 
     SceneData data {
         .view = camera.getViewMatrix(),
