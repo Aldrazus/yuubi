@@ -12,9 +12,9 @@ TextureManager::TextureManager(std::shared_ptr<Device> device) : device_(std::mo
     createDefaultTexture();
 }
 
-TextureHandle TextureManager::addTexture(const std::shared_ptr<Texture>& texture
+ResourceHandle TextureManager::addResource(const std::shared_ptr<Texture>& texture
 ) {
-    textures_[nextAvailableHandle_] = texture;
+    auto handle = ResourceManager::addResource(texture);
 
     vk::DescriptorImageInfo imageInfo{
         .sampler = *texture->sampler,
@@ -26,13 +26,14 @@ TextureHandle TextureManager::addTexture(const std::shared_ptr<Texture>& texture
         vk::WriteDescriptorSet{
             .dstSet = *textureSet_,
             .dstBinding = 0,
-            .dstArrayElement = nextAvailableHandle_,
+            .dstArrayElement = handle,
             .descriptorCount = 1,
             .descriptorType = vk::DescriptorType::eCombinedImageSampler,
             .pImageInfo = &imageInfo
         }
     }, {});
-    return nextAvailableHandle_++;
+
+    return handle; 
 }
 
 void TextureManager::createDescriptorSet() {
@@ -154,7 +155,7 @@ void TextureManager::createErrorTexture() {
     auto errorCheckerboardTexture = std::make_shared<Texture>(
         std::move(errorCheckerboardImage), std::move(errorCheckerboardView), std::move(errorCheckerboardSampler)
     );
-    addTexture(errorCheckerboardTexture);
+    addResource(errorCheckerboardTexture);
 }
 
 void TextureManager::createDefaultTexture() {
@@ -201,7 +202,7 @@ void TextureManager::createDefaultTexture() {
     auto whiteTexture = std::make_shared<Texture>(
         std::move(whiteImage), std::move(whiteView), std::move(whiteSampler)
     );
-    addTexture(whiteTexture);
+    addResource(whiteTexture);
 }
 
 }

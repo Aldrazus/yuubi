@@ -1,10 +1,13 @@
 #pragma once
 
+#include "renderer/resources/resource_manager.h"
 #include "renderer/vulkan_usage.h"
 #include "pch.h"
 #include "renderer/vma/image.h"
 
 namespace yuubi {
+
+const uint32_t maxTextures = 1024;
 
 struct Texture : NonCopyable {
     Texture() = default;
@@ -29,15 +32,14 @@ struct Texture : NonCopyable {
 using TextureHandle = uint32_t;
 
 class Device;
-class TextureManager : NonCopyable {
+class TextureManager : ResourceManager<Texture, maxTextures>, NonCopyable {
 public:
     TextureManager() = default;
     explicit TextureManager(std::shared_ptr<Device> device);
     TextureManager(TextureManager&&) = default;
-    TextureManager& operator=(TextureManager&& rhs) {
+    TextureManager& operator=(TextureManager&& rhs) noexcept {
         if (this != &rhs) {
             std::swap(device_, rhs.device_);
-            std::swap(textures_, rhs.textures_);
             std::swap(textureSet_, rhs.textureSet_);
             std::swap(textureSetLayout_, rhs.textureSetLayout_);
             std::swap(pool_, rhs.pool_);
@@ -46,7 +48,7 @@ public:
         return *this;
     }
 
-    TextureHandle addTexture(const std::shared_ptr<Texture>& texture);
+    virtual ResourceHandle addResource(const std::shared_ptr<Texture>& texture) override;
 
     [[nodiscard]] const vk::raii::DescriptorSetLayout& getTextureSetLayout(
     ) const {
@@ -61,15 +63,7 @@ private:
     void createErrorTexture();
     void createDefaultTexture();
 
-    static const uint32_t maxTextures = 1024;
-
     std::shared_ptr<Device> device_;
-
-    // TODO: This implementation keepts the textures in memory until the manager
-    // is destroyed along with all other references. Use a slot map with
-    // weak references instead to allow for texture removal.
-    std::array<std::shared_ptr<Texture>, maxTextures> textures_;
-    TextureHandle nextAvailableHandle_ = 0;
 
     vk::raii::DescriptorPool pool_ = nullptr;
     vk::raii::DescriptorSetLayout textureSetLayout_ = nullptr;
