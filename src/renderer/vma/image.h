@@ -17,15 +17,23 @@ struct ImageCreateInfo {
     vk::MemoryPropertyFlags properties;
 };
 
+struct ImageData {
+    // TODO: use std::byte?
+    unsigned char* pixels;
+    uint32_t width;
+    uint32_t height;
+    uint32_t numChannels;
+};
+
 class Image : NonCopyable {
 public:
-    Image(){};
+    Image() = default;
     Image(Allocator* allocator, ImageCreateInfo createInfo);
-    Image(Image&& rhs);
-    Image& operator=(Image&& rhs);
+    Image(Image&& rhs) noexcept;
+    Image& operator=(Image&& rhs) noexcept;
     ~Image();
 
-    inline const vk::raii::Image& getImage() const { return image_; }
+    [[nodiscard]] inline const vk::raii::Image& getImage() const { return image_; }
 
 private:
     void destroy();
@@ -40,4 +48,7 @@ private:
     Allocator* allocator_ = nullptr;
     VmaAllocation allocation_;
 };
+
+class Device;
+Image createImageFromData(Device& device, const ImageData& data);
 }

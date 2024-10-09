@@ -14,7 +14,6 @@
 #include "renderer/vulkan_usage.h"
 #include "renderer/pipeline_builder.h"
 #include "renderer/descriptor_layout_builder.h"
-#include "renderer/bindless_set_manager.h"
 #include "renderer/vulkan/util.h"
 #include "renderer/push_constants.h"
 #include "renderer/gpu_data.h"
@@ -36,11 +35,11 @@ Renderer::Renderer(const Window& window) : window_(window) {
     surface_ = std::make_shared<vk::raii::SurfaceKHR>(instance_, tmp);
     device_ = std::make_shared<Device>(instance_, *surface_);
     viewport_ = Viewport{surface_, device_};
-    bindlessSetManager_ = BindlessSetManager(device_);
+    textureManager_ = TextureManager(device_);
     imguiManager_ = ImguiManager{instance_, *device_, window_, viewport_};
 
-    // asset_ = GLTFAsset(*device_, "assets/monkey/monkey.glb");
-    asset_ = GLTFAsset(*device_, "assets/sponza/Sponza.gltf");
+    asset_ = GLTFAsset(*device_, "assets/monkey/monkey.glb");
+    // asset_ = GLTFAsset(*device_, "assets/sponza/Sponza.gltf");
     
     {
     const vk::DeviceSize bufferSize = 1024;
@@ -214,7 +213,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
 
                 frame.commandBuffer.bindDescriptorSets(
                     vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0,
-                    {*bindlessSetManager_.getTextureSet()}, {}
+                    {*textureManager_.getTextureSet()}, {}
                 );
 
                 for (const auto& renderObject : drawContext_.opaqueSurfaces) {
@@ -283,7 +282,7 @@ void Renderer::createGraphicsPipeline() {
     };
 
     std::vector<vk::DescriptorSetLayout> setLayouts = {
-        *bindlessSetManager_.getTextureSetLayout()
+        *textureManager_.getTextureSetLayout()
     };
 
     pipelineLayout_ =

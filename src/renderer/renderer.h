@@ -9,8 +9,7 @@
 #include "renderer/render_object.h"
 #include "renderer/viewport.h"
 #include "renderer/vma/buffer.h"
-#include "renderer/bindless_set_manager.h"
-#include "renderer/resources/texture.h"
+#include "renderer/resources/texture_manager.h"
 #include "window.h"
 #include "pch.h"
 #include "renderer/vertex.h"
@@ -46,7 +45,7 @@ private:
     GLTFAsset asset_;
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes_;
     std::shared_ptr<Mesh> mesh_;
-    BindlessSetManager bindlessSetManager_;
+    TextureManager textureManager_;
 
     // Global scene data updated once per frame/draw call.
     Buffer sceneDataBuffer_;
