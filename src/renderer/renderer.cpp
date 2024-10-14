@@ -41,31 +41,10 @@ Renderer::Renderer(const Window& window) : window_(window) {
     asset_ = GLTFAsset(*device_, "assets/monkey/monkey.glb");
     // asset_ = GLTFAsset(*device_, "assets/sponza/Sponza.gltf");
     
-    {
-    const vk::DeviceSize bufferSize = 1024;
-        vk::BufferCreateInfo bufferCreateInfo{
-            .size = bufferSize,
-            .usage = vk::BufferUsageFlagBits::eStorageBuffer |
-                     vk::BufferUsageFlagBits::eTransferDst |
-                    vk::BufferUsageFlagBits::eShaderDeviceAddress
-        };
 
-        VmaAllocationCreateInfo shaderDataBufferAllocInfo {
-            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        };
-
-        materialBuffer_ = device_->createBuffer(
-            bufferCreateInfo, shaderDataBufferAllocInfo 
-        );
-
-        MaterialData data{
-            .baseColor = glm::vec4{0, 0, 0, 0},
-            .diffuseTex = 0,
-            .metallicRoughnessTex = 0
-        };
-
-        materialBuffer_.upload(*device_, &data, sizeof(MaterialData), 0);
-    }
+    materialManager_ = MaterialManager(device_);
+    auto testMaterial = std::make_shared<MaterialData>(glm::vec4{0, 0, 0, 0}, 0, 0);
+    materialManager_.addResource(testMaterial);
 
     {
         vk::DeviceSize bufferSize = 1024;
@@ -90,7 +69,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
             .viewproj = {},
             .ambientColor = {},
             .sunlightColor = {},
-            .materials = materialBuffer_.getAddress(),
+            .materials = materialManager_.getBufferAddress(),
         };
 
         sceneDataBuffer_.upload(*device_, &data, sizeof(data), 0);
@@ -116,7 +95,7 @@ void Renderer::updateScene(const Camera& camera)
         .ambientColor = glm::vec4(0.1f),
         .sunlightDirection = glm::vec4(0, 1, 0.f, 1.0f),
         .sunlightColor = glm::vec4(1.0f),
-        .materials = materialBuffer_.getAddress(),
+        .materials = materialManager_.getBufferAddress(),
     };
     sceneDataBuffer_.upload(*device_, &data, sizeof(data), 0);
 }

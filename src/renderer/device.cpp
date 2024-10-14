@@ -249,10 +249,13 @@ const vk::StructureChain<
         vk::PhysicalDeviceVulkan12Features{
                                     .descriptorIndexing = vk::True,
                                     .descriptorBindingSampledImageUpdateAfterBind = vk::True,
+                                    .descriptorBindingUpdateUnusedWhilePending = vk::True,
                                     .descriptorBindingPartiallyBound = vk::True,
+                                    .descriptorBindingVariableDescriptorCount = vk::True,
+                                    .runtimeDescriptorArray = vk::True,
                                     .bufferDeviceAddress = vk::True,
-                                    .bufferDeviceAddressCaptureReplay = vk::True
-        },
+                                    .bufferDeviceAddressCaptureReplay = vk::True,
+                                    },
         vk::PhysicalDeviceVulkan13Features{
                                     .synchronization2 = vk::True, .dynamicRendering = vk::True
         },

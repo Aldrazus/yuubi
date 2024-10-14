@@ -6,13 +6,15 @@
 
 namespace yuubi {
 
-TextureManager::TextureManager(std::shared_ptr<Device> device) : device_(std::move(device)) {
+TextureManager::TextureManager(std::shared_ptr<Device> device)
+    : device_(std::move(device)) {
     createDescriptorSet();
     createErrorTexture();
     createDefaultTexture();
 }
 
-ResourceHandle TextureManager::addResource(const std::shared_ptr<Texture>& texture
+ResourceHandle TextureManager::addResource(
+    const std::shared_ptr<Texture>& texture
 ) {
     auto handle = ResourceManager::addResource(texture);
 
@@ -22,18 +24,21 @@ ResourceHandle TextureManager::addResource(const std::shared_ptr<Texture>& textu
         .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
     };
 
-    device_->getDevice().updateDescriptorSets({
-        vk::WriteDescriptorSet{
-            .dstSet = *textureSet_,
-            .dstBinding = 0,
-            .dstArrayElement = handle,
-            .descriptorCount = 1,
-            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-            .pImageInfo = &imageInfo
-        }
-    }, {});
+    device_->getDevice().updateDescriptorSets(
+        {
+            vk::WriteDescriptorSet{
+                                   .dstSet = *textureSet_,
+                                   .dstBinding = 0,
+                                   .dstArrayElement = handle,
+                                   .descriptorCount = 1,
+                                   .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                   .pImageInfo = &imageInfo
+            }
+    },
+        {}
+    );
 
-    return handle; 
+    return handle;
 }
 
 void TextureManager::createDescriptorSet() {
@@ -41,6 +46,7 @@ void TextureManager::createDescriptorSet() {
     DescriptorLayoutBuilder layoutBuilder(device_);
 
     vk::DescriptorBindingFlags bindingFlags =
+        vk::DescriptorBindingFlagBits::eVariableDescriptorCount |
         vk::DescriptorBindingFlagBits::ePartiallyBound |
         vk::DescriptorBindingFlagBits::eUpdateAfterBind;
 
@@ -62,14 +68,16 @@ void TextureManager::createDescriptorSet() {
     // Create pool.
     std::vector<vk::DescriptorPoolSize> poolSizes{
         vk::DescriptorPoolSize{
-                               .type = vk::DescriptorType::eStorageImage,.descriptorCount = maxTextures                                                                          },
+                               .type = vk::DescriptorType::eStorageImage,
+                               .descriptorCount = maxTextures                                      },
         vk::DescriptorPoolSize{
-                               .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = maxTextures},
+                               .type = vk::DescriptorType::eUniformBuffer,
+                               .descriptorCount = maxTextures                                      },
         vk::DescriptorPoolSize{
-                               .type = vk::DescriptorType::eSampler, .descriptorCount = maxTextures      },
+                               .type = vk::DescriptorType::eSampler, .descriptorCount = maxTextures},
         vk::DescriptorPoolSize{
                                .type = vk::DescriptorType::eCombinedImageSampler,
-                               .descriptorCount = maxTextures                                            }
+                               .descriptorCount = maxTextures                                      }
     };
 
     vk::DescriptorPoolCreateInfo poolInfo{
@@ -83,13 +91,21 @@ void TextureManager::createDescriptorSet() {
     pool_ = device_->getDevice().createDescriptorPool(poolInfo);
 
     // Create set.
-    vk::DescriptorSetAllocateInfo allocInfo{
-        .descriptorPool = *pool_,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &*textureSetLayout_
+    vk::StructureChain<
+        vk::DescriptorSetAllocateInfo,
+        vk::DescriptorSetVariableDescriptorCountAllocateInfo>
+        allocInfo{
+            vk::DescriptorSetAllocateInfo{
+                                          .descriptorPool = *pool_,
+                                          .descriptorSetCount = 1,
+                                          .pSetLayouts = &*textureSetLayout_
+            },
+            vk::DescriptorSetVariableDescriptorCountAllocateInfo{
+                                          .descriptorSetCount = 1, .pDescriptorCounts = &maxTextures
+            }
     };
 
-    vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
+    vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo.get());
     textureSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
 }
 
@@ -153,7 +169,8 @@ void TextureManager::createErrorTexture() {
         });
 
     auto errorCheckerboardTexture = std::make_shared<Texture>(
-        std::move(errorCheckerboardImage), std::move(errorCheckerboardView), std::move(errorCheckerboardSampler)
+        std::move(errorCheckerboardImage), std::move(errorCheckerboardView),
+        std::move(errorCheckerboardSampler)
     );
     addResource(errorCheckerboardTexture);
 }

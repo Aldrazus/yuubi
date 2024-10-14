@@ -5,6 +5,7 @@ target_sources(
     "core/io/image.cpp"
     "core/log.cpp"
     "renderer/gltf/asset.cpp"
+    "renderer/resources/material_manager.cpp"
     "renderer/resources/texture_manager.cpp"
     "renderer/camera.cpp"
     "renderer/descriptor_allocator.cpp"

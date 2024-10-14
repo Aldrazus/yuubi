@@ -7,6 +7,7 @@
 
 namespace yuubi {
 
+// TODO: Find right limit.
 const uint32_t maxTextures = 1024;
 
 struct Texture : NonCopyable {

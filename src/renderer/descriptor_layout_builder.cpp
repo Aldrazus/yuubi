@@ -16,13 +16,17 @@ DescriptorLayoutBuilder& DescriptorLayoutBuilder::addBinding(
 vk::raii::DescriptorSetLayout DescriptorLayoutBuilder::build(
     const vk::DescriptorSetLayoutBindingFlagsCreateInfo& bindingFlags,
     const vk::DescriptorSetLayoutCreateFlags& layoutFlags) {
-    vk::DescriptorSetLayoutCreateInfo createInfo{
-        .pNext = &bindingFlags,
-        .flags = layoutFlags,
-        .bindingCount = static_cast<uint32_t>(bindings_.size()),
-        .pBindings = bindings_.data()};
+    const vk::StructureChain<vk::DescriptorSetLayoutCreateInfo, vk::DescriptorSetLayoutBindingFlagsCreateInfo> createInfo{
+        vk::DescriptorSetLayoutCreateInfo{
+            .pNext = &bindingFlags,
+            .flags = layoutFlags,
+            .bindingCount = static_cast<uint32_t>(bindings_.size()),
+            .pBindings = bindings_.data()
+        }, 
+        bindingFlags
+    };
 
-    return device_->getDevice().createDescriptorSetLayout(createInfo);
+    return device_->getDevice().createDescriptorSetLayout(createInfo.get());
 }
 
 }

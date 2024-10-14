@@ -7,6 +7,7 @@
 #include "renderer/imgui_manager.h"
 #include "renderer/instance.h"
 #include "renderer/render_object.h"
+#include "renderer/resources/material_manager.h"
 #include "renderer/viewport.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/resources/texture_manager.h"
@@ -49,7 +50,8 @@ private:
 
     // Global scene data updated once per frame/draw call.
     Buffer sceneDataBuffer_;
-    Buffer materialBuffer_;
+
+    MaterialManager materialManager_;
 };
 
 }
