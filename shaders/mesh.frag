@@ -1,6 +1,7 @@
 #version 450
 
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
 
 #include "push_constants.glsl"
 #include "bindless.glsl"
@@ -12,6 +13,7 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     MaterialData material = PushConstants.sceneData.materials.data[0];
-    // outColor = texture(textures[material.diffuseTex], inUv);
-    outColor = vec4(inColor, 1.0f); 
+    outColor = texture(textures[nonuniformEXT(material.diffuseTex)], inUv);
+    // outColor = vec4(inColor, 1.0f); 
+    outColor = vec4(material.diffuseTex);
 }

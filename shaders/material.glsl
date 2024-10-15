@@ -7,10 +7,11 @@ struct MaterialData {
     vec4 baseColor;
     uint diffuseTex;
     uint metallicRoughnessTex;
+    uint padding[2];
 };
 
 layout (buffer_reference, std430) readonly buffer MaterialsBuffer {
     MaterialData data[];
-} materialsBuffer;
+};
 
 #endif

@@ -19,6 +19,7 @@ struct MaterialData {
     glm::vec4 baseColor;
     uint32_t diffuseTex;
     uint32_t metallicRoughnessTex;
+    uint32_t padding[2];
 };
 
 }

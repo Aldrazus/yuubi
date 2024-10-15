@@ -47,7 +47,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     materialManager_.addResource(testMaterial);
 
     {
-        vk::DeviceSize bufferSize = 1024;
+        vk::DeviceSize bufferSize = sizeof(SceneData);
         vk::BufferCreateInfo bufferCreateInfo{
             .size = bufferSize,
             .usage = vk::BufferUsageFlagBits::eStorageBuffer |
@@ -68,6 +68,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
             .proj = {},
             .viewproj = {},
             .ambientColor = {},
+            .sunlightDirection = {},
             .sunlightColor = {},
             .materials = materialManager_.getBufferAddress(),
         };
