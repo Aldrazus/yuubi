@@ -43,7 +43,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     
 
     materialManager_ = MaterialManager(device_);
-    auto testMaterial = std::make_shared<MaterialData>(glm::vec4{0, 0, 0, 0}, 0, 0);
+    auto testMaterial = std::make_shared<MaterialData>(glm::vec4{1, 1, 1, 1}, 1, 0);
     materialManager_.addResource(testMaterial);
 
     {

@@ -15,5 +15,4 @@ void main() {
     MaterialData material = PushConstants.sceneData.materials.data[0];
     outColor = texture(textures[nonuniformEXT(material.diffuseTex)], inUv);
     // outColor = vec4(inColor, 1.0f); 
-    outColor = vec4(material.diffuseTex);
 }

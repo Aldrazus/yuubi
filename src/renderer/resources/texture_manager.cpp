@@ -32,8 +32,7 @@ ResourceHandle TextureManager::addResource(
                                    .dstArrayElement = handle,
                                    .descriptorCount = 1,
                                    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-                                   .pImageInfo = &imageInfo
-            }
+                                   .pImageInfo = &imageInfo}
     },
         {}
     );
@@ -179,10 +178,10 @@ void TextureManager::createDefaultTexture() {
     const size_t textureWidth = 1;
     const size_t numChannels = 4;
 
-    std::array<unsigned char, numChannels> pixels = {1, 1, 1, 0};
+    uint32_t pixels = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
 
     ImageData imageData{
-        .pixels = pixels.data(),
+        .pixels = reinterpret_cast<unsigned char*>(&pixels),
         .width = textureWidth,
         .height = textureWidth,
         .numChannels = numChannels,

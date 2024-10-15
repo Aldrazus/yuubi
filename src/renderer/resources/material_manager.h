@@ -15,9 +15,10 @@ class MaterialManager : ResourceManager<MaterialData, maxMaterials>, NonCopyable
 public:
     MaterialManager() = default;
     explicit MaterialManager(std::shared_ptr<Device> device);
-    MaterialManager(MaterialManager&&) = default;
+    MaterialManager(MaterialManager&& rhs) noexcept : ResourceManager(std::move(rhs)), device_(std::exchange(rhs.device_, {})), materialBuffer_(std::exchange(rhs.materialBuffer_, {})) {};
     MaterialManager& operator=(MaterialManager&& rhs) noexcept {
         if (this != & rhs) {
+            ResourceManager::operator=(std::move(rhs));
             std::swap(device_, rhs.device_);
             std::swap(materialBuffer_, rhs.materialBuffer_);
         }

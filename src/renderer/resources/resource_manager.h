@@ -15,9 +15,16 @@ public:
         resources_[nextAvailableHandle_] = resource;
         return nextAvailableHandle_++;
     };
+    ResourceManager(ResourceManager&& rhs) noexcept : nextAvailableHandle_(std::exchange(rhs.nextAvailableHandle_, 0)), resources_(std::exchange(rhs.resources_, {})) {};
+    ResourceManager& operator=(ResourceManager&& rhs) noexcept {
+        if (this != &rhs) {
+            std::swap(nextAvailableHandle_, rhs.nextAvailableHandle_);
+            std::swap(resources_, rhs.resources_);
+        }
+
+        return *this;
+    };
 protected:
-    ResourceManager(ResourceManager&& rhs) = default;
-    ResourceManager& operator=(ResourceManager&& rhs) = default;
     ResourceManager() = default;
 
 
