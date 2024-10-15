@@ -14,6 +14,6 @@ layout (buffer_reference, scalar) readonly buffer SceneDataBuffer {
     vec4 sunlightDirection; // w for sun power
     vec4 sunlightColor;
     MaterialsBuffer materials;
-} sceneDataBuffer;
+};
 
 #endif
