@@ -203,6 +203,9 @@ void Device::createImmediateCommandResources() {
     };
 }
 
+// PERF: Immediate commands are typically used to load data onto the GPU,
+// blocking the main thread. Handle these operations asynchronously instead
+// via C++20 coroutines.
 void Device::submitImmediateCommands(
     std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function
 ) {
