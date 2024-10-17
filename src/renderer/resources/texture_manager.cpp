@@ -10,7 +10,6 @@ TextureManager::TextureManager(std::shared_ptr<Device> device)
     : device_(std::move(device)) {
     createDescriptorSet();
     createErrorTexture();
-    createDefaultTexture();
 }
 
 ResourceHandle TextureManager::addResource(
@@ -172,53 +171,6 @@ void TextureManager::createErrorTexture() {
         std::move(errorCheckerboardSampler)
     );
     addResource(errorCheckerboardTexture);
-}
-
-void TextureManager::createDefaultTexture() {
-    const size_t textureWidth = 1;
-    const size_t numChannels = 4;
-
-    uint32_t pixels = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
-
-    ImageData imageData{
-        .pixels = reinterpret_cast<unsigned char*>(&pixels),
-        .width = textureWidth,
-        .height = textureWidth,
-        .numChannels = numChannels,
-    };
-
-    auto whiteImage = createImageFromData(*device_, imageData);
-    auto whiteView = device_->createImageView(
-        *whiteImage.getImage(), vk::Format::eR8G8B8A8Srgb,
-        vk::ImageAspectFlagBits::eColor
-    );
-
-    // TODO: write createSampler() member function on Device
-    auto whiteSampler =
-        device_->getDevice().createSampler(vk::SamplerCreateInfo{
-            .magFilter = vk::Filter::eLinear,
-            .minFilter = vk::Filter::eLinear,
-            .mipmapMode = vk::SamplerMipmapMode::eLinear,
-            .addressModeU = vk::SamplerAddressMode::eRepeat,
-            .addressModeV = vk::SamplerAddressMode::eRepeat,
-            .addressModeW = vk::SamplerAddressMode::eRepeat,
-            .mipLodBias = 0.0f,
-            .anisotropyEnable = vk::True,
-            .maxAnisotropy = device_->getPhysicalDevice()
-                                 .getProperties()
-                                 .limits.maxSamplerAnisotropy,
-            .compareEnable = vk::False,
-            .compareOp = vk::CompareOp::eAlways,
-            .minLod = 0.0f,
-            .maxLod = 0.0f,
-            .borderColor = vk::BorderColor::eIntOpaqueBlack,
-            .unnormalizedCoordinates = vk::False,
-        });
-
-    auto whiteTexture = std::make_shared<Texture>(
-        std::move(whiteImage), std::move(whiteView), std::move(whiteSampler)
-    );
-    addResource(whiteTexture);
 }
 
 }

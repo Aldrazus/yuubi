@@ -2,7 +2,6 @@ target_sources(
     ${PROJECT_NAME}
     PRIVATE
     "core/io/file.cpp"
-    "core/io/image.cpp"
     "core/log.cpp"
     "renderer/gltf/asset.cpp"
     "renderer/resources/material_manager.cpp"

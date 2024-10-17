@@ -76,7 +76,6 @@ public:
 private:
     void createDescriptorSet();
     void createErrorTexture();
-    void createDefaultTexture();
 
     std::shared_ptr<Device> device_;
 

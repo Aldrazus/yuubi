@@ -19,10 +19,6 @@ MaterialManager::MaterialManager(std::shared_ptr<Device> device)
 
     materialBuffer_ =
         device_->createBuffer(bufferCreateInfo, shaderDataBufferAllocInfo);
-
-    auto material = std::make_shared<MaterialData>(glm::vec4{1, 2, 2, 0}, 1, 0);
-
-    addResource(material);
 }
 
 ResourceHandle MaterialManager::addResource(

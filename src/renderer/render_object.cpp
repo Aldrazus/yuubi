@@ -28,7 +28,7 @@ void MeshNode::draw(const glm::mat4& topMatrix, DrawContext& context)
             surface.startIndex,
             mesh_->vertexBuffer(),
             mesh_->indexBuffer(),
-            0, // TODO: add material id
+            surface.materialIndex,
             nodeMatrix
         );
     }

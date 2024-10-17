@@ -10,6 +10,7 @@ struct PushConstants {
     glm::mat4 transform;
     vk::DeviceAddress sceneDataBuffer;
     vk::DeviceAddress vertexBuffer;
+    uint32_t materialId;
 };
 
 }

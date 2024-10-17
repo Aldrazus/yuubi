@@ -38,13 +38,11 @@ Renderer::Renderer(const Window& window) : window_(window) {
     textureManager_ = TextureManager(device_);
     imguiManager_ = ImguiManager{instance_, *device_, window_, viewport_};
 
-    asset_ = GLTFAsset(*device_, "assets/monkey/monkey.glb");
-    // asset_ = GLTFAsset(*device_, "assets/sponza/Sponza.gltf");
-    
 
     materialManager_ = MaterialManager(device_);
-    auto testMaterial = std::make_shared<MaterialData>(glm::vec4{1, 1, 1, 1}, 1, 0);
-    materialManager_.addResource(testMaterial);
+
+    // asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/monkey/monkey.glb");
+    asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/sponza/Sponza.gltf");
 
     {
         vk::DeviceSize bufferSize = sizeof(SceneData);
@@ -201,7 +199,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
 
                     frame.commandBuffer.pushConstants<PushConstants>(
                         *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
-                        {PushConstants{renderObject.transform, sceneDataBuffer_.getAddress(), renderObject.vertexBuffer->getAddress()}}
+                        {PushConstants{renderObject.transform, sceneDataBuffer_.getAddress(), renderObject.vertexBuffer->getAddress(), renderObject.materialId}}
                     );
 
                     frame.commandBuffer.drawIndexed(

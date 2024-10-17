@@ -9,4 +9,5 @@ layout (push_constant, scalar) uniform constants {
     mat4 transform;
     SceneDataBuffer sceneData;
     VertexBuffer vertexBuffer;
+    uint materialId;
 } PushConstants;

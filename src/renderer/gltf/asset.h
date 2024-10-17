@@ -10,10 +10,12 @@ class Image;
 class Device;
 class Node;
 class Mesh;
+class TextureManager;
+class MaterialManager;
 class GLTFAsset : NonCopyable, public Renderable {
 public:
     GLTFAsset() = default;
-    GLTFAsset(Device& device, const std::filesystem::path& filePath);
+    GLTFAsset(Device& device, TextureManager& textureManager, MaterialManager& materialManager, const std::filesystem::path& filePath);
 
     // TODO: add move constructor/assignment operator
 
