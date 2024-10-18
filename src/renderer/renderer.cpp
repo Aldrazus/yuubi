@@ -65,6 +65,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
             .view = {},
             .proj = {},
             .viewproj = {},
+            .cameraPosition = {},
             .ambientColor = {},
             .sunlightDirection = {},
             .sunlightColor = {},
@@ -91,6 +92,7 @@ void Renderer::updateScene(const Camera& camera)
         .view = camera.getViewMatrix(),
         .proj = camera.getViewProjectionMatrix(), // TODO: only push proj matrix
         .viewproj = camera.getViewProjectionMatrix(),
+        .cameraPosition = glm::vec4(camera.getPosition(), 1.0),
         .ambientColor = glm::vec4(0.1f),
         .sunlightDirection = glm::vec4(0, 1, 0.f, 1.0f),
         .sunlightColor = glm::vec4(1.0f),

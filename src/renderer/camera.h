@@ -10,9 +10,10 @@ namespace yuubi {
 class Camera {
 public:
     Camera(glm::vec3 position, glm::vec3 velocity, float pitch, float yaw, float aspectRatio = 800.0f / 600.0f);
-    glm::mat4 getViewMatrix() const;
-    glm::mat4 getViewProjectionMatrix() const;
-    glm::mat4 getRotationMatrix() const;
+    [[nodiscard]] glm::mat4 getViewMatrix() const;
+    [[nodiscard]] glm::mat4 getViewProjectionMatrix() const;
+    [[nodiscard]] glm::mat4 getRotationMatrix() const;
+    [[nodiscard]] glm::vec3 getPosition() const { return position_; };
     void updatePosition(float deltaTime);
 
     glm::vec3 velocity;
