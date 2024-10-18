@@ -18,4 +18,5 @@ void main() {
     if (material.albedoTex != 0) {
         outColor *= texture(textures[nonuniformEXT(material.albedoTex)], inUv);
     }
+    // outColor = texture(textures[nonuniformEXT(material.normalTex)], inUv);
 }
