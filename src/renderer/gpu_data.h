@@ -16,10 +16,12 @@ struct SceneData {
 };
 
 struct MaterialData {
-    glm::vec4 baseColor;
-    uint32_t diffuseTex;
+    glm::vec4 albedo;
+    uint32_t albedoTex;
+
+    float metallicFactor;
+    float roughnessFactor;
     uint32_t metallicRoughnessTex;
-    uint32_t padding[2];
 };
 
 }

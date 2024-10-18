@@ -149,134 +149,6 @@ std::pair<vk::Filter, vk::SamplerMipmapMode> getSamplerFilterInfo(
     }
 }
 
-std::vector<yuubi::MaterialData> loadMaterials(
-    const std::vector<fastgltf::Material>& materials
-) {
-    return materials |
-           std::views::transform([](const fastgltf::Material& material) {
-               // TODO: get more texture data
-               return yuubi::MaterialData{
-                   .baseColor =
-                       glm::vec4{
-                                 material.pbrData.baseColorFactor.x(),
-                                 material.pbrData.baseColorFactor.y(),
-                                 material.pbrData.baseColorFactor.z(),
-                                 material.pbrData.baseColorFactor.w()
-                       },
-                   // TODO: handle texCoord other than 0
-                   .diffuseTex = static_cast<uint32_t>(
-                       material.pbrData.baseColorTexture->textureIndex + 1
-                   ),
-                   .metallicRoughnessTex = static_cast<uint32_t>(
-                       material.pbrData.metallicRoughnessTexture->textureIndex +
-                       1
-                   ),
-               };
-           }) |
-           std::ranges::to<std::vector<yuubi::MaterialData>>();
-}
-
-std::vector<yuubi::Mesh> loadMeshes(const fastgltf::Asset& asset) {
-    std::vector<uint32_t> indices;
-    std::vector<yuubi::Vertex> vertices;
-
-    for (const fastgltf::Mesh& mesh : asset.meshes) {
-        indices.clear();
-        vertices.clear();
-
-        for (auto&& primitive : mesh.primitives) {
-            yuubi::GeoSurface newPrimitive;
-            newPrimitive.startIndex = static_cast<uint32_t>(indices.size());
-            newPrimitive.count = static_cast<uint32_t>(
-                asset.accessors[primitive.indicesAccessor.value()].count
-            );
-            size_t initial_vertex = vertices.size();
-
-            // Load indices.
-            {
-                const fastgltf::Accessor& indexAccessor =
-                    asset.accessors[primitive.indicesAccessor.value()];
-                indices.reserve(indices.size() + indexAccessor.count);
-
-                for (uint32_t index : fastgltf::iterateAccessor<uint32_t>(
-                         asset, indexAccessor
-                     )) {
-                    indices.push_back(initial_vertex + index);
-                }
-            }
-
-            // Load vertex positions.
-            {
-                const auto* positionIter = primitive.findAttribute("POSITION");
-                const auto& positionAccessor =
-                    asset.accessors[positionIter->accessorIndex];
-
-                vertices.resize(vertices.size() + positionAccessor.count);
-
-                fastgltf::iterateAccessorWithIndex<glm::vec3>(
-                    asset, positionAccessor,
-                    [&](glm::vec3 vertex, size_t index) {
-                        vertices[initial_vertex + index] = yuubi::Vertex{
-                            .position = vertex,
-                            .uv_x = 0,
-                            .normal = {1.0f, 0.0f, 0.0f},
-                            .uv_y = 0,
-                            .color = glm::vec4{1.0f},
-                        };
-                    }
-                );
-            }
-
-            // Load normals.
-            {
-                const auto* normalIter = primitive.findAttribute("NORMAL");
-                if (normalIter != primitive.attributes.end()) {
-                    fastgltf::iterateAccessorWithIndex<glm::vec3>(
-                        asset, asset.accessors[(*normalIter).accessorIndex],
-                        [&](glm::vec3 normal, size_t index) {
-                            vertices[initial_vertex + index].normal = normal;
-                        }
-                    );
-                }
-            }
-
-            // Load UVs.
-            // TODO: support all texcoords
-            {
-                const auto* texCoordIter =
-                    primitive.findAttribute("TEXCOORD_0");
-                if (texCoordIter != primitive.attributes.end()) {
-                    fastgltf::iterateAccessorWithIndex<glm::vec2>(
-                        asset, asset.accessors[(*texCoordIter).accessorIndex],
-                        [&](glm::vec2 uv, size_t index) {
-                            vertices[initial_vertex + index].uv_x = uv.x;
-                            vertices[initial_vertex + index].uv_y = uv.y;
-                        }
-                    );
-                }
-            }
-
-            // Load colors.
-            {
-                const auto* colorIter = primitive.findAttribute("COLOR_0");
-                if (colorIter != primitive.attributes.end()) {
-                    fastgltf::iterateAccessorWithIndex<glm::vec4>(
-                        asset, asset.accessors[(*colorIter).accessorIndex],
-                        [&](glm::vec4 color, size_t index) {
-                            vertices[initial_vertex + index].color = color;
-                        }
-                    );
-                }
-            }
-
-            // Load material index
-            newPrimitive.materialIndex = primitive.materialIndex.value_or(0);
-        }
-    }
-
-    return {};
-}
-
 }
 
 namespace yuubi {
@@ -352,34 +224,34 @@ GLTFAsset::GLTFAsset(
     UB_INFO("Loading materials...");
     auto materials =
         asset.materials |
-        std::views::transform(
-            [](const fastgltf::Material& fastgltfMaterial) {
-                // TODO: get more texture data
+        std::views::transform([](const fastgltf::Material& fastgltfMaterial) {
+            // TODO: get more texture data
 
-                auto getTextureIndex =
-                    [](const std::optional<fastgltf::TextureInfo>& textureInfo
-                    ) -> uint32_t {
-                    if (!textureInfo.has_value()) {
-                        return 0;
-                    }
+            auto getTextureIndex =
+                [](const std::optional<fastgltf::TextureInfo>& textureInfo
+                ) -> uint32_t {
+                if (!textureInfo.has_value()) {
+                    return 0;
+                }
 
-                    return textureInfo->textureIndex + 1;
-                };
+                return textureInfo->textureIndex + 1;
+            };
 
-                return std::make_shared<yuubi::MaterialData>(
-                    glm::vec4{
-                        fastgltfMaterial.pbrData.baseColorFactor.x(),
-                        fastgltfMaterial.pbrData.baseColorFactor.y(),
-                        fastgltfMaterial.pbrData.baseColorFactor.z(),
-                        fastgltfMaterial.pbrData.baseColorFactor.w()
-                    },
-                    getTextureIndex(fastgltfMaterial.pbrData.baseColorTexture),
-                    getTextureIndex(
-                        fastgltfMaterial.pbrData.metallicRoughnessTexture
-                    )
-                );
-            }
-        );
+            return std::make_shared<yuubi::MaterialData>(
+                glm::vec4{
+                    fastgltfMaterial.pbrData.baseColorFactor.x(),
+                    fastgltfMaterial.pbrData.baseColorFactor.y(),
+                    fastgltfMaterial.pbrData.baseColorFactor.z(),
+                    fastgltfMaterial.pbrData.baseColorFactor.w()
+                },
+                getTextureIndex(fastgltfMaterial.pbrData.baseColorTexture),
+                fastgltfMaterial.pbrData.metallicFactor,
+                fastgltfMaterial.pbrData.roughnessFactor,
+                getTextureIndex(
+                    fastgltfMaterial.pbrData.metallicRoughnessTexture
+                )
+            );
+        });
 
     for (auto&& material : materials) {
         UB_INFO("Adding material {}", materialManager.addResource(material));

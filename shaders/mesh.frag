@@ -13,6 +13,9 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     MaterialData material = PushConstants.sceneData.materials.data[PushConstants.materialId];
-    outColor = texture(textures[nonuniformEXT(material.diffuseTex)], inUv);
-    // outColor = vec4(inColor, 1.0f); 
+
+    outColor = material.albedo;
+    if (material.albedoTex != 0) {
+        outColor *= texture(textures[nonuniformEXT(material.albedoTex)], inUv);
+    }
 }
