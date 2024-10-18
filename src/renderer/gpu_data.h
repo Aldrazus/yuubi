@@ -15,13 +15,20 @@ struct SceneData {
     vk::DeviceAddress materials;
 };
 
+// PERF: pack this struct appropriately
 struct MaterialData {
-    glm::vec4 albedo;
-    uint32_t albedoTex;
+    uint32_t normalTex;
+    float scale;
 
+    uint32_t albedoTex;
+    uint32_t pad0;
+    glm::vec4 albedo;
+
+    uint32_t metallicRoughnessTex;
     float metallicFactor;
     float roughnessFactor;
-    uint32_t metallicRoughnessTex;
+    
+    uint32_t pad1;
 };
 
 }

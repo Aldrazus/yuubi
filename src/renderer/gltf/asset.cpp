@@ -237,19 +237,36 @@ GLTFAsset::GLTFAsset(
                 return textureInfo->textureIndex + 1;
             };
 
+            auto normalTextureIndex = fastgltfMaterial.normalTexture
+                                          .transform([](const auto& texture) {
+                                              return texture.textureIndex;
+                                          })
+                                          .value_or(-1) +
+                                      1;
+
+            auto normalScale = fastgltfMaterial.normalTexture.transform([](const auto& texture) {
+                return texture.scale;
+            }).value_or(1);
+
             return std::make_shared<yuubi::MaterialData>(
+                normalTextureIndex,
+                normalScale,
+
+                getTextureIndex(fastgltfMaterial.pbrData.baseColorTexture),
+                0,
                 glm::vec4{
                     fastgltfMaterial.pbrData.baseColorFactor.x(),
                     fastgltfMaterial.pbrData.baseColorFactor.y(),
                     fastgltfMaterial.pbrData.baseColorFactor.z(),
                     fastgltfMaterial.pbrData.baseColorFactor.w()
                 },
-                getTextureIndex(fastgltfMaterial.pbrData.baseColorTexture),
-                fastgltfMaterial.pbrData.metallicFactor,
-                fastgltfMaterial.pbrData.roughnessFactor,
+
                 getTextureIndex(
                     fastgltfMaterial.pbrData.metallicRoughnessTexture
-                )
+                ),
+                fastgltfMaterial.pbrData.metallicFactor,
+                fastgltfMaterial.pbrData.roughnessFactor,
+                0
             );
         });
 

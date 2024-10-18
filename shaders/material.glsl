@@ -4,12 +4,18 @@
 #extension GL_EXT_buffer_reference : require
 
 struct MaterialData {
-    vec4 albedo;
-    uint albedoTex;
+    uint normalTex;
+    float normalScale;
 
+    uint albedoTex;
+    uint pad0;
+    vec4 albedoFactor;
+
+    uint metallicRoughnessTex;
     float metallicFactor;
     float roughnessFactor;
-    uint metallicRoughnessTex;
+
+    uint pad1;
 };
 
 layout (buffer_reference, std430) readonly buffer MaterialsBuffer {
