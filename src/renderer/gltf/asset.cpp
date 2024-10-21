@@ -192,7 +192,7 @@ GLTFAsset::GLTFAsset(
 
         // Create image view.
         auto imageView = device.createImageView(
-            image.getImage(), vk::Format::eR8G8B8A8Srgb,
+            *image.getImage(), vk::Format::eR8G8B8A8Srgb,
             vk::ImageAspectFlagBits::eColor
         );
 
