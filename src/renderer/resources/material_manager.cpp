@@ -31,7 +31,6 @@ ResourceHandle MaterialManager::addResource(
         sizeof(MaterialData) * handle
     );
 
-    UB_INFO("Handle {}", handle);
     return handle;
 }
 

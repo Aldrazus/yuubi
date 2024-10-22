@@ -216,9 +216,6 @@ GLTFAsset::GLTFAsset(
 
     // Check sRGB preference.
     auto srgbImageIndices = getSrgbImageIndices(asset.materials);
-    for (auto& i : srgbImageIndices) {
-        std::println("i: {}", i);
-    }
 
     // TODO: handle missing images by replacing with error checkerboard
     // PERF: Horrendously slow. MUST FIX.
@@ -257,7 +254,7 @@ GLTFAsset::GLTFAsset(
         auto texture = std::make_shared<Texture>(
             std::move(image), std::move(imageView), std::move(sampler)
         );
-        UB_INFO("Adding texture {}", textureManager.addResource(texture));
+        textureManager.addResource(texture);
     }
     UB_INFO("Done loading textures...");
 
@@ -311,13 +308,15 @@ GLTFAsset::GLTFAsset(
         });
 
     for (auto&& material : materials) {
-        UB_INFO("Adding material {}", materialManager.addResource(material));
+        materialManager.addResource(material);
     }
     UB_INFO("Done loading materials...");
 
     std::vector<std::shared_ptr<Mesh>> meshes;
     std::vector<uint32_t> indices;
     std::vector<Vertex> vertices;
+
+    bool hasTangents = false;
 
     for (const fastgltf::Mesh& mesh : asset.meshes) {
         indices.clear();
@@ -412,6 +411,7 @@ GLTFAsset::GLTFAsset(
                 }
             }
 
+            // Load tangents.
             {
                 const auto* tangentIter = primitive.findAttribute("TANGENT");
                 if (tangentIter != primitive.attributes.end()) {
@@ -421,6 +421,7 @@ GLTFAsset::GLTFAsset(
                             vertices[initial_vertex + index].tangent = tangent;
                         }
                     );
+                    hasTangents = true;
                 }
             }
 
@@ -430,13 +431,13 @@ GLTFAsset::GLTFAsset(
             primitives.push_back(newPrimitive);
         }
 
-        /*
-        // Generate tangents.
-        generateTangents(MeshData{
-            .vertices = vertices,
-            .indices = indices
-        });
-        */
+        if (!hasTangents) {
+            // Generate tangents.
+            generateTangents(MeshData{
+                .vertices = vertices,
+                .indices = indices
+            });
+        }
 
         auto newMesh = std::make_shared<Mesh>(
             mesh.name.c_str(), device, vertices, indices, std::move(primitives)

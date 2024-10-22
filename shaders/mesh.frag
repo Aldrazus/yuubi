@@ -9,8 +9,7 @@
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUv;
-layout (location = 3) in vec3 inTangent;
-layout (location = 4) in vec3 inBitangent;
+layout (location = 3) in mat3 inTBN;
 
 layout(location = 0) out vec4 outColor;
 
@@ -39,17 +38,7 @@ vec3 getNormalFromMap() {
 
     vec3 tangentNormal = sampleTexture(material.normalTex).xyz * 2.0 - 1.0;
 
-    vec3 Q1  = dFdx(inPos);
-    vec3 Q2  = dFdy(inPos);
-    vec2 st1 = dFdx(inUv);
-    vec2 st2 = dFdy(inUv);
-
-    vec3 N   = normalize(inNormal);
-    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B  = -normalize(cross(N, T));
-    mat3 TBN = mat3(T, B, N);
-
-    return normalize(TBN * tangentNormal);
+    return inTBN * normalize(tangentNormal);
 }
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
@@ -94,7 +83,8 @@ void main() {
 
     vec3 normal = inNormal;
     if (material.normalTex != 0) {
-        normal = getNormalFromMap() * material.normalScale;
+        vec3 n = getNormalFromMap();
+        normal = vec3(n.xy * material.normalScale, n.z);
     }
 
     vec3 albedo = material.albedoFactor.xyz;
