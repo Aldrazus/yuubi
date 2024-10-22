@@ -9,6 +9,8 @@
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUv;
+layout (location = 3) in vec3 inTangent;
+layout (location = 4) in vec3 inBitangent;
 
 layout(location = 0) out vec4 outColor;
 
@@ -23,7 +25,7 @@ struct Light {
 const Light lights[1] = Light[](
     Light(
         vec3(23.7, 21.31, 20.79),
-        vec3(0.0, 5.0, 1.0)
+        vec3(0.0, 3.0, 0.0)
     )
 );
 
@@ -37,14 +39,14 @@ vec3 getNormalFromMap() {
 
     vec3 tangentNormal = sampleTexture(material.normalTex).xyz * 2.0 - 1.0;
 
-    vec3 Q1 = dFdx(inPos);
-    vec3 Q2 = dFdy(inPos);
+    vec3 Q1  = dFdx(inPos);
+    vec3 Q2  = dFdy(inPos);
     vec2 st1 = dFdx(inUv);
     vec2 st2 = dFdy(inUv);
 
-    vec3 N = normalize(inNormal);
-    vec3 T = normalize(Q1 * st2.t - Q2 * st1.t);
-    vec3 B = -normalize(cross(N, T));
+    vec3 N   = normalize(inNormal);
+    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
+    vec3 B  = -normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
 
     return normalize(TBN * tangentNormal);
@@ -147,6 +149,7 @@ void main() {
     color = pow(color, vec3(1.0 / 2.2));
 
     outColor = vec4(color, 1.0);
+    outColor = vec4(inBitangent, 1.0);
 
     // outColor = texture(textures[nonuniformEXT(material.normalTex)], inUv);
 }

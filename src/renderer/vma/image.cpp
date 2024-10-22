@@ -54,7 +54,7 @@ void Image::destroy() {
 }
 
 // PERF: Use staging buffer pool. Use dedicated transfer queue.
-Image createImageFromData(Device& device, const ImageData& data) {
+Image createImageFromData(Device& device, const ImageData& data, bool srgb) {
     // Create staging buffer.
     vk::DeviceSize imageSize = data.width * data.height * 4;
 
@@ -85,7 +85,7 @@ Image createImageFromData(Device& device, const ImageData& data) {
         ImageCreateInfo{
             .width = data.width,
             .height = data.height,
-            .format = vk::Format::eR8G8B8A8Srgb,
+            .format = srgb ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Unorm,
             .tiling = vk::ImageTiling::eOptimal,
             .usage = vk::ImageUsageFlagBits::eSampled |
                      vk::ImageUsageFlagBits::eTransferDst,

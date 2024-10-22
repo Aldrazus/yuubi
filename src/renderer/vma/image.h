@@ -50,5 +50,5 @@ private:
 };
 
 class Device;
-Image createImageFromData(Device& device, const ImageData& data);
+Image createImageFromData(Device& device, const ImageData& data, bool srgb = true);
 }

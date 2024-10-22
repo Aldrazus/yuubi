@@ -53,3 +53,7 @@ target_link_libraries(${PROJECT_NAME} spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
 # fastgltf
 add_subdirectory(fastgltf)
 target_link_libraries(${PROJECT_NAME} fastgltf)
+
+# MikkTSpace
+add_subdirectory(mikktspace)
+target_link_libraries(${PROJECT_NAME} MikkTSpace)

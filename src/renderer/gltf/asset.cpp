@@ -1,5 +1,6 @@
 #include "renderer/gltf/asset.h"
 
+#include "renderer/gltf/mikktspace.h"
 #include "renderer/gpu_data.h"
 #include "renderer/loaded_gltf.h"
 #include "renderer/resources/resource_manager.h"
@@ -22,6 +23,35 @@
 #include <stb_image.h>
 
 namespace {
+
+std::unordered_set<std::size_t> getSrgbImageIndices(std::span<fastgltf::Material> materials) {
+    std::unordered_set<std::size_t> indices;
+
+    for (const auto& material : materials) {
+        if (const auto& baseColorTexture = material.pbrData.baseColorTexture) {
+            indices.emplace(baseColorTexture->textureIndex);
+        }
+        if (const auto& emissiveTexture = material.emissiveTexture) {
+            indices.emplace(emissiveTexture->textureIndex);
+        }
+    }
+
+    return indices;
+}
+
+vk::Format getImageFormat(int channels, std::size_t imageIndex, const std::unordered_set<std::size_t>& srgbImageIndices) {
+    switch (channels) {
+        case 1:
+            return vk::Format::eR8Unorm;
+        case 2:
+        return vk::Format::eR8G8Unorm;
+        case 3:
+        case 4:
+            return srgbImageIndices.contains(imageIndex) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Unorm;
+        default:
+            throw std::runtime_error{"Unsupported image channel"};
+    }
+}
 
 // PERF: Load images in parallel with stb_image.
 std::optional<yuubi::Image> loadImage(
@@ -372,11 +402,31 @@ GLTFAsset::GLTFAsset(
                 }
             }
 
+            {
+                const auto* tangentIter = primitive.findAttribute("TANGENT");
+                if (tangentIter != primitive.attributes.end()) {
+                    fastgltf::iterateAccessorWithIndex<glm::vec4>(
+                        asset, asset.accessors[(*tangentIter).accessorIndex],
+                        [&](glm::vec4 tangent, size_t index) {
+                            vertices[initial_vertex + index].tangent = tangent;
+                        }
+                    );
+                }
+            }
+
             // Load material index
             newPrimitive.materialIndex = primitive.materialIndex.value_or(0);
 
             primitives.push_back(newPrimitive);
         }
+
+        /*
+        // Generate tangents.
+        generateTangents(MeshData{
+            .vertices = vertices,
+            .indices = indices
+        });
+        */
 
         auto newMesh = std::make_shared<Mesh>(
             mesh.name.c_str(), device, vertices, indices, std::move(primitives)
