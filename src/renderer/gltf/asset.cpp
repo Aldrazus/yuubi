@@ -39,7 +39,7 @@ std::unordered_set<std::size_t> getSrgbImageIndices(std::span<fastgltf::Material
     return indices;
 }
 
-vk::Format getImageFormat(int channels, std::size_t imageIndex, const std::unordered_set<std::size_t>& srgbImageIndices) {
+vk::Format getImageFormat(int channels, bool srgb) {
     switch (channels) {
         case 1:
             return vk::Format::eR8Unorm;
@@ -47,7 +47,7 @@ vk::Format getImageFormat(int channels, std::size_t imageIndex, const std::unord
         return vk::Format::eR8G8Unorm;
         case 3:
         case 4:
-            return srgbImageIndices.contains(imageIndex) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Unorm;
+            return srgb ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Unorm;
         default:
             throw std::runtime_error{"Unsupported image channel"};
     }
@@ -58,7 +58,8 @@ std::optional<yuubi::Image> loadImage(
     yuubi::Device& device,
     const fastgltf::Asset& asset,
     const fastgltf::Image& image,
-    const std::filesystem::path& assetDir
+    const std::filesystem::path& assetDir,
+    bool srgb
 ) {
     std::optional<yuubi::Image> newImage;
 
@@ -79,7 +80,7 @@ std::optional<yuubi::Image> loadImage(
                 const std::string pathString =
                     (assetDir / filePath.uri.fspath()).string();
                 unsigned char* data = stbi_load(
-                    pathString.c_str(), &width, &height, &numChannels, 4
+                    pathString.c_str(), &width, &height, &numChannels, 0
                 );
                 if (data != nullptr) {
                     newImage = createImageFromData(
@@ -88,7 +89,8 @@ std::optional<yuubi::Image> loadImage(
                             .pixels = data,
                             .width = static_cast<uint32_t>(width),
                             .height = static_cast<uint32_t>(height),
-                            .numChannels = 4,
+                            .numChannels = static_cast<uint32_t>(numChannels),
+                            .format = getImageFormat(numChannels, srgb)
                         }
                     );
 
@@ -99,7 +101,7 @@ std::optional<yuubi::Image> loadImage(
                 unsigned char* data = stbi_load_from_memory(
                     reinterpret_cast<const unsigned char*>(vector.bytes.data()),
                     static_cast<int>(vector.bytes.size()), &width, &height,
-                    &numChannels, 4
+                    &numChannels, 0
                 );
 
                 if (data != nullptr) {
@@ -110,6 +112,7 @@ std::optional<yuubi::Image> loadImage(
                             .width = static_cast<uint32_t>(width),
                             .height = static_cast<uint32_t>(height),
                             .numChannels = 4,
+                            .format = getImageFormat(numChannels, srgb)
                         }
                     );
 
@@ -139,6 +142,7 @@ std::optional<yuubi::Image> loadImage(
                                         .width = static_cast<uint32_t>(width),
                                         .height = static_cast<uint32_t>(height),
                                         .numChannels = 4,
+                                        .format = getImageFormat(numChannels, srgb)
                                     }
                                 );
 
@@ -210,19 +214,25 @@ GLTFAsset::GLTFAsset(
     }
     auto asset = std::move(loadedGltf.get());
 
+    // Check sRGB preference.
+    auto srgbImageIndices = getSrgbImageIndices(asset.materials);
+    for (auto& i : srgbImageIndices) {
+        std::println("i: {}", i);
+    }
+
     // TODO: handle missing images by replacing with error checkerboard
     // PERF: Horrendously slow. MUST FIX.
     UB_INFO("Loading textures...");
-    for (const auto& fastgltfTexture : asset.textures) {
+    for (const auto& [i, fastgltfTexture]: std::views::enumerate(asset.textures)) {
         // Create image.
         const auto& fastgltfImage =
             asset.images.at(fastgltfTexture.imageIndex.value());
         auto image =
-            *loadImage(device, asset, fastgltfImage, filePath.parent_path());
+            *loadImage(device, asset, fastgltfImage, filePath.parent_path(), srgbImageIndices.contains(i));
 
         // Create image view.
         auto imageView = device.createImageView(
-            *image.getImage(), vk::Format::eR8G8B8A8Srgb,
+            *image.getImage(), image.getImageFormat(),
             vk::ImageAspectFlagBits::eColor
         );
 

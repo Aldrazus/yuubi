@@ -2,15 +2,17 @@
 #include "renderer/vma/image.h"
 #include "renderer/vma/allocator.h"
 #include "renderer/vulkan/util.h"
+#include <glm/glm.hpp>
 
 namespace yuubi {
 
 Image::Image(Allocator* allocator, ImageCreateInfo createInfo)
-    : allocator_(allocator) {
+    : format_(createInfo.format), allocator_(allocator) {
     vk::ImageCreateInfo imageInfo{
         .imageType = vk::ImageType::e2D,
         .format = createInfo.format,
-        .extent = {.width = createInfo.width, .height = createInfo.height, .depth = 1},
+        .extent =
+            {.width = createInfo.width, .height = createInfo.height, .depth = 1},
         .mipLevels = 1,
         .arrayLayers = 1,
         .samples = vk::SampleCountFlagBits::e1,
@@ -25,12 +27,16 @@ Image::Image(Allocator* allocator, ImageCreateInfo createInfo)
     VkImage vkImage;
 
     const VkImageCreateInfo legacyImageInfo = imageInfo;
-    vmaCreateImage(allocator_->getAllocator(), &legacyImageInfo, &allocInfo, &vkImage, &allocation_, nullptr);
+    vmaCreateImage(
+        allocator_->getAllocator(), &legacyImageInfo, &allocInfo, &vkImage,
+        &allocation_, nullptr
+    );
     image_ = vk::raii::Image{allocator_->getDevice(), vkImage};
 }
 
 Image::Image(Image&& rhs) noexcept
     : image_(std::exchange(rhs.image_, nullptr)),
+      format_(std::exchange(rhs.format_, vk::Format::eUndefined)),
       allocator_(std::exchange(rhs.allocator_, nullptr)),
       allocation_(std::exchange(rhs.allocation_, nullptr)) {}
 
@@ -38,6 +44,7 @@ Image& Image::operator=(Image&& rhs) noexcept {
     if (this != &rhs) {
         std::swap(allocator_, rhs.allocator_);
         std::swap(image_, rhs.image_);
+        std::swap(format_, rhs.format_);
         std::swap(allocation_, rhs.allocation_);
     }
     return *this;
@@ -54,9 +61,10 @@ void Image::destroy() {
 }
 
 // PERF: Use staging buffer pool. Use dedicated transfer queue.
-Image createImageFromData(Device& device, const ImageData& data, bool srgb) {
+Image createImageFromData(Device& device, const ImageData& data) {
+
     // Create staging buffer.
-    vk::DeviceSize imageSize = data.width * data.height * 4;
+    vk::DeviceSize imageSize = data.width * data.height * (data.numChannels == 3 ? 4 : data.numChannels);
 
     vk::BufferCreateInfo stagingBufferCreateInfo{
         .size = imageSize,
@@ -73,11 +81,20 @@ Image createImageFromData(Device& device, const ImageData& data, bool srgb) {
         stagingBufferCreateInfo, stagingBufferAllocCreateInfo
     );
 
-    // Copy image data onto mapped memory in staging buffer.
-    std::memcpy(
-        stagingBuffer.getMappedMemory(), data.pixels,
-        static_cast<size_t>(imageSize)
-    );
+    if (data.numChannels == 3) {
+        auto pixels =
+            std::span{
+                reinterpret_cast<const glm::u8vec3*>(data.pixels),
+                static_cast<size_t>(data.width * data.height)
+            } |
+            std::views::transform([](const auto& pixel) {
+                return glm::u8vec4{pixel, 255};
+            });
+        std::ranges::copy(pixels, static_cast<glm::u8vec4*>(stagingBuffer.getMappedMemory()));
+    } else {
+        auto pixels = std::span{data.pixels, static_cast<size_t>(data.width * data.height * data.numChannels)};
+        std::ranges::copy(pixels, static_cast<unsigned char*>(stagingBuffer.getMappedMemory())); 
+    }
 
     // Create image.
     Image image(
@@ -85,7 +102,7 @@ Image createImageFromData(Device& device, const ImageData& data, bool srgb) {
         ImageCreateInfo{
             .width = data.width,
             .height = data.height,
-            .format = srgb ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Unorm,
+            .format = data.format,
             .tiling = vk::ImageTiling::eOptimal,
             .usage = vk::ImageUsageFlagBits::eSampled |
                      vk::ImageUsageFlagBits::eTransferDst,

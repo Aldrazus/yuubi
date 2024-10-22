@@ -23,6 +23,7 @@ struct ImageData {
     uint32_t width;
     uint32_t height;
     uint32_t numChannels;
+    vk::Format format;
 };
 
 class Image : NonCopyable {
@@ -34,11 +35,13 @@ public:
     ~Image();
 
     [[nodiscard]] inline const vk::raii::Image& getImage() const { return image_; }
+    [[nodiscard]] inline vk::Format getImageFormat() const { return format_; }
 
 private:
     void destroy();
 
     vk::raii::Image image_ = nullptr;
+    vk::Format format_;
 
     // WARNING: raw pointer used here. This *should* be safe, assuming
     // all images are managed by the ImageManager. Any images created
@@ -50,5 +53,5 @@ private:
 };
 
 class Device;
-Image createImageFromData(Device& device, const ImageData& data, bool srgb = true);
+Image createImageFromData(Device& device, const ImageData& data);
 }

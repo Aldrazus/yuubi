@@ -123,6 +123,7 @@ void TextureManager::createErrorTexture() {
         .width = textureWidth,
         .height = textureWidth,
         .numChannels = numChannels,
+        .format = vk::Format::eR8G8B8A8Srgb
     };
 
     for (size_t rowIdx = 0; rowIdx < textureWidth; rowIdx++) {
