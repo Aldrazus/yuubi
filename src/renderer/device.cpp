@@ -151,7 +151,8 @@ void Device::createLogicalDevice(const vk::raii::Instance& instance) {
 vk::raii::ImageView Device::createImageView(
     const vk::Image& image,
     const vk::Format& format,
-    vk::ImageAspectFlags aspectFlags
+    vk::ImageAspectFlags aspectFlags,
+    uint32_t mipLevels
 ) {
     vk::ImageViewCreateInfo viewInfo{
         .image = image,
@@ -161,7 +162,7 @@ vk::raii::ImageView Device::createImageView(
             {
                                .aspectMask = aspectFlags,
                                .baseMipLevel = 0,
-                               .levelCount = 1,
+                               .levelCount = mipLevels,
                                .baseArrayLayer = 0,
                                .layerCount = 1,
                                },

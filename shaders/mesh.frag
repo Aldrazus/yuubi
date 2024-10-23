@@ -24,7 +24,7 @@ struct Light {
 const Light lights[1] = Light[](
     Light(
         vec3(23.7, 21.31, 20.79),
-        vec3(0.0, 3.0, 0.0)
+        vec3(1.0, 3.0, 1.0)
     )
 );
 

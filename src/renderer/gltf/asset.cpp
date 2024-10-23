@@ -230,7 +230,8 @@ GLTFAsset::GLTFAsset(
         // Create image view.
         auto imageView = device.createImageView(
             *image.getImage(), image.getImageFormat(),
-            vk::ImageAspectFlagBits::eColor
+            vk::ImageAspectFlagBits::eColor,
+            image.getMipLevels()
         );
 
         // Create sampler.
@@ -247,8 +248,10 @@ GLTFAsset::GLTFAsset(
             .magFilter = magFilter,
             .minFilter = minFilter,
             .mipmapMode = minMipmapMode,
+            .anisotropyEnable = vk::True,
+            .maxAnisotropy = device.getPhysicalDevice().getProperties2().properties.limits.maxSamplerAnisotropy,
             .minLod = 0,
-            .maxLod = vk::LodClampNone,
+            .maxLod = static_cast<float>(image.getMipLevels()),
         });
 
         auto texture = std::make_shared<Texture>(

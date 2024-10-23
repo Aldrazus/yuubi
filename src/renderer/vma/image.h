@@ -15,6 +15,7 @@ struct ImageCreateInfo {
     vk::ImageTiling tiling;
     vk::ImageUsageFlags usage;
     vk::MemoryPropertyFlags properties;
+    uint32_t mipLevels = 1;
 };
 
 struct ImageData {
@@ -36,12 +37,14 @@ public:
 
     [[nodiscard]] inline const vk::raii::Image& getImage() const { return image_; }
     [[nodiscard]] inline vk::Format getImageFormat() const { return format_; }
+    [[nodiscard]] inline uint32_t getMipLevels() const { return mipLevels_; }
 
 private:
     void destroy();
 
     vk::raii::Image image_ = nullptr;
     vk::Format format_;
+    uint32_t mipLevels_;
 
     // WARNING: raw pointer used here. This *should* be safe, assuming
     // all images are managed by the ImageManager. Any images created
