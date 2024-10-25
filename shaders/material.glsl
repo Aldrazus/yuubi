@@ -14,8 +14,7 @@ struct MaterialData {
     uint metallicRoughnessTex;
     float metallicFactor;
     float roughnessFactor;
-
-    uint pad1;
+    float alphaCutoff;
 };
 
 layout (buffer_reference, std430) readonly buffer MaterialsBuffer {

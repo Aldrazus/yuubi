@@ -23,14 +23,25 @@ void MeshNode::draw(const glm::mat4& topMatrix, DrawContext& context)
     glm::mat4 nodeMatrix = topMatrix * worldTransform;
 
     for (auto& surface : mesh_->surfaces()) {
-        context.opaqueSurfaces.emplace_back(
-            surface.count,
-            surface.startIndex,
-            mesh_->vertexBuffer(),
-            mesh_->indexBuffer(),
-            surface.materialIndex,
-            nodeMatrix
-        );
+        if (surface.passType == MaterialPass::Opaque) {
+            context.opaqueSurfaces.emplace_back(
+                surface.count,
+                surface.startIndex,
+                mesh_->vertexBuffer(),
+                mesh_->indexBuffer(),
+                surface.materialIndex,
+                nodeMatrix
+            );
+        } if (surface.passType == MaterialPass::Transparent) {
+            context.transparentSurfaces.emplace_back(
+                surface.count,
+                surface.startIndex,
+                mesh_->vertexBuffer(),
+                mesh_->indexBuffer(),
+                surface.materialIndex,
+                nodeMatrix
+            );
+        }
     }
 
     Node::draw(topMatrix, context);

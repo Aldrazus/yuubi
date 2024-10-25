@@ -79,6 +79,7 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 
 void main() {
     MaterialData material = PushConstants.sceneData.materials.data[PushConstants.materialId];
+
     vec3 cameraPosition = PushConstants.sceneData.cameraPosition.xyz;
 
     vec3 normal = inNormal;
@@ -87,10 +88,15 @@ void main() {
         normal = vec3(n.xy * material.normalScale, n.z);
     }
 
-    vec3 albedo = material.albedoFactor.xyz;
+    float alpha = material.albedoFactor.a;
+    vec3 albedo = material.albedoFactor.rgb;
     if (material.albedoTex != 0) {
-        albedo *= sampleTexture(material.albedoTex).xyz;
+        vec4 sampledAlbedo = sampleTexture(material.albedoTex);
+        albedo *= sampledAlbedo.rgb;
+        alpha *= sampledAlbedo.a;
     }
+
+    if (alpha < material.alphaCutoff) discard;
 
     float metallic = material.metallicFactor;
     float roughness = material.roughnessFactor;

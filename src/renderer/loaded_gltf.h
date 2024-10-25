@@ -12,10 +12,17 @@
 
 namespace yuubi {
 
+enum class MaterialPass {
+    Opaque,
+    Transparent,
+    Other,
+};
+
 struct GeoSurface {
     uint32_t startIndex;
     uint32_t count;
     uint32_t materialIndex = 0;
+    MaterialPass passType;
 };
 
 class Device;

@@ -210,6 +210,23 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                     );
                 }
 
+                frame.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *transparentPipeline_);
+                
+                // TODO: Sort surfaces for correct output
+                for (const auto& renderObject : drawContext_.transparentSurfaces) {
+                    frame.commandBuffer.bindIndexBuffer(*renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);;
+
+                    frame.commandBuffer.pushConstants<PushConstants>(
+                        *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+                        {PushConstants{renderObject.transform, sceneDataBuffer_.getAddress(), renderObject.vertexBuffer->getAddress(), renderObject.materialId}}
+                    );
+
+                    frame.commandBuffer.drawIndexed(
+                        static_cast<uint32_t>(renderObject.indexCount), 1,
+                        renderObject.firstIndex, 0, 0
+                    );
+                }
+
                 // Draw UI.
                 // TODO: move to ImguiManager somehow
                 ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *frame.commandBuffer);

@@ -29,8 +29,7 @@ struct MaterialData {
     uint32_t metallicRoughnessTex;
     float metallicFactor;
     float roughnessFactor;
-    
-    uint32_t pad1;
+    float alphaCutoff;
 };
 
 }

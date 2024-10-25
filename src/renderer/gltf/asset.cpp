@@ -24,7 +24,9 @@
 
 namespace {
 
-std::unordered_set<std::size_t> getSrgbImageIndices(std::span<fastgltf::Material> materials) {
+std::unordered_set<std::size_t> getSrgbImageIndices(
+    std::span<fastgltf::Material> materials
+) {
     std::unordered_set<std::size_t> indices;
 
     for (const auto& material : materials) {
@@ -44,10 +46,11 @@ vk::Format getImageFormat(int channels, bool srgb) {
         case 1:
             return vk::Format::eR8Unorm;
         case 2:
-        return vk::Format::eR8G8Unorm;
+            return vk::Format::eR8G8Unorm;
         case 3:
         case 4:
-            return srgb ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Unorm;
+            return srgb ? vk::Format::eR8G8B8A8Srgb
+                        : vk::Format::eR8G8B8A8Unorm;
         default:
             throw std::runtime_error{"Unsupported image channel"};
     }
@@ -85,13 +88,11 @@ std::optional<yuubi::Image> loadImage(
                 if (data != nullptr) {
                     newImage = createImageFromData(
                         device,
-                        {
-                            .pixels = data,
-                            .width = static_cast<uint32_t>(width),
-                            .height = static_cast<uint32_t>(height),
-                            .numChannels = static_cast<uint32_t>(numChannels),
-                            .format = getImageFormat(numChannels, srgb)
-                        }
+                        {.pixels = data,
+                         .width = static_cast<uint32_t>(width),
+                         .height = static_cast<uint32_t>(height),
+                         .numChannels = static_cast<uint32_t>(numChannels),
+                         .format = getImageFormat(numChannels, srgb)}
                     );
 
                     stbi_image_free(data);
@@ -106,14 +107,11 @@ std::optional<yuubi::Image> loadImage(
 
                 if (data != nullptr) {
                     newImage = createImageFromData(
-                        device,
-                        {
-                            .pixels = data,
-                            .width = static_cast<uint32_t>(width),
-                            .height = static_cast<uint32_t>(height),
-                            .numChannels = 4,
-                            .format = getImageFormat(numChannels, srgb)
-                        }
+                        device, {.pixels = data,
+                                 .width = static_cast<uint32_t>(width),
+                                 .height = static_cast<uint32_t>(height),
+                                 .numChannels = 4,
+                                 .format = getImageFormat(numChannels, srgb)}
                     );
 
                     stbi_image_free(data);
@@ -137,12 +135,11 @@ std::optional<yuubi::Image> loadImage(
                             if (data != nullptr) {
                                 newImage = createImageFromData(
                                     device,
-                                    {
-                                        .pixels = data,
-                                        .width = static_cast<uint32_t>(width),
-                                        .height = static_cast<uint32_t>(height),
-                                        .numChannels = 4,
-                                        .format = getImageFormat(numChannels, srgb)
+                                    {.pixels = data,
+                                     .width = static_cast<uint32_t>(width),
+                                     .height = static_cast<uint32_t>(height),
+                                     .numChannels = 4,
+                                     .format = getImageFormat(numChannels, srgb)
                                     }
                                 );
 
@@ -220,18 +217,20 @@ GLTFAsset::GLTFAsset(
     // TODO: handle missing images by replacing with error checkerboard
     // PERF: Horrendously slow. MUST FIX.
     UB_INFO("Loading textures...");
-    for (const auto& [i, fastgltfTexture]: std::views::enumerate(asset.textures)) {
+    for (const auto& [i, fastgltfTexture] :
+         std::views::enumerate(asset.textures)) {
         // Create image.
         const auto& fastgltfImage =
             asset.images.at(fastgltfTexture.imageIndex.value());
-        auto image =
-            *loadImage(device, asset, fastgltfImage, filePath.parent_path(), srgbImageIndices.contains(i));
+        auto image = *loadImage(
+            device, asset, fastgltfImage, filePath.parent_path(),
+            srgbImageIndices.contains(i)
+        );
 
         // Create image view.
         auto imageView = device.createImageView(
             *image.getImage(), image.getImageFormat(),
-            vk::ImageAspectFlagBits::eColor,
-            image.getMipLevels()
+            vk::ImageAspectFlagBits::eColor, image.getMipLevels()
         );
 
         // Create sampler.
@@ -249,7 +248,9 @@ GLTFAsset::GLTFAsset(
             .minFilter = minFilter,
             .mipmapMode = minMipmapMode,
             .anisotropyEnable = vk::True,
-            .maxAnisotropy = device.getPhysicalDevice().getProperties2().properties.limits.maxSamplerAnisotropy,
+            .maxAnisotropy = device.getPhysicalDevice()
+                                 .getProperties2()
+                                 .properties.limits.maxSamplerAnisotropy,
             .minLod = 0,
             .maxLod = static_cast<float>(image.getMipLevels()),
         });
@@ -284,16 +285,22 @@ GLTFAsset::GLTFAsset(
                                           .value_or(-1) +
                                       1;
 
-            auto normalScale = fastgltfMaterial.normalTexture.transform([](const auto& texture) {
-                return texture.scale;
-            }).value_or(1);
+            auto normalScale = fastgltfMaterial.normalTexture
+                                   .transform([](const auto& texture) {
+                                       return texture.scale;
+                                   })
+                                   .value_or(1);
+
+            // PERF: Ignore alphaCutoff in other modes.
+            auto alphaCutoff =
+                fastgltfMaterial.alphaMode == fastgltf::AlphaMode::Mask
+                    ? fastgltfMaterial.alphaCutoff
+                    : 1.0;
 
             return std::make_shared<yuubi::MaterialData>(
-                normalTextureIndex,
-                normalScale,
+                normalTextureIndex, normalScale,
 
-                getTextureIndex(fastgltfMaterial.pbrData.baseColorTexture),
-                0,
+                getTextureIndex(fastgltfMaterial.pbrData.baseColorTexture), 0,
                 glm::vec4{
                     fastgltfMaterial.pbrData.baseColorFactor.x(),
                     fastgltfMaterial.pbrData.baseColorFactor.y(),
@@ -306,13 +313,26 @@ GLTFAsset::GLTFAsset(
                 ),
                 fastgltfMaterial.pbrData.metallicFactor,
                 fastgltfMaterial.pbrData.roughnessFactor,
-                0
+                alphaCutoff
             );
         });
 
     for (auto&& material : materials) {
         materialManager.addResource(material);
     }
+
+    // PERF: do in one pass
+    auto transparentMaterialIndices =
+        asset.materials | std::views::enumerate |
+        std::views::filter([](auto&& pair) {
+            const auto& [i, material] = pair;
+            return material.alphaMode == fastgltf::AlphaMode::Blend;
+        }) |
+        std::views::transform([](auto&& pair) {
+            const auto& [i, _] = pair;
+            return i;
+        }) |
+        std::ranges::to<std::unordered_set>();
     UB_INFO("Done loading materials...");
 
     std::vector<std::shared_ptr<Mesh>> meshes;
@@ -430,16 +450,18 @@ GLTFAsset::GLTFAsset(
 
             // Load material index
             newPrimitive.materialIndex = primitive.materialIndex.value_or(0);
+            newPrimitive.passType =
+                transparentMaterialIndices.contains(newPrimitive.materialIndex)
+                    ? MaterialPass::Transparent
+                    : MaterialPass::Opaque;
 
             primitives.push_back(newPrimitive);
         }
 
         if (!hasTangents) {
             // Generate tangents.
-            generateTangents(MeshData{
-                .vertices = vertices,
-                .indices = indices
-            });
+            generateTangents(MeshData{.vertices = vertices, .indices = indices}
+            );
         }
 
         auto newMesh = std::make_shared<Mesh>(
