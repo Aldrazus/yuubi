@@ -145,6 +145,40 @@ PipelineBuilder& PipelineBuilder::disableBlending() {
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::enableBlendingAdditive() {
+    colorBlendAttachment_ = {
+        .blendEnable = vk::True,
+        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+        .dstColorBlendFactor = vk::BlendFactor::eOne,
+        .colorBlendOp = vk::BlendOp::eAdd,
+        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+        .alphaBlendOp = vk::BlendOp::eAdd,
+        .colorWriteMask =
+            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+            vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+    };
+
+    return *this;
+}
+
+PipelineBuilder& PipelineBuilder::enableBlendingAlphaBlend() {
+    colorBlendAttachment_ = {
+        .blendEnable = vk::True,
+        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+        .colorBlendOp = vk::BlendOp::eAdd,
+        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+        .alphaBlendOp = vk::BlendOp::eAdd,
+        .colorWriteMask =
+            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+            vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+    };
+
+    return *this;
+}
+
 PipelineBuilder& PipelineBuilder::setColorAttachmentFormat(vk::Format format) {
     colorAttachmentFormat_ = format;
     renderInfo_.colorAttachmentCount = 1;
@@ -154,6 +188,40 @@ PipelineBuilder& PipelineBuilder::setColorAttachmentFormat(vk::Format format) {
 
 PipelineBuilder& PipelineBuilder::setDepthFormat(vk::Format format) {
     renderInfo_.depthAttachmentFormat = format;
+    return *this;
+}
+
+PipelineBuilder& PipelineBuilder::enableDepthTest(
+    bool depthWriteEnable, vk::CompareOp compareOp
+) {
+    depthStencil_ = {
+        .depthTestEnable = vk::True,
+        .depthWriteEnable = depthWriteEnable ? vk::True : vk::False,
+        .depthCompareOp = compareOp,
+        .depthBoundsTestEnable = vk::False,
+        .stencilTestEnable = vk::False,
+        .front = {},
+        .back = {},
+        .minDepthBounds = 0.f,
+        .maxDepthBounds = 1.f
+    };
+
+    return *this;
+}
+
+PipelineBuilder& PipelineBuilder::disableDepthTest() {
+    depthStencil_ = {
+        .depthTestEnable = vk::False,
+        .depthWriteEnable = vk::False,
+        .depthCompareOp = vk::CompareOp::eNever,
+        .depthBoundsTestEnable = vk::False,
+        .stencilTestEnable = vk::False,
+        .front = {},
+        .back = {},
+        .minDepthBounds = 0.f,
+        .maxDepthBounds = 1.f,
+    };
+
     return *this;
 }
 

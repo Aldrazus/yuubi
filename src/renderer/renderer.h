@@ -40,7 +40,8 @@ private:
     ImguiManager imguiManager_;
 
     vk::raii::PipelineLayout pipelineLayout_ = nullptr;
-    vk::raii::Pipeline graphicsPipeline_ = nullptr;
+    vk::raii::Pipeline opaquePipeline_ = nullptr;
+    vk::raii::Pipeline transparentPipeline_ = nullptr;
 
     DrawContext drawContext_;
     GLTFAsset asset_;

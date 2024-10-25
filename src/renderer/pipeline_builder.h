@@ -24,8 +24,12 @@ public:
     PipelineBuilder& setCullMode(vk::CullModeFlags cullMode, vk::FrontFace frontFace);
     PipelineBuilder& setMultisamplingNone();
     PipelineBuilder& disableBlending();
+    PipelineBuilder& enableBlendingAdditive();
+    PipelineBuilder& enableBlendingAlphaBlend();
     PipelineBuilder& setColorAttachmentFormat(vk::Format format);
     PipelineBuilder& setDepthFormat(vk::Format format);
+    PipelineBuilder& enableDepthTest(bool depthWriteEnable, vk::CompareOp compareOp);
+    PipelineBuilder& disableDepthTest();
     PipelineBuilder& setDepthTest(bool enable);
     PipelineBuilder& setVertexInputInfo(std::span<vk::VertexInputBindingDescription> bindingDescriptions, std::span<vk::VertexInputAttributeDescription> attributeDescriptions);
     

@@ -149,7 +149,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                 .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
                 .loadOp = vk::AttachmentLoadOp::eClear,
                 .storeOp = vk::AttachmentStoreOp::eStore,
-                .clearValue = {.depthStencil = {1.0f, 0}}
+                .clearValue = {.depthStencil = {0.0f, 0}}
             };
 
             vk::RenderingInfo renderInfo{
@@ -167,7 +167,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
             frame.commandBuffer.beginRendering(renderInfo);
             {
                 frame.commandBuffer.bindPipeline(
-                    vk::PipelineBindPoint::eGraphics, *graphicsPipeline_
+                    vk::PipelineBindPoint::eGraphics, *opaquePipeline_
                 );
 
                 // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
@@ -268,7 +268,7 @@ void Renderer::createGraphicsPipeline() {
     pipelineLayout_ =
         createPipelineLayout(*device_, setLayouts, pushConstantRanges);
     PipelineBuilder builder(pipelineLayout_);
-    graphicsPipeline_ =
+    opaquePipeline_ =
         builder.setShaders(vertShader, fragShader)
             .setInputTopology(vk::PrimitiveTopology::eTriangleList)
             .setPolygonMode(vk::PolygonMode::eFill)
@@ -277,10 +277,13 @@ void Renderer::createGraphicsPipeline() {
             )
             .setMultisamplingNone()
             .disableBlending()
-            .setDepthTest(true)
+            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
             .setColorAttachmentFormat(viewport_.getSwapChainImageFormat())
             .setDepthFormat(viewport_.getDepthFormat())
             .build(*device_);
+
+    transparentPipeline_ = builder.enableBlendingAlphaBlend()
+        .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual).build(*device_);
 }
 
 }
