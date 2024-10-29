@@ -28,6 +28,7 @@ public:
 
 private:
     void createGraphicsPipeline();
+    void initSkybox();
     void createDescriptor();
     void updateScene(const Camera& camera);
 
@@ -42,6 +43,10 @@ private:
     vk::raii::PipelineLayout pipelineLayout_ = nullptr;
     vk::raii::Pipeline opaquePipeline_ = nullptr;
     vk::raii::Pipeline transparentPipeline_ = nullptr;
+
+    vk::raii::PipelineLayout skyboxPipelineLayout_ = nullptr;
+    vk::raii::Pipeline skyboxPipeline_ = nullptr;
+    Buffer skyboxIndexBuffer_;
 
     DrawContext drawContext_;
     GLTFAsset asset_;

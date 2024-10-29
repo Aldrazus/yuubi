@@ -76,6 +76,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     }
 
     createGraphicsPipeline();
+    initSkybox();
 }
 
 Renderer::~Renderer() { 
@@ -214,7 +215,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                 
                 // TODO: Sort surfaces for correct output
                 for (const auto& renderObject : drawContext_.transparentSurfaces) {
-                    frame.commandBuffer.bindIndexBuffer(*renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);;
+                    frame.commandBuffer.bindIndexBuffer(*renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
                     frame.commandBuffer.pushConstants<PushConstants>(
                         *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
@@ -226,6 +227,14 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
                         renderObject.firstIndex, 0, 0
                     );
                 }
+
+                // Draw skybox.
+                const auto view = glm::mat4(glm::mat3(camera.getViewMatrix()));
+                frame.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *skyboxPipeline_);
+                frame.commandBuffer.bindIndexBuffer(*skyboxIndexBuffer_.getBuffer(), 0, vk::IndexType::eUint32);
+                frame.commandBuffer.pushConstants<glm::mat4>(*skyboxPipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0, camera.getProjectionMatrix() * view);
+                frame.commandBuffer.drawIndexed(36, 1, 0, 0, 0);
+
 
                 // Draw UI.
                 // TODO: move to ImguiManager somehow
@@ -301,6 +310,50 @@ void Renderer::createGraphicsPipeline() {
 
     transparentPipeline_ = builder.enableBlendingAlphaBlend()
         .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual).build(*device_);
+}
+
+void Renderer::initSkybox() {
+    auto vertShader = loadShader("shaders/skybox.vert.spv", *device_);
+    auto fragShader = loadShader("shaders/skybox.frag.spv", *device_);
+
+    std::vector<vk::PushConstantRange> pushConstantRanges = {
+        vk::PushConstantRange{
+                              .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                              .offset = 0,
+                              .size = sizeof(glm::mat4),
+                              }
+    };
+
+    skyboxPipelineLayout_ = createPipelineLayout(*device_, {}, pushConstantRanges);
+    PipelineBuilder builder(skyboxPipelineLayout_);
+    skyboxPipeline_ = builder.setShaders(vertShader, fragShader)
+        .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+        .setPolygonMode(vk::PolygonMode::eFill)
+        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+        .setMultisamplingNone()
+        .disableBlending()
+        .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
+        .setColorAttachmentFormat(viewport_.getSwapChainImageFormat())
+        .setDepthFormat(viewport_.getDepthFormat())
+        .build(*device_);
+
+    const uint32_t numIndices = 6 * 2 * 3;
+    std::array<uint32_t, numIndices> indices = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+        20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+        30, 31, 32, 33, 34, 35
+    };
+
+    vk::DeviceSize bufferSize = sizeof(indices[0]) * numIndices;
+    skyboxIndexBuffer_ = Buffer(&device_->allocator(), vk::BufferCreateInfo{
+        .size = bufferSize,
+        .usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst
+    }, VmaAllocationCreateInfo{
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY
+    });
+
+    skyboxIndexBuffer_.upload(*device_, indices.data(), bufferSize, 0);
 }
 
 }

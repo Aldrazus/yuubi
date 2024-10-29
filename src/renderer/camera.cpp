@@ -5,8 +5,18 @@
 
 namespace yuubi {
 
-Camera::Camera(glm::vec3 position, glm::vec3 velocity, float pitch, float yaw, float aspectRatio)
-    : velocity(velocity), pitch(pitch), yaw(yaw), position_(position), aspectRatio_(aspectRatio) {}
+Camera::Camera(
+    glm::vec3 position,
+    glm::vec3 velocity,
+    float pitch,
+    float yaw,
+    float aspectRatio
+)
+    : velocity(velocity),
+      pitch(pitch),
+      yaw(yaw),
+      position_(position),
+      aspectRatio_(aspectRatio) {}
 glm::mat4 Camera::getViewMatrix() const {
 #if 1
     const auto cameraTranslation = glm::translate(glm::mat4(1.0f), position_);
@@ -19,10 +29,12 @@ glm::mat4 Camera::getViewMatrix() const {
 #endif
 }
 
+glm::mat4 Camera::getProjectionMatrix() const {
+    return glm::perspective(fov_, aspectRatio_, near_, far_);
+}
+
 glm::mat4 Camera::getViewProjectionMatrix() const {
-    return glm::perspective(
-        fov_, aspectRatio_,
-        near_, far_) * getViewMatrix();
+    return getProjectionMatrix() * getViewMatrix();
 }
 
 glm::mat4 Camera::getRotationMatrix() const {

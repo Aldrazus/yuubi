@@ -11,6 +11,7 @@ class Camera {
 public:
     Camera(glm::vec3 position, glm::vec3 velocity, float pitch, float yaw, float aspectRatio = 800.0f / 600.0f);
     [[nodiscard]] glm::mat4 getViewMatrix() const;
+    [[nodiscard]] glm::mat4 getProjectionMatrix() const;
     [[nodiscard]] glm::mat4 getViewProjectionMatrix() const;
     [[nodiscard]] glm::mat4 getRotationMatrix() const;
     [[nodiscard]] glm::vec3 getPosition() const { return position_; };
