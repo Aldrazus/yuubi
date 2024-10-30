@@ -152,11 +152,15 @@ vk::raii::ImageView Device::createImageView(
     const vk::Image& image,
     const vk::Format& format,
     vk::ImageAspectFlags aspectFlags,
-    uint32_t mipLevels
+    uint32_t mipLevels,
+    vk::ImageViewType type
 ) {
+    // TODO: this looks ugly
+    const uint32_t numLayers = type == vk::ImageViewType::eCube ? 6 : 1;
+
     vk::ImageViewCreateInfo viewInfo{
         .image = image,
-        .viewType = vk::ImageViewType::e2D,
+        .viewType = type,
         .format = format,
         .subresourceRange =
             {
@@ -164,7 +168,7 @@ vk::raii::ImageView Device::createImageView(
                                .baseMipLevel = 0,
                                .levelCount = mipLevels,
                                .baseArrayLayer = 0,
-                               .layerCount = 1,
+                               .layerCount = numLayers,
                                },
     };
 

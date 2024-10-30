@@ -47,6 +47,13 @@ private:
     vk::raii::PipelineLayout skyboxPipelineLayout_ = nullptr;
     vk::raii::Pipeline skyboxPipeline_ = nullptr;
     Buffer skyboxIndexBuffer_;
+    Image skyboxImage_;
+    vk::raii::ImageView skyboxImageView_ = nullptr;
+    vk::raii::Sampler skyboxSampler_ = nullptr;
+
+    vk::raii::DescriptorSetLayout skyboxDescriptorSetLayout_ = nullptr;
+    vk::raii::DescriptorPool skyboxDescriptorPool_ = nullptr;
+    vk::raii::DescriptorSet skyboxDescriptorSet_ = nullptr;
 
     DrawContext drawContext_;
     GLTFAsset asset_;

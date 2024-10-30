@@ -16,13 +16,17 @@ Image::Image(Allocator* allocator, ImageCreateInfo createInfo)
         .extent =
             {.width = createInfo.width, .height = createInfo.height, .depth = 1},
         .mipLevels = createInfo.mipLevels,
-        .arrayLayers = 1,
+        .arrayLayers = createInfo.arrayLayers,
         .samples = vk::SampleCountFlagBits::e1,
         .tiling = createInfo.tiling,
         .usage = createInfo.usage,
         .sharingMode = vk::SharingMode::eExclusive,
         .initialLayout = vk::ImageLayout::eUndefined,
     };
+
+    if (createInfo.arrayLayers == 6) {
+        imageInfo.setFlags(vk::ImageCreateFlagBits::eCubeCompatible);
+    }
 
     VmaAllocationCreateInfo allocInfo{};
 

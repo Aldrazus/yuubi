@@ -27,7 +27,7 @@ public:
     const vk::raii::Device& getDevice() const { return device_; }
     const vk::raii::PhysicalDevice& getPhysicalDevice() const { return physicalDevice_; }
 
-    vk::raii::ImageView createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels = 1);
+    vk::raii::ImageView createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels = 1, vk::ImageViewType type = vk::ImageViewType::e2D);
 
     const Queue& getQueue() {
         return graphicsQueue_;

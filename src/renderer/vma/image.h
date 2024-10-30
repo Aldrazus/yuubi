@@ -16,6 +16,7 @@ struct ImageCreateInfo {
     vk::ImageUsageFlags usage;
     vk::MemoryPropertyFlags properties;
     uint32_t mipLevels = 1;
+    uint32_t arrayLayers = 1;
 };
 
 struct ImageData {
