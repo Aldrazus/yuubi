@@ -1,7 +1,6 @@
 #pragma once
 
 #include "renderer/camera.h"
-#include "renderer/descriptor_allocator.h"
 #include "renderer/device.h"
 #include "renderer/gltf/asset.h"
 #include "renderer/imgui_manager.h"
