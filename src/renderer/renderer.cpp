@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
+#include "application.h"
 #include "renderer/camera.h"
 #include "renderer/loaded_gltf.h"
 #include "renderer/render_object.h"
@@ -102,7 +103,7 @@ void Renderer::updateScene(const Camera& camera) {
     sceneDataBuffer_.upload(*device_, &data, sizeof(data), 0);
 }
 
-void Renderer::draw(const Camera& camera, float averageFPS) {
+void Renderer::draw(const Camera& camera, AppState state) {
     updateScene(camera);
 
     // TODO: move to ImguiManager somehow
@@ -111,7 +112,7 @@ void Renderer::draw(const Camera& camera, float averageFPS) {
     ImGui::NewFrame();
 
     ImGui::Begin("Average FPS");
-    ImGui::Text("Average FPS: %d", (uint32_t)averageFPS);
+    ImGui::Text("Average FPS: %d", (uint32_t)state.averageFPS);
     ImGui::End();
 
     ImGui::Render();

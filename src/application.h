@@ -9,6 +9,13 @@
 #include <chrono>
 
 struct GLFWwindow;
+
+struct AppState {
+    bool isMinimized = false;
+    float averageFPS;
+    bool isLocked = true;
+};
+
 class Application {
 public:
     Application();
@@ -27,15 +34,14 @@ private:
     bool onKeyPress(KeyPressedEvent& e);
     bool onKeyRelease(KeyReleasedEvent& e);
     bool onMouseMove(MouseMovedEvent& e);
+    bool onMouseButtonPressed(MouseButtonPressedEvent& e);
 
     static Application* instance_;
+    AppState state_;
     bool running_ = false;
-    bool minimized_ = false;
     Window window_;
     yuubi::Renderer renderer_;
     yuubi::Camera camera_;
 
     float deltaTime_ = 0.0f;
-    float averageFPS_ = 0.0f;
-    ;
 };

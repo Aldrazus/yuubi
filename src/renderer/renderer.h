@@ -15,14 +15,15 @@
 #include "renderer/vertex.h"
 #include "renderer/loaded_gltf.h"
 
-namespace yuubi {
+struct AppState;
 
+namespace yuubi {
 class Renderer {
 public:
     explicit Renderer(const Window& window);
     ~Renderer();
 
-    void draw(const Camera& camera, float averageFPS);
+    void draw(const Camera& camera, AppState state);
     void renderScene(std::function<void(Renderer&)> f);
 
 private:

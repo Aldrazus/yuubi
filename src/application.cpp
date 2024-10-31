@@ -10,6 +10,7 @@
 #include "key_codes.h"
 #include "pch.h"
 #include "renderer/camera.h"
+#include <GLFW/glfw3.h>
 
 #define UB_BIND_EVENT_FN(fn)                                    \
     [this](auto&&... args) -> decltype(auto) {                  \
@@ -51,10 +52,10 @@ bool Application::onWindowClose(WindowCloseEvent& e) {
 
 bool Application::onWindowResize(WindowResizeEvent& e) {
     if (e.getWidth() == 0 && e.getHeight() == 0) {
-        minimized_ = true;
+        state_.isMinimized = true;
         return false;
     }
-    minimized_ = false;
+    state_.isMinimized = false;
     camera_ = yuubi::Camera(
         glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f,
         (float)e.getWidth() / (float)e.getHeight()
@@ -89,6 +90,10 @@ bool Application::onKeyRelease(KeyReleasedEvent& e) {
     // TODO: fix bug where camera stops when opposite keys are held and one is
     // released
     switch (e.keyCode) {
+        case Key::Escape: {
+            state_.isLocked = false;
+            glfwSetInputMode(window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
         case Key::W: {
             camera_.velocity.z = 0;
             break;
@@ -128,6 +133,14 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
     return true;
 }
 
+bool Application::onMouseButtonPressed(MouseButtonPressedEvent& e)
+{
+    state_.isLocked = true;
+    glfwSetInputMode(window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    return true;
+}
+
 void Application::onEvent(Event& e) {
     EventDispatcher dispatcher(e);
     dispatcher.dispatch<WindowCloseEvent>(
@@ -144,6 +157,9 @@ void Application::onEvent(Event& e) {
     );
     dispatcher.dispatch<MouseMovedEvent>(
         UB_BIND_EVENT_FN(Application::onMouseMove)
+    );
+    dispatcher.dispatch<MouseButtonPressedEvent>(
+        UB_BIND_EVENT_FN(Application::onMouseButtonPressed)
     );
 }
 
@@ -177,7 +193,7 @@ void Application::run() {
         if (currentFPS == std::numeric_limits<float>::infinity()) {
             currentFPS = 0;
         }
-        averageFPS_ = std::lerp(averageFPS_, currentFPS, 0.1f);
+        state_.averageFPS = std::lerp(state_.averageFPS, currentFPS, 0.1f);
 
         // 1. Handle input.
         window_.processInput();
@@ -192,7 +208,7 @@ void Application::run() {
         }
 
         // 3. Render.
-        renderer_.draw(camera_, averageFPS_);
+        renderer_.draw(camera_, state_);
 
         // Limit frame rate.
         {
