@@ -179,10 +179,9 @@ PipelineBuilder& PipelineBuilder::enableBlendingAlphaBlend() {
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::setColorAttachmentFormat(vk::Format format) {
-    colorAttachmentFormat_ = format;
-    renderInfo_.colorAttachmentCount = 1;
-    renderInfo_.pColorAttachmentFormats = &colorAttachmentFormat_;
+PipelineBuilder& PipelineBuilder::setColorAttachmentFormats(std::span<vk::Format> formats) {
+    renderInfo_.colorAttachmentCount = formats.size();
+    renderInfo_.pColorAttachmentFormats = formats.data();
     return *this;
 }
 

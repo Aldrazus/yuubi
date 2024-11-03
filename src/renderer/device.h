@@ -58,7 +58,7 @@ private:
     
     static const vk::StructureChain<
         vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
-        vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features>
+        vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR>
         requiredFeatures_;
 
     static const std::vector<const char*> requiredExtensions_;

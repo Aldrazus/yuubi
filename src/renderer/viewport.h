@@ -36,7 +36,7 @@ public:
     Viewport& operator=(Viewport&& rhs);
     ~Viewport() = default;
     void recreateSwapChain();
-    bool doFrame(std::function<void(const Frame&, const SwapchainImage&)> f);
+    bool doFrame(std::function<void(const Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)> f);
     [[nodiscard]] inline const Image& getDepthImage() const {
         return depthImage_;
     }
@@ -49,6 +49,10 @@ public:
     [[nodiscard]] inline const vk::Format& getSwapChainImageFormat() const {
         return swapChainImageFormat_;
     }
+    [[nodiscard]] inline const vk::Format& getDrawImageFormat() const {
+        return drawImageFormat_;
+    }
+
     [[nodiscard]] inline const vk::Format& getDepthFormat() const {
         return depthImageFormat_;
     }
@@ -58,6 +62,7 @@ private:
     void createSwapChain();
     void createImageViews();
     void createDepthStencil();
+    void createDrawImage();
     void createFrames();
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat() const;
     vk::PresentModeKHR chooseSwapPresentMode() const;
@@ -79,6 +84,10 @@ private:
     Image depthImage_;
     vk::raii::ImageView depthImageView_ = nullptr;
     vk::Format depthImageFormat_;
+
+    Image drawImage_;
+    vk::raii::ImageView drawImageView_ = nullptr;
+    vk::Format drawImageFormat_ = vk::Format::eR16G16B16A16Sfloat;
 
     std::array<Frame, maxFramesInFlight> frames_;
     uint32_t currentFrame_ = 0;

@@ -26,7 +26,7 @@ public:
     PipelineBuilder& disableBlending();
     PipelineBuilder& enableBlendingAdditive();
     PipelineBuilder& enableBlendingAlphaBlend();
-    PipelineBuilder& setColorAttachmentFormat(vk::Format format);
+    PipelineBuilder& setColorAttachmentFormats(std::span<vk::Format> formats);
     PipelineBuilder& setDepthFormat(vk::Format format);
     PipelineBuilder& enableDepthTest(bool depthWriteEnable, vk::CompareOp compareOp);
     PipelineBuilder& disableDepthTest();

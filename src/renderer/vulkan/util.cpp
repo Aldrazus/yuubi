@@ -2,6 +2,7 @@
 
 namespace yuubi {
 
+// PERF: Image transition barriers should be handled via rendergraph
 void transitionImage(const vk::raii::CommandBuffer& commandBuffer,
                                const vk::Image& image,
                                const vk::ImageLayout& currentLayout,
@@ -53,7 +54,14 @@ void transitionImage(const vk::raii::CommandBuffer& commandBuffer,
 
         imageBarrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe);
         imageBarrier.setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
-    } else {
+    } else if (currentLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::ePresentSrcKHR) {
+        // TODO: temporary
+        imageBarrier.setSrcAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite);
+        // imageBarrier.setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite);
+
+        imageBarrier.setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+        imageBarrier.setDstStageMask(vk::PipelineStageFlagBits2::eBottomOfPipe);
+    }else {
         throw std::invalid_argument("Unsupported layout transition!");
     }
 

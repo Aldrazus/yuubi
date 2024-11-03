@@ -29,6 +29,7 @@ public:
 private:
     void createGraphicsPipeline();
     void initSkybox();
+    void initFinalPassResources();
     void createDescriptor();
     void updateScene(const Camera& camera);
 
@@ -54,6 +55,12 @@ private:
     vk::raii::DescriptorSetLayout skyboxDescriptorSetLayout_ = nullptr;
     vk::raii::DescriptorPool skyboxDescriptorPool_ = nullptr;
     vk::raii::DescriptorSet skyboxDescriptorSet_ = nullptr;
+
+    vk::raii::PipelineLayout finalPipelineLayout_ = nullptr;
+    vk::raii::Pipeline finalPipeline_ = nullptr;
+    vk::raii::DescriptorSetLayout finalDescriptorSetLayout_ = nullptr;
+    vk::raii::DescriptorPool finalDescriptorPool_ = nullptr;
+    vk::raii::DescriptorSet finalDescriptorSet_ = nullptr;
 
     DrawContext drawContext_;
     GLTFAsset asset_;

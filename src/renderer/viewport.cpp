@@ -14,6 +14,7 @@ Viewport::Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface,
     createSwapChain();
     createImageViews();
     createDepthStencil();
+    createDrawImage();
     createFrames();
 }
 
@@ -29,6 +30,9 @@ Viewport& Viewport::operator=(Viewport&& rhs) {
         std::swap(depthImageView_, rhs.depthImageView_);
         std::swap(depthImageFormat_, rhs.depthImageFormat_);
         std::swap(frames_, rhs.frames_);
+        std::swap(drawImage_, rhs.drawImage_);
+        std::swap(drawImageView_, rhs.drawImageView_);
+        std::swap(drawImageFormat_, rhs.drawImageFormat_);
     }
     return *this;
 }
@@ -38,6 +42,7 @@ void Viewport::recreateSwapChain() {
     createSwapChain();
     createImageViews();
     createDepthStencil();
+    createDrawImage();
 }
 
 void Viewport::createSwapChain() {
@@ -116,6 +121,21 @@ void Viewport::createDepthStencil() {
     });
     
     depthImageView_ = device_->createImageView(*depthImage_.getImage(), depthImageFormat_, vk::ImageAspectFlagBits::eDepth);
+}
+
+void Viewport::createDrawImage()
+{
+    drawImage_ = Image(&device_->allocator(), ImageCreateInfo{
+        .width = swapChainExtent_.width,
+        .height = swapChainExtent_.height,
+        .format = drawImageFormat_,
+        .tiling = vk::ImageTiling::eOptimal,
+        // TODO: check if this should be a sampled image or an input attachment.
+        .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+        .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+    });
+
+    drawImageView_ = device_->createImageView(*drawImage_.getImage(), drawImageFormat_, vk::ImageAspectFlagBits::eColor);
 }
 
 void Viewport::createFrames() {
@@ -201,7 +221,7 @@ vk::Extent2D Viewport::chooseSwapExtent() const {
     return capabilities.currentExtent;
 }
 
-bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&)> f)
+bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)> f)
 {
     // Wait for GPU to finish previous work on this frame.
     device_->getDevice().waitForFences(*currentFrame().inFlight, vk::True, std::numeric_limits<uint32_t>::max());
@@ -231,7 +251,7 @@ bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&)> 
     currentFrame().commandBuffer.reset();
 
     // Submit commands for rendering this frame.
-    f(currentFrame(), images_[imageIndex]);
+    f(currentFrame(), images_[imageIndex], drawImage_, drawImageView_);
 
     // Present this frame.
     vk::PresentInfoKHR presentInfo {

@@ -248,7 +248,8 @@ const vk::StructureChain<
     vk::PhysicalDeviceFeatures2,
     vk::PhysicalDeviceVulkan11Features,
     vk::PhysicalDeviceVulkan12Features,
-    vk::PhysicalDeviceVulkan13Features>
+    vk::PhysicalDeviceVulkan13Features,
+    vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR>
     Device::requiredFeatures_{
         vk::PhysicalDeviceFeatures2{
                                     .features = {.samplerAnisotropy = vk::True}
@@ -268,10 +269,13 @@ const vk::StructureChain<
         vk::PhysicalDeviceVulkan13Features{
                                     .synchronization2 = vk::True, .dynamicRendering = vk::True
         },
+    vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR{
+        .dynamicRenderingLocalRead = vk::True
+    }
 };
 
 const std::vector<const char*> Device::requiredExtensions_{
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+    vk::KHRSwapchainExtensionName, vk::KHRDynamicRenderingLocalReadExtensionName
 };
 
 }

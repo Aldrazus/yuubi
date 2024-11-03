@@ -52,7 +52,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     message(CMAKE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     
-    # set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:$<PROJECT_NAME>>")
+    # set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:yuubi>")
     # Make this a Win32 app (no console) which uses WinMain() as the entry point
     # set_property( TARGET ${PROJECT_NAME} PROPERTY WIN32_EXECUTABLE true )
 endif()
