@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <vulkan/vulkan_enums.hpp>
 #include <stb_image.h>
 
 #include "imgui.h"
@@ -80,6 +81,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
 
     createGraphicsPipeline();
     initSkybox();
+    initFinalPassResources();
 }
 
 Renderer::~Renderer() { device_->getDevice().waitIdle(); }
@@ -117,8 +119,11 @@ void Renderer::draw(const Camera& camera, AppState state) {
 
     ImGui::Render();
 
+    // TODO: fix formatted lambda args causing misaligned indents
     viewport_.doFrame([this, &camera](
-                          const Frame& frame, const SwapchainImage& image, const Image& drawImage, const vk::raii::ImageView& drawImageView
+                          const Frame& frame, const SwapchainImage& image,
+                          const Image& drawImage,
+                          const vk::raii::ImageView& drawImageView
                       ) {
         vk::CommandBufferBeginInfo beginInfo{};
         frame.commandBuffer.begin(beginInfo);
@@ -126,7 +131,8 @@ void Renderer::draw(const Camera& camera, AppState state) {
         // Transition swapchain image layout to COLOR_ATTACHMENT_OPTIMAL
         // before rendering
         transitionImage(
-            frame.commandBuffer, *drawImage.getImage(), vk::ImageLayout::eUndefined,
+            frame.commandBuffer, image.image,
+            vk::ImageLayout::eUndefined,
             vk::ImageLayout::eColorAttachmentOptimal
         );
 
@@ -138,12 +144,20 @@ void Renderer::draw(const Camera& camera, AppState state) {
             vk::ImageLayout::eDepthAttachmentOptimal
         );
 
-        vk::RenderingAttachmentInfo colorAttachmentInfo{
-            .imageView = *drawImageView,
-            .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-            .loadOp = vk::AttachmentLoadOp::eClear,
-            .storeOp = vk::AttachmentStoreOp::eStore,
-            .clearValue = {{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}}}
+        std::array<vk::RenderingAttachmentInfo, 2> colorAttachmentInfos{
+            vk::RenderingAttachmentInfo{
+                                        .imageView = *image.imageView,
+                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        // TODO: do i really care?
+                                        .loadOp = vk::AttachmentLoadOp::eDontCare,
+                                        .storeOp = vk::AttachmentStoreOp::eStore,
+                                        .clearValue = {{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}}}},
+            vk::RenderingAttachmentInfo{
+                                        .imageView = *drawImageView,
+                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .loadOp = vk::AttachmentLoadOp::eClear,
+                                        .storeOp = vk::AttachmentStoreOp::eStore,
+                                        .clearValue = {{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}}}},
         };
 
         vk::RenderingAttachmentInfo depthAttachmentInfo{
@@ -161,8 +175,8 @@ void Renderer::draw(const Camera& camera, AppState state) {
                              .extent = viewport_.getExtent(),
                              },
             .layerCount = 1,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &colorAttachmentInfo,
+            .colorAttachmentCount = colorAttachmentInfos.size(),
+            .pColorAttachments = colorAttachmentInfos.data(),
             .pDepthAttachment = &depthAttachmentInfo,
         };
 
@@ -203,7 +217,6 @@ void Renderer::draw(const Camera& camera, AppState state) {
                     *renderObject.indexBuffer->getBuffer(), 0,
                     vk::IndexType::eUint32
                 );
-                ;
 
                 frame.commandBuffer.pushConstants<PushConstants>(
                     *pipelineLayout_,
@@ -276,6 +289,36 @@ void Renderer::draw(const Camera& camera, AppState state) {
             );
             frame.commandBuffer.drawIndexed(36, 1, 0, 0, 0);
 
+            // Transition draw image layout to local read
+            vk::MemoryBarrier2 memoryBarrier{
+                .srcStageMask =
+                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                .dstAccessMask = vk::AccessFlagBits2::eInputAttachmentRead,
+            };
+
+            vk::DependencyInfo dependencyInfo{
+                .dependencyFlags = vk::DependencyFlagBits::eByRegion,
+                .memoryBarrierCount = 1,
+                .pMemoryBarriers = &memoryBarrier,
+            };
+
+            frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+
+            // Copy draw image to swapchain image
+            frame.commandBuffer.bindPipeline(
+                vk::PipelineBindPoint::eGraphics, *finalPipeline_
+            );
+            frame.commandBuffer.bindIndexBuffer(
+                *finalIndexBuffer_.getBuffer(), 0, vk::IndexType::eUint32
+            );
+            frame.commandBuffer.bindDescriptorSets(
+                vk::PipelineBindPoint::eGraphics, *finalPipelineLayout_, 0,
+                {*finalDescriptorSet_}, {}
+            );
+            frame.commandBuffer.draw(3, 1, 0, 0);
+
             /*
             // Draw UI.
             // TODO: move to ImguiManager somehow
@@ -289,8 +332,7 @@ void Renderer::draw(const Camera& camera, AppState state) {
         // Transition swapchain image layout to PRESENT_SRC before
         // presenting
         transitionImage(
-            frame.commandBuffer, image.image,
-            vk::ImageLayout::eUndefined,
+            frame.commandBuffer, image.image, vk::ImageLayout::eColorAttachmentOptimal,
             vk::ImageLayout::ePresentSrcKHR
         );
 
@@ -339,8 +381,7 @@ void Renderer::createGraphicsPipeline() {
     PipelineBuilder builder(pipelineLayout_);
 
     std::array<vk::Format, 2> formats = {
-        viewport_.getSwapChainImageFormat(),
-        viewport_.getDrawImageFormat()
+        viewport_.getSwapChainImageFormat(), viewport_.getDrawImageFormat()
     };
 
     opaquePipeline_ =
@@ -427,8 +468,7 @@ void Renderer::initSkybox() {
     PipelineBuilder builder(skyboxPipelineLayout_);
 
     std::array<vk::Format, 2> formats = {
-        viewport_.getSwapChainImageFormat(),
-        viewport_.getDrawImageFormat()
+        viewport_.getSwapChainImageFormat(), viewport_.getDrawImageFormat()
     };
 
     skyboxPipeline_ =
@@ -644,8 +684,7 @@ void Renderer::initFinalPassResources() {
 
     std::vector<vk::DescriptorPoolSize> poolSizes{
         vk::DescriptorPoolSize{
-                               .type = vk::DescriptorType::eInputAttachment,
-                               .descriptorCount = 1}
+                               .type = vk::DescriptorType::eInputAttachment, .descriptorCount = 1}
     };
 
     vk::DescriptorPoolCreateInfo poolInfo{
@@ -673,22 +712,20 @@ void Renderer::initFinalPassResources() {
         *finalDescriptorSetLayout_
     };
 
-    finalPipelineLayout_ = createPipelineLayout(
-        *device_, descriptorSetLayouts, {} 
-    );
+    finalPipelineLayout_ =
+        createPipelineLayout(*device_, descriptorSetLayouts, {});
     PipelineBuilder builder(finalPipelineLayout_);
 
     std::array<vk::Format, 2> formats = {
-        viewport_.getSwapChainImageFormat(),
-        viewport_.getDrawImageFormat()
+        viewport_.getSwapChainImageFormat(), viewport_.getDrawImageFormat()
     };
 
-    skyboxPipeline_ =
+    finalPipeline_ =
         builder.setShaders(vertShader, fragShader)
             .setInputTopology(vk::PrimitiveTopology::eTriangleList)
             .setPolygonMode(vk::PolygonMode::eFill)
             .setCullMode(
-                vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise
+                vk::CullModeFlagBits::eFront, vk::FrontFace::eCounterClockwise
             )
             .setMultisamplingNone()
             .disableBlending()
@@ -698,10 +735,10 @@ void Renderer::initFinalPassResources() {
             .build(*device_);
 
     const uint32_t numIndices = 6;
-    std::array<uint32_t, numIndices> indices = { };
+    std::array<uint32_t, numIndices> indices = {0, 1, 2, 1, 3, 2};
 
     vk::DeviceSize bufferSize = sizeof(indices[0]) * numIndices;
-    skyboxIndexBuffer_ = Buffer(
+    finalIndexBuffer_ = Buffer(
         &device_->allocator(),
         vk::BufferCreateInfo{
             .size = bufferSize,
@@ -711,160 +748,23 @@ void Renderer::initFinalPassResources() {
         VmaAllocationCreateInfo{.usage = VMA_MEMORY_USAGE_GPU_ONLY}
     );
 
-    skyboxIndexBuffer_.upload(*device_, indices.data(), bufferSize, 0);
-
-    // Load skybox images.
-
-    // Per Vulkan 1.3 Section 12.5:
-    // For cube and cube array image views, the layers of the image view
-    // starting at baseArrayLayer correspond to faces in the order +X, -X, +Y,
-    // -Y, +Z, -Z.
-    const std::array<std::string, 6> filePaths = {
-        "assets/skybox/right.jpg", "assets/skybox/left.jpg",
-        "assets/skybox/top.jpg",   "assets/skybox/bottom.jpg",
-        "assets/skybox/front.jpg", "assets/skybox/back.jpg",
-    };
-
-    std::array<stbi_uc*, 6> sidePixels;
-    int width, height, numChannels;
-
-    for (const auto& [i, path] : filePaths | std::views::enumerate) {
-        UB_INFO("Loading side {}: {}", i, path);
-        sidePixels[i] =
-            stbi_load(path.c_str(), &width, &height, &numChannels, 4);
-        if (sidePixels[i] == nullptr) {
-            UB_ERROR("sizePixels is nullptr");
-        }
-        numChannels = 4;
-    }
-
-    vk::DeviceSize imageSize = width * height * 4 * sizeof(stbi_uc) * 6;
-
-    vk::BufferCreateInfo stagingBufferCreateInfo{
-        .size = imageSize,
-        .usage = vk::BufferUsageFlagBits::eTransferSrc,
-    };
-
-    VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
-        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                 VMA_ALLOCATION_CREATE_MAPPED_BIT,
-        .usage = VMA_MEMORY_USAGE_AUTO,
-    };
-
-    Buffer stagingBuffer = device_->createBuffer(
-        stagingBufferCreateInfo, stagingBufferAllocCreateInfo
-    );
-
-    for (auto&& [i, ptr] : sidePixels | std::views::enumerate) {
-        const size_t size = width * height * numChannels * sizeof(stbi_uc);
-        auto pixels = std::span{ptr, size};
-        std::ranges::copy(
-            pixels,
-            static_cast<stbi_uc*>(stagingBuffer.getMappedMemory()) + size * i
-        );
-        stbi_image_free(ptr);
-    }
-
-    skyboxImage_ = Image(
-        &device_->allocator(),
-        ImageCreateInfo{
-            .width = static_cast<uint32_t>(width),
-            .height = static_cast<uint32_t>(height),
-            .format = vk::Format::eR8G8B8A8Srgb,
-            .tiling = vk::ImageTiling::eOptimal,
-            .usage = vk::ImageUsageFlagBits::eSampled |
-                     vk::ImageUsageFlagBits::eTransferSrc |
-                     vk::ImageUsageFlagBits::eTransferDst,
-            .properties = vk::MemoryPropertyFlagBits::eDeviceLocal,
-            .mipLevels = 1,
-            .arrayLayers = 6
-        }
-    );
-
-    device_->submitImmediateCommands(
-        [&stagingBuffer, this, width,
-         height](const vk::raii::CommandBuffer& commandBuffer) {
-            transitionImage(
-                commandBuffer, *skyboxImage_.getImage(),
-                vk::ImageLayout::eUndefined,
-                vk::ImageLayout::eTransferDstOptimal
-            );
-
-            vk::BufferImageCopy copyRegion{
-                .bufferOffset = 0,
-                .bufferRowLength = 0,
-                .bufferImageHeight = 0,
-                .imageSubresource =
-                    vk::ImageSubresourceLayers{
-                                               .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                               .mipLevel = 0,
-                                               .baseArrayLayer = 0,
-                                               .layerCount = 6
-                    },
-                .imageOffset = {0, 0, 0},
-                .imageExtent =
-                    vk::Extent3D{
-                                               .width = static_cast<uint32_t>(width),
-                                               .height = static_cast<uint32_t>(height),
-                                               .depth = 1
-                    }
-            };
-
-            commandBuffer.copyBufferToImage(
-                *stagingBuffer.getBuffer(), *skyboxImage_.getImage(),
-                vk::ImageLayout::eTransferDstOptimal, {copyRegion}
-            );
-
-            transitionImage(
-                commandBuffer, *skyboxImage_.getImage(),
-                vk::ImageLayout::eTransferDstOptimal,
-                vk::ImageLayout::eShaderReadOnlyOptimal
-            );
-        }
-    );
-
-    // Create image view.
-    skyboxImageView_ = device_->createImageView(
-        *skyboxImage_.getImage(), vk::Format::eR8G8B8A8Srgb,
-        vk::ImageAspectFlagBits::eColor, 1, vk::ImageViewType::eCube
-    );
-
-    // Create sampler.
-    skyboxSampler_ = device_->getDevice().createSampler(vk::SamplerCreateInfo{
-        .magFilter = vk::Filter::eLinear,
-        .minFilter = vk::Filter::eLinear,
-        .mipmapMode = vk::SamplerMipmapMode::eLinear,
-        .addressModeU = vk::SamplerAddressMode::eRepeat,
-        .addressModeV = vk::SamplerAddressMode::eRepeat,
-        .addressModeW = vk::SamplerAddressMode::eRepeat,
-        .mipLodBias = 0.0f,
-        .anisotropyEnable = vk::True,
-        .maxAnisotropy = device_->getPhysicalDevice()
-                             .getProperties()
-                             .limits.maxSamplerAnisotropy,
-        .compareEnable = vk::False,
-        .compareOp = vk::CompareOp::eAlways,
-        .minLod = 0.0f,
-        .maxLod = 0.0f,
-        .borderColor = vk::BorderColor::eIntOpaqueBlack,
-        .unnormalizedCoordinates = vk::False,
-    });
+    finalIndexBuffer_.upload(*device_, indices.data(), bufferSize, 0);
 
     // Update descriptor set.
     vk::DescriptorImageInfo descImageInfo{
-        .sampler = *skyboxSampler_,
-        .imageView = *skyboxImageView_,
-        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        .sampler = nullptr,
+        .imageView = *viewport_.getDrawImageView(),
+        .imageLayout = vk::ImageLayout::eRenderingLocalReadKHR,
     };
 
     device_->getDevice().updateDescriptorSets(
         {
             vk::WriteDescriptorSet{
-                                   .dstSet = *skyboxDescriptorSet_,
+                                   .dstSet = *finalDescriptorSet_,
                                    .dstBinding = 0,
                                    .dstArrayElement = 0,
                                    .descriptorCount = 1,
-                                   .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                   .descriptorType = vk::DescriptorType::eInputAttachment,
                                    .pImageInfo = &descImageInfo}
     },
         {}

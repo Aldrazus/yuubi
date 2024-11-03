@@ -49,6 +49,11 @@ public:
     [[nodiscard]] inline const vk::Format& getSwapChainImageFormat() const {
         return swapChainImageFormat_;
     }
+
+    [[nodiscard]] inline const vk::raii::ImageView& getDrawImageView() const {
+        return drawImageView_;
+    }
+
     [[nodiscard]] inline const vk::Format& getDrawImageFormat() const {
         return drawImageFormat_;
     }

@@ -61,6 +61,7 @@ private:
     vk::raii::DescriptorSetLayout finalDescriptorSetLayout_ = nullptr;
     vk::raii::DescriptorPool finalDescriptorPool_ = nullptr;
     vk::raii::DescriptorSet finalDescriptorSet_ = nullptr;
+    Buffer finalIndexBuffer_;
 
     DrawContext drawContext_;
     GLTFAsset asset_;

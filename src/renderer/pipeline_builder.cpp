@@ -40,10 +40,14 @@ vk::raii::Pipeline PipelineBuilder::build(const Device& device) {
         .viewportCount = 1, .scissorCount = 1
     };
 
+    std::array<vk::PipelineColorBlendAttachmentState, 2> blendAttachments {
+        colorBlendAttachment_,
+        colorBlendAttachment_
+    };
     vk::PipelineColorBlendStateCreateInfo colorBlending{
         .logicOpEnable = vk::False,
-        .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment_
+        .attachmentCount = blendAttachments.size(),
+        .pAttachments = blendAttachments.data()
     };
 
     std::vector<vk::DynamicState> dynamicStates = {

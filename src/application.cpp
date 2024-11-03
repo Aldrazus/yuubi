@@ -92,7 +92,9 @@ bool Application::onKeyRelease(KeyReleasedEvent& e) {
     switch (e.keyCode) {
         case Key::Escape: {
             state_.isLocked = false;
-            glfwSetInputMode(window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            glfwSetInputMode(
+                window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL
+            );
         }
         case Key::W: {
             camera_.velocity.z = 0;
@@ -133,8 +135,7 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
     return true;
 }
 
-bool Application::onMouseButtonPressed(MouseButtonPressedEvent& e)
-{
+bool Application::onMouseButtonPressed(MouseButtonPressedEvent& e) {
     state_.isLocked = true;
     glfwSetInputMode(window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 

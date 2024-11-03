@@ -11,7 +11,8 @@ layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUv;
 layout (location = 3) in mat3 inTBN;
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0) out vec4 _;
+layout(location = 1) out vec4 outColor;
 
 const float PI = 3.14159265359;
 
@@ -145,6 +146,9 @@ void main() {
     color = pow(color, vec3(1.0 / 2.2));
 
     outColor = vec4(color, 1.0);
+    
+    // Just to stop annoying validation errors
+    _ = vec4(0.0);
 
     // outColor = texture(textures[nonuniformEXT(material.normalTex)], inUv);
 }

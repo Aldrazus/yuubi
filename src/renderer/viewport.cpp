@@ -8,8 +8,10 @@
 
 namespace yuubi {
 
-Viewport::Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface,
-                   std::shared_ptr<Device> device)
+Viewport::Viewport(
+    std::shared_ptr<vk::raii::SurfaceKHR> surface,
+    std::shared_ptr<Device> device
+)
     : surface_(surface), device_(device) {
     createSwapChain();
     createImageViews();
@@ -92,14 +94,15 @@ void Viewport::createImageViews() {
             .image = image,
             .viewType = vk::ImageViewType::e2D,
             .format = swapChainImageFormat_,
-            .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                                 .baseMipLevel = 0,
-                                 .levelCount = 1,
-                                 .baseArrayLayer = 0,
-                                 .layerCount = 1},
+            .subresourceRange =
+                {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                   .baseMipLevel = 0,
+                                   .levelCount = 1,
+                                   .baseArrayLayer = 0,
+                                   .layerCount = 1},
         };
 
-        SwapchainImage swapchainImage {
+        SwapchainImage swapchainImage{
             .image = image,
             .imageView = {device_->getDevice(), imageViewCreateInfo}
         };
@@ -111,74 +114,125 @@ void Viewport::createImageViews() {
 void Viewport::createDepthStencil() {
     depthImageFormat_ = findDepthFormat();
 
-    depthImage_ = Image(&device_->allocator(), ImageCreateInfo{
-        .width = swapChainExtent_.width,
-        .height = swapChainExtent_.height,
-        .format = depthImageFormat_, 
-        .tiling = vk::ImageTiling::eOptimal, 
-        .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment, 
-        .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
-    });
-    
-    depthImageView_ = device_->createImageView(*depthImage_.getImage(), depthImageFormat_, vk::ImageAspectFlagBits::eDepth);
+    depthImage_ = Image(
+        &device_->allocator(),
+        ImageCreateInfo{
+            .width = swapChainExtent_.width,
+            .height = swapChainExtent_.height,
+            .format = depthImageFormat_,
+            .tiling = vk::ImageTiling::eOptimal,
+            .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
+            .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+        }
+    );
+
+    depthImageView_ = device_->createImageView(
+        *depthImage_.getImage(), depthImageFormat_,
+        vk::ImageAspectFlagBits::eDepth
+    );
 }
 
-void Viewport::createDrawImage()
-{
-    drawImage_ = Image(&device_->allocator(), ImageCreateInfo{
-        .width = swapChainExtent_.width,
-        .height = swapChainExtent_.height,
-        .format = drawImageFormat_,
-        .tiling = vk::ImageTiling::eOptimal,
-        // TODO: check if this should be a sampled image or an input attachment.
-        .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
-        .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
-    });
+void Viewport::createDrawImage() {
+    drawImage_ = Image(
+        &device_->allocator(),
+        ImageCreateInfo{
+            .width = swapChainExtent_.width,
+            .height = swapChainExtent_.height,
+            .format = drawImageFormat_,
+            .tiling = vk::ImageTiling::eOptimal,
+            // TODO: check if this should be a sampled image or an input
+            // attachment.
+            .usage = vk::ImageUsageFlagBits::eColorAttachment |
+                     vk::ImageUsageFlagBits::eInputAttachment,
+            .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+        }
+    );
 
-    drawImageView_ = device_->createImageView(*drawImage_.getImage(), drawImageFormat_, vk::ImageAspectFlagBits::eColor);
+    drawImageView_ = device_->createImageView(
+        *drawImage_.getImage(), drawImageFormat_,
+        vk::ImageAspectFlagBits::eColor
+    );
+
+    device_->submitImmediateCommands(
+        [this](const vk::raii::CommandBuffer& commandBuffer) {
+            vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                .srcStageMask =
+                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstStageMask =
+                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .oldLayout = vk::ImageLayout::eUndefined,
+                .newLayout = vk::ImageLayout::eRenderingLocalReadKHR,
+                .image = *drawImage_.getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers},
+            };
+
+            vk::DependencyInfo dependencyInfo{
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers = &imageMemoryBarrier
+            };
+            commandBuffer.pipelineBarrier2(dependencyInfo);
+        }
+    );
 }
 
 void Viewport::createFrames() {
     for (auto& frame : frames_) {
-        frame.inFlight = vk::raii::Fence{device_->getDevice(), vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}};
-        frame.imageAvailable = vk::raii::Semaphore{device_->getDevice(), vk::SemaphoreCreateInfo()};
-        frame.renderFinished = vk::raii::Semaphore{device_->getDevice(), vk::SemaphoreCreateInfo()};
+        frame.inFlight = vk::raii::Fence{
+            device_->getDevice(),
+            vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}
+        };
+        frame.imageAvailable = vk::raii::Semaphore{
+            device_->getDevice(), vk::SemaphoreCreateInfo()
+        };
+        frame.renderFinished = vk::raii::Semaphore{
+            device_->getDevice(), vk::SemaphoreCreateInfo()
+        };
 
-        frame.commandPool = vk::raii::CommandPool{device_->getDevice(), {
-            .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-            .queueFamilyIndex = device_->getQueue().familyIndex
-        }};
+        frame.commandPool = vk::raii::CommandPool{
+            device_->getDevice(),
+            {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                           .queueFamilyIndex = device_->getQueue().familyIndex}
+        };
 
         // TODO: wtf?
-        vk::CommandBufferAllocateInfo allocInfo {
+        vk::CommandBufferAllocateInfo allocInfo{
             .commandPool = *frame.commandPool,
             .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = 1 
+            .commandBufferCount = 1
         };
-        frame.commandBuffer = std::move(device_->getDevice().allocateCommandBuffers(allocInfo)[0]);
+        frame.commandBuffer =
+            std::move(device_->getDevice().allocateCommandBuffers(allocInfo)[0]
+            );
     }
 }
 
-vk::Format Viewport::findDepthFormat() const
-{
-return findSupportedFormat(
+vk::Format Viewport::findDepthFormat() const {
+    return findSupportedFormat(
         {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint,
          vk::Format::eD24UnormS8Uint},
         vk::ImageTiling::eOptimal,
-        vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+        vk::FormatFeatureFlagBits::eDepthStencilAttachment
+    );
 }
 
 vk::Format Viewport::findSupportedFormat(
-    const std::vector<vk::Format>& candidates, vk::ImageTiling tiling,
-    vk::FormatFeatureFlags features) const {
+    const std::vector<vk::Format>& candidates,
+    vk::ImageTiling tiling,
+    vk::FormatFeatureFlags features
+) const {
     for (vk::Format format : candidates) {
         auto props = device_->getPhysicalDevice().getFormatProperties(format);
 
         if (tiling == vk::ImageTiling::eLinear &&
             (props.linearTilingFeatures & features) == features) {
             return format;
-        } else if (tiling == vk::ImageTiling::eOptimal &&
-                   (props.optimalTilingFeatures & features) == features) {
+        } else if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
             return format;
         }
     }
@@ -221,10 +275,15 @@ vk::Extent2D Viewport::chooseSwapExtent() const {
     return capabilities.currentExtent;
 }
 
-bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)> f)
-{
+bool Viewport::doFrame(
+    std::function<
+        void(const Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)>
+        f
+) {
     // Wait for GPU to finish previous work on this frame.
-    device_->getDevice().waitForFences(*currentFrame().inFlight, vk::True, std::numeric_limits<uint32_t>::max());
+    device_->getDevice().waitForFences(
+        *currentFrame().inFlight, vk::True, std::numeric_limits<uint32_t>::max()
+    );
 
     // Get swapchain image index for this frame.
     uint32_t imageIndex;
@@ -233,13 +292,13 @@ bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&, c
         // swapchain. This image may not be available for immediate use, so a
         // semaphore is used to synchronize commands that require this image
 
-        auto [result, idx] = device_->getDevice().acquireNextImage2KHR({
-            .swapchain = *swapChain_,
-            .timeout = std::numeric_limits<uint64_t>::max(),
-            .semaphore = *currentFrame().imageAvailable,
-            // TODO: WTF?
-            .deviceMask = 1
-        });
+        auto [result, idx] = device_->getDevice().acquireNextImage2KHR(
+            {.swapchain = *swapChain_,
+             .timeout = std::numeric_limits<uint64_t>::max(),
+             .semaphore = *currentFrame().imageAvailable,
+             // TODO: WTF?
+             .deviceMask = 1}
+        );
         imageIndex = idx;
 
     } catch (const std::exception& e) {
@@ -254,7 +313,7 @@ bool Viewport::doFrame(std::function<void(const Frame&, const SwapchainImage&, c
     f(currentFrame(), images_[imageIndex], drawImage_, drawImageView_);
 
     // Present this frame.
-    vk::PresentInfoKHR presentInfo {
+    vk::PresentInfoKHR presentInfo{
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &(*currentFrame().renderFinished),
         .swapchainCount = 1,
