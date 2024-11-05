@@ -8,6 +8,7 @@ target_sources(
     "renderer/resources/material_manager.cpp"
     "renderer/resources/texture_manager.cpp"
     "renderer/camera.cpp"
+    "renderer/depth_pass.cpp"
     "renderer/descriptor_layout_builder.cpp"
     "renderer/device.cpp"
     "renderer/imgui_manager.cpp"

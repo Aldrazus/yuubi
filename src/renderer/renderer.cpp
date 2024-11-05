@@ -11,6 +11,7 @@
 #include "imgui_impl_vulkan.h"
 #include "application.h"
 #include "renderer/camera.h"
+#include "renderer/depth_pass.h"
 #include "renderer/loaded_gltf.h"
 #include "renderer/render_object.h"
 #include "renderer/vma/buffer.h"
@@ -37,9 +38,9 @@ Renderer::Renderer(const Window& window) : window_(window) {
 
     surface_ = std::make_shared<vk::raii::SurfaceKHR>(instance_, tmp);
     device_ = std::make_shared<Device>(instance_, *surface_);
-    viewport_ = Viewport{surface_, device_};
+    viewport_ = std::make_shared<Viewport>(surface_, device_);
     textureManager_ = TextureManager(device_);
-    imguiManager_ = ImguiManager{instance_, *device_, window_, viewport_};
+    imguiManager_ = ImguiManager{instance_, *device_, window_, *viewport_};
 
     materialManager_ = MaterialManager(device_);
 
@@ -82,6 +83,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     createGraphicsPipeline();
     initSkybox();
     initFinalPassResources();
+    depthPass_ = DepthPass(device_, viewport_) ;
 }
 
 Renderer::~Renderer() { device_->getDevice().waitIdle(); }
@@ -120,29 +122,22 @@ void Renderer::draw(const Camera& camera, AppState state) {
     ImGui::Render();
 
     // TODO: fix formatted lambda args causing misaligned indents
-    viewport_.doFrame([this, &camera](
-                          const Frame& frame, const SwapchainImage& image,
-                          const Image& drawImage,
-                          const vk::raii::ImageView& drawImageView
-                      ) {
+    viewport_->doFrame([this, &camera](
+                           const Frame& frame, const SwapchainImage& image,
+                           const Image& drawImage,
+                           const vk::raii::ImageView& drawImageView
+                       ) {
         vk::CommandBufferBeginInfo beginInfo{};
         frame.commandBuffer.begin(beginInfo);
 
         // Transition swapchain image layout to COLOR_ATTACHMENT_OPTIMAL
         // before rendering
         transitionImage(
-            frame.commandBuffer, image.image,
-            vk::ImageLayout::eUndefined,
+            frame.commandBuffer, image.image, vk::ImageLayout::eUndefined,
             vk::ImageLayout::eColorAttachmentOptimal
         );
 
-        // Transition depth buffer layout to DEPTH_ATTACHMENT_OPTIMAL before
-        // rendering
-        transitionImage(
-            frame.commandBuffer, *viewport_.getDepthImage().getImage(),
-            vk::ImageLayout::eUndefined,
-            vk::ImageLayout::eDepthAttachmentOptimal
-        );
+        depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_);
 
         std::array<vk::RenderingAttachmentInfo, 2> colorAttachmentInfos{
             vk::RenderingAttachmentInfo{
@@ -161,18 +156,16 @@ void Renderer::draw(const Camera& camera, AppState state) {
         };
 
         vk::RenderingAttachmentInfo depthAttachmentInfo{
-            .imageView = *viewport_.getDepthImageView(),
+            .imageView = *viewport_->getDepthImageView(),
             .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-            .loadOp = vk::AttachmentLoadOp::eClear,
-            .storeOp = vk::AttachmentStoreOp::eStore,
-            .clearValue = {.depthStencil = {0.0f, 0}}
+            .loadOp = vk::AttachmentLoadOp::eLoad,
         };
 
         vk::RenderingInfo renderInfo{
             .renderArea =
                 {
                              .offset = {0, 0},
-                             .extent = viewport_.getExtent(),
+                             .extent = viewport_->getExtent(),
                              },
             .layerCount = 1,
             .colorAttachmentCount = colorAttachmentInfos.size(),
@@ -191,9 +184,9 @@ void Renderer::draw(const Camera& camera, AppState state) {
             // and the y-axis points upwards.
             vk::Viewport viewport{
                 .x = 0.0f,
-                .y = static_cast<float>(viewport_.getExtent().height),
-                .width = static_cast<float>(viewport_.getExtent().width),
-                .height = -static_cast<float>(viewport_.getExtent().height),
+                .y = static_cast<float>(viewport_->getExtent().height),
+                .width = static_cast<float>(viewport_->getExtent().width),
+                .height = -static_cast<float>(viewport_->getExtent().height),
                 .minDepth = 0.0f,
                 .maxDepth = 1.0f
             };
@@ -202,7 +195,7 @@ void Renderer::draw(const Camera& camera, AppState state) {
 
             vk::Rect2D scissor{
                 .offset = {0, 0},
-                  .extent = viewport_.getExtent()
+                  .extent = viewport_->getExtent()
             };
 
             frame.commandBuffer.setScissor(0, {scissor});
@@ -332,7 +325,8 @@ void Renderer::draw(const Camera& camera, AppState state) {
         // Transition swapchain image layout to PRESENT_SRC before
         // presenting
         transitionImage(
-            frame.commandBuffer, image.image, vk::ImageLayout::eColorAttachmentOptimal,
+            frame.commandBuffer, image.image,
+            vk::ImageLayout::eColorAttachmentOptimal,
             vk::ImageLayout::ePresentSrcKHR
         );
 
@@ -381,7 +375,7 @@ void Renderer::createGraphicsPipeline() {
     PipelineBuilder builder(pipelineLayout_);
 
     std::array<vk::Format, 2> formats = {
-        viewport_.getSwapChainImageFormat(), viewport_.getDrawImageFormat()
+        viewport_->getSwapChainImageFormat(), viewport_->getDrawImageFormat()
     };
 
     opaquePipeline_ =
@@ -393,9 +387,9 @@ void Renderer::createGraphicsPipeline() {
             )
             .setMultisamplingNone()
             .disableBlending()
-            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
+            .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
             .setColorAttachmentFormats(formats)
-            .setDepthFormat(viewport_.getDepthFormat())
+            .setDepthFormat(viewport_->getDepthFormat())
             .build(*device_);
 
     transparentPipeline_ =
@@ -468,7 +462,7 @@ void Renderer::initSkybox() {
     PipelineBuilder builder(skyboxPipelineLayout_);
 
     std::array<vk::Format, 2> formats = {
-        viewport_.getSwapChainImageFormat(), viewport_.getDrawImageFormat()
+        viewport_->getSwapChainImageFormat(), viewport_->getDrawImageFormat()
     };
 
     skyboxPipeline_ =
@@ -483,7 +477,7 @@ void Renderer::initSkybox() {
             .disableBlending()
             .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
             .setColorAttachmentFormats(formats)
-            .setDepthFormat(viewport_.getDepthFormat())
+            .setDepthFormat(viewport_->getDepthFormat())
             .build(*device_);
 
     const uint32_t numIndices = 6 * 2 * 3;
@@ -717,7 +711,7 @@ void Renderer::initFinalPassResources() {
     PipelineBuilder builder(finalPipelineLayout_);
 
     std::array<vk::Format, 2> formats = {
-        viewport_.getSwapChainImageFormat(), viewport_.getDrawImageFormat()
+        viewport_->getSwapChainImageFormat(), viewport_->getDrawImageFormat()
     };
 
     finalPipeline_ =
@@ -731,7 +725,7 @@ void Renderer::initFinalPassResources() {
             .disableBlending()
             .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
             .setColorAttachmentFormats(formats)
-            .setDepthFormat(viewport_.getDepthFormat())
+            .setDepthFormat(viewport_->getDepthFormat())
             .build(*device_);
 
     const uint32_t numIndices = 6;
@@ -753,7 +747,7 @@ void Renderer::initFinalPassResources() {
     // Update descriptor set.
     vk::DescriptorImageInfo descImageInfo{
         .sampler = nullptr,
-        .imageView = *viewport_.getDrawImageView(),
+        .imageView = *viewport_->getDrawImageView(),
         .imageLayout = vk::ImageLayout::eRenderingLocalReadKHR,
     };
 

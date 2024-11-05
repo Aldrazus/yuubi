@@ -1,8 +1,10 @@
 #include "renderer/device.h"
+#include <print>
 #include "renderer/vulkan_usage.h"
 #include "renderer/vma/allocator.h"
 #include "renderer/vma/image.h"
 #include "renderer/vma/buffer.h"
+#include "pch.h"
 
 namespace util {
 uint32_t findGraphicsQueueFamilyIndex(
@@ -26,9 +28,11 @@ namespace yuubi {
 Device::Device(
     const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface
 ) {
+    UB_INFO("Creating device...");
     selectPhysicalDevice(instance, surface);
     createLogicalDevice(instance);
     createImmediateCommandResources();
+    UB_INFO("Created device...");
 }
 
 void Device::selectPhysicalDevice(
@@ -269,9 +273,9 @@ const vk::StructureChain<
         vk::PhysicalDeviceVulkan13Features{
                                     .synchronization2 = vk::True, .dynamicRendering = vk::True
         },
-    vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR{
-        .dynamicRenderingLocalRead = vk::True
-    }
+        vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR{
+                                    .dynamicRenderingLocalRead = vk::True
+        }
 };
 
 const std::vector<const char*> Device::requiredExtensions_{

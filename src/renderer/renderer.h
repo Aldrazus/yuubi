@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/camera.h"
+#include "renderer/depth_pass.h"
 #include "renderer/device.h"
 #include "renderer/gltf/asset.h"
 #include "renderer/imgui_manager.h"
@@ -38,7 +39,7 @@ private:
     Instance instance_;
     std::shared_ptr<vk::raii::SurfaceKHR> surface_;
     std::shared_ptr<Device> device_;
-    Viewport viewport_;
+    std::shared_ptr<Viewport> viewport_;
     ImguiManager imguiManager_;
 
     vk::raii::PipelineLayout pipelineLayout_ = nullptr;
@@ -73,6 +74,8 @@ private:
     Buffer sceneDataBuffer_;
 
     MaterialManager materialManager_;
+
+    DepthPass depthPass_;
 };
 
 }
