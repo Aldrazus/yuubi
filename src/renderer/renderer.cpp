@@ -11,8 +11,9 @@
 #include "imgui_impl_vulkan.h"
 #include "application.h"
 #include "renderer/camera.h"
-#include "renderer/depth_pass.h"
+#include "renderer/passes/depth_pass.h"
 #include "renderer/loaded_gltf.h"
+#include "renderer/passes/lighting_pass.h"
 #include "renderer/render_object.h"
 #include "renderer/vma/buffer.h"
 #include "renderer/vulkan_usage.h"
@@ -80,10 +81,40 @@ Renderer::Renderer(const Window& window) : window_(window) {
         sceneDataBuffer_.upload(*device_, &data, sizeof(data), 0);
     }
 
-    createGraphicsPipeline();
     initSkybox();
     initFinalPassResources();
-    depthPass_ = DepthPass(device_, viewport_) ;
+
+    depthPass_ = DepthPass(device_, viewport_);
+
+    // Create normal attachment.
+    createNormalAttachment();
+
+    // Create lighting pass.
+    std::vector<vk::DescriptorSetLayout> setLayouts = {
+        *textureManager_.getTextureSetLayout()
+    };
+
+    std::vector<vk::PushConstantRange> pushConstantRanges = {
+        vk::PushConstantRange{
+                              .stageFlags = vk::ShaderStageFlagBits::eVertex |
+                              vk::ShaderStageFlagBits::eFragment,
+                              .offset = 0,
+                              .size = sizeof(PushConstants),
+                              }
+    };
+
+    std::array<vk::Format, 2> formats{
+        // TODO: reevaluate normal format, maybe Snorm?
+        viewport_->getDrawImageFormat(), normalFormat_
+    };
+
+    lightingPass_ = LightingPass(LightingPass::CreateInfo{
+        .device = device_,
+        .descriptorSetLayouts = setLayouts,
+        .pushConstantRanges = pushConstantRanges,
+        .colorAttachmentFormats = formats,
+        .depthFormat = viewport_->getDepthFormat()
+    });
 }
 
 Renderer::~Renderer() { device_->getDevice().waitIdle(); }
@@ -139,188 +170,31 @@ void Renderer::draw(const Camera& camera, AppState state) {
 
         depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_);
 
-        std::array<vk::RenderingAttachmentInfo, 2> colorAttachmentInfos{
-            vk::RenderingAttachmentInfo{
-                                        .imageView = *image.imageView,
-                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                        // TODO: do i really care?
-                                        .loadOp = vk::AttachmentLoadOp::eDontCare,
-                                        .storeOp = vk::AttachmentStoreOp::eStore,
-                                        .clearValue = {{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}}}},
-            vk::RenderingAttachmentInfo{
-                                        .imageView = *drawImageView,
-                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                        .loadOp = vk::AttachmentLoadOp::eClear,
-                                        .storeOp = vk::AttachmentStoreOp::eStore,
-                                        .clearValue = {{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}}}},
+        std::vector<vk::DescriptorSet> descriptorSets{
+            textureManager_.getTextureSet()
         };
 
-        vk::RenderingAttachmentInfo depthAttachmentInfo{
-            .imageView = *viewport_->getDepthImageView(),
-            .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-            .loadOp = vk::AttachmentLoadOp::eLoad,
-        };
-
-        vk::RenderingInfo renderInfo{
-            .renderArea =
-                {
-                             .offset = {0, 0},
-                             .extent = viewport_->getExtent(),
-                             },
-            .layerCount = 1,
-            .colorAttachmentCount = colorAttachmentInfos.size(),
-            .pColorAttachments = colorAttachmentInfos.data(),
-            .pDepthAttachment = &depthAttachmentInfo,
-        };
-
-        frame.commandBuffer.beginRendering(renderInfo);
-        {
-            frame.commandBuffer.bindPipeline(
-                vk::PipelineBindPoint::eGraphics, *opaquePipeline_
-            );
-
-            // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
-            // clip coordinate system where the origin is at the bottom left
-            // and the y-axis points upwards.
-            vk::Viewport viewport{
-                .x = 0.0f,
-                .y = static_cast<float>(viewport_->getExtent().height),
-                .width = static_cast<float>(viewport_->getExtent().width),
-                .height = -static_cast<float>(viewport_->getExtent().height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f
-            };
-
-            frame.commandBuffer.setViewport(0, {viewport});
-
-            vk::Rect2D scissor{
-                .offset = {0, 0},
-                  .extent = viewport_->getExtent()
-            };
-
-            frame.commandBuffer.setScissor(0, {scissor});
-
-            frame.commandBuffer.bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0,
-                {*textureManager_.getTextureSet()}, {}
-            );
-
-            for (const auto& renderObject : drawContext_.opaqueSurfaces) {
-                frame.commandBuffer.bindIndexBuffer(
-                    *renderObject.indexBuffer->getBuffer(), 0,
-                    vk::IndexType::eUint32
-                );
-
-                frame.commandBuffer.pushConstants<PushConstants>(
-                    *pipelineLayout_,
-                    vk::ShaderStageFlagBits::eVertex |
-                        vk::ShaderStageFlagBits::eFragment,
-                    0,
-                    {
-                        PushConstants{
-                                      renderObject.transform,
-                                      sceneDataBuffer_.getAddress(),
-                                      renderObject.vertexBuffer->getAddress(),
-                                      renderObject.materialId}
+        lightingPass_.render(LightingPass::RenderInfo{
+            .commandBuffer = frame.commandBuffer,
+            .context = drawContext_,
+            .viewportExtent = viewport_->getExtent(),
+            .descriptorSets = descriptorSets,
+            .sceneDataBuffer = sceneDataBuffer_,
+            .color =
+                RenderAttachment{
+                              .image = drawImage.getImage(), .imageView = drawImageView
+                },
+            .normal =
+                RenderAttachment{
+                              .image = normalImage_.getImage(),
+                              .imageView = normalImageView_
+                },
+            .depth =
+                RenderAttachment{
+                              viewport_->getDepthImage().getImage(),
+                              viewport_->getDepthImageView()
                 }
-                );
-
-                frame.commandBuffer.drawIndexed(
-                    static_cast<uint32_t>(renderObject.indexCount), 1,
-                    renderObject.firstIndex, 0, 0
-                );
-            }
-
-            frame.commandBuffer.bindPipeline(
-                vk::PipelineBindPoint::eGraphics, *transparentPipeline_
-            );
-
-            // TODO: Sort surfaces for correct output
-            for (const auto& renderObject : drawContext_.transparentSurfaces) {
-                frame.commandBuffer.bindIndexBuffer(
-                    *renderObject.indexBuffer->getBuffer(), 0,
-                    vk::IndexType::eUint32
-                );
-
-                frame.commandBuffer.pushConstants<PushConstants>(
-                    *pipelineLayout_,
-                    vk::ShaderStageFlagBits::eVertex |
-                        vk::ShaderStageFlagBits::eFragment,
-                    0,
-                    {
-                        PushConstants{
-                                      renderObject.transform,
-                                      sceneDataBuffer_.getAddress(),
-                                      renderObject.vertexBuffer->getAddress(),
-                                      renderObject.materialId}
-                }
-                );
-
-                frame.commandBuffer.drawIndexed(
-                    static_cast<uint32_t>(renderObject.indexCount), 1,
-                    renderObject.firstIndex, 0, 0
-                );
-            }
-
-            // Draw skybox.
-            const auto view = glm::mat4(glm::mat3(camera.getViewMatrix()));
-            frame.commandBuffer.bindPipeline(
-                vk::PipelineBindPoint::eGraphics, *skyboxPipeline_
-            );
-            frame.commandBuffer.bindIndexBuffer(
-                *skyboxIndexBuffer_.getBuffer(), 0, vk::IndexType::eUint32
-            );
-
-            frame.commandBuffer.bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, *skyboxPipelineLayout_, 0,
-                {*skyboxDescriptorSet_}, {}
-            );
-
-            frame.commandBuffer.pushConstants<glm::mat4>(
-                *skyboxPipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
-                camera.getProjectionMatrix() * view
-            );
-            frame.commandBuffer.drawIndexed(36, 1, 0, 0, 0);
-
-            // Transition draw image layout to local read
-            vk::MemoryBarrier2 memoryBarrier{
-                .srcStageMask =
-                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                .dstAccessMask = vk::AccessFlagBits2::eInputAttachmentRead,
-            };
-
-            vk::DependencyInfo dependencyInfo{
-                .dependencyFlags = vk::DependencyFlagBits::eByRegion,
-                .memoryBarrierCount = 1,
-                .pMemoryBarriers = &memoryBarrier,
-            };
-
-            frame.commandBuffer.pipelineBarrier2(dependencyInfo);
-
-            // Copy draw image to swapchain image
-            frame.commandBuffer.bindPipeline(
-                vk::PipelineBindPoint::eGraphics, *finalPipeline_
-            );
-            frame.commandBuffer.bindIndexBuffer(
-                *finalIndexBuffer_.getBuffer(), 0, vk::IndexType::eUint32
-            );
-            frame.commandBuffer.bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, *finalPipelineLayout_, 0,
-                {*finalDescriptorSet_}, {}
-            );
-            frame.commandBuffer.draw(3, 1, 0, 0);
-
-            /*
-            // Draw UI.
-            // TODO: move to ImguiManager somehow
-            ImGui_ImplVulkan_RenderDrawData(
-                ImGui::GetDrawData(), *frame.commandBuffer
-            );
-            */
-        }
-        frame.commandBuffer.endRendering();
+        });
 
         // Transition swapchain image layout to PRESENT_SRC before
         // presenting
@@ -351,51 +225,6 @@ void Renderer::draw(const Camera& camera, AppState state) {
 
         device_->getQueue().queue.submit({submitInfo}, *frame.inFlight);
     });
-}
-
-void Renderer::createGraphicsPipeline() {
-    auto vertShader = loadShader("shaders/mesh.vert.spv", *device_);
-    auto fragShader = loadShader("shaders/mesh.frag.spv", *device_);
-
-    std::vector<vk::PushConstantRange> pushConstantRanges = {
-        vk::PushConstantRange{
-                              .stageFlags = vk::ShaderStageFlagBits::eVertex |
-                              vk::ShaderStageFlagBits::eFragment,
-                              .offset = 0,
-                              .size = sizeof(PushConstants),
-                              }
-    };
-
-    std::vector<vk::DescriptorSetLayout> setLayouts = {
-        *textureManager_.getTextureSetLayout()
-    };
-
-    pipelineLayout_ =
-        createPipelineLayout(*device_, setLayouts, pushConstantRanges);
-    PipelineBuilder builder(pipelineLayout_);
-
-    std::array<vk::Format, 2> formats = {
-        viewport_->getSwapChainImageFormat(), viewport_->getDrawImageFormat()
-    };
-
-    opaquePipeline_ =
-        builder.setShaders(vertShader, fragShader)
-            .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-            .setPolygonMode(vk::PolygonMode::eFill)
-            .setCullMode(
-                vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise
-            )
-            .setMultisamplingNone()
-            .disableBlending()
-            .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
-            .setColorAttachmentFormats(formats)
-            .setDepthFormat(viewport_->getDepthFormat())
-            .build(*device_);
-
-    transparentPipeline_ =
-        builder.enableBlendingAlphaBlend()
-            .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
-            .build(*device_);
 }
 
 void Renderer::initSkybox() {
@@ -719,7 +548,7 @@ void Renderer::initFinalPassResources() {
             .setInputTopology(vk::PrimitiveTopology::eTriangleList)
             .setPolygonMode(vk::PolygonMode::eFill)
             .setCullMode(
-                vk::CullModeFlagBits::eFront, vk::FrontFace::eCounterClockwise
+                vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise
             )
             .setMultisamplingNone()
             .disableBlending()
@@ -762,6 +591,54 @@ void Renderer::initFinalPassResources() {
                                    .pImageInfo = &descImageInfo}
     },
         {}
+    );
+}
+
+void Renderer::createNormalAttachment() {
+    normalImage_ = Image(
+        &device_->allocator(),
+        ImageCreateInfo{
+            .width = viewport_->getExtent().width,
+            .height = viewport_->getExtent().height,
+            .format = normalFormat_,
+            .tiling = vk::ImageTiling::eOptimal,
+            // TODO: check if this should be a sampled image or an input
+            // attachment.
+            .usage = vk::ImageUsageFlagBits::eColorAttachment |
+                     vk::ImageUsageFlagBits::eSampled,
+            .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+        }
+    );
+
+    normalImageView_ = device_->createImageView(
+        *normalImage_.getImage(), normalFormat_, vk::ImageAspectFlagBits::eColor
+    );
+
+    device_->submitImmediateCommands(
+        [this](const vk::raii::CommandBuffer& commandBuffer) {
+            vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                .srcAccessMask = vk::AccessFlagBits2::eNone,
+                .dstStageMask =
+                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .oldLayout = vk::ImageLayout::eUndefined,
+                .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .image = *normalImage_.getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers},
+            };
+
+            vk::DependencyInfo dependencyInfo{
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers = &imageMemoryBarrier
+            };
+            commandBuffer.pipelineBarrier2(dependencyInfo);
+        }
     );
 }
 

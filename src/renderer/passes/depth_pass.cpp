@@ -1,4 +1,4 @@
-#include "renderer/depth_pass.h"
+#include "renderer/passes/depth_pass.h"
 
 #include "renderer/device.h"
 #include "renderer/pipeline_builder.h"

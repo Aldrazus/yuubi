@@ -1,11 +1,12 @@
 #pragma once
 
 #include "renderer/camera.h"
-#include "renderer/depth_pass.h"
+#include "renderer/passes/depth_pass.h"
 #include "renderer/device.h"
 #include "renderer/gltf/asset.h"
 #include "renderer/imgui_manager.h"
 #include "renderer/instance.h"
+#include "renderer/passes/lighting_pass.h"
 #include "renderer/render_object.h"
 #include "renderer/resources/material_manager.h"
 #include "renderer/viewport.h"
@@ -28,11 +29,11 @@ public:
     void renderScene(std::function<void(Renderer&)> f);
 
 private:
-    void createGraphicsPipeline();
     void initSkybox();
     void initFinalPassResources();
     void createDescriptor();
     void updateScene(const Camera& camera);
+    void createNormalAttachment();
 
     const Window& window_;
     vk::raii::Context context_;
@@ -41,10 +42,6 @@ private:
     std::shared_ptr<Device> device_;
     std::shared_ptr<Viewport> viewport_;
     ImguiManager imguiManager_;
-
-    vk::raii::PipelineLayout pipelineLayout_ = nullptr;
-    vk::raii::Pipeline opaquePipeline_ = nullptr;
-    vk::raii::Pipeline transparentPipeline_ = nullptr;
 
     vk::raii::PipelineLayout skyboxPipelineLayout_ = nullptr;
     vk::raii::Pipeline skyboxPipeline_ = nullptr;
@@ -75,7 +72,16 @@ private:
 
     MaterialManager materialManager_;
 
+    Image normalImage_;
+    vk::raii::ImageView normalImageView_ = nullptr;
+    // TODO: change format to eR16G16Sfloat eventually
+    // eR16G16B16Sfloat is not well supported with optimal image tiling,
+    // so the alpha component is added.
+    // See: https://vulkan.gpuinfo.org/listoptimaltilingformats.php
+    vk::Format normalFormat_ = vk::Format::eR16G16B16A16Sfloat;
+
     DepthPass depthPass_;
+    LightingPass lightingPass_;
 };
 
 }
