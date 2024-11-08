@@ -82,7 +82,7 @@ Renderer::Renderer(const Window& window) : window_(window) {
     }
 
     initSkybox();
-    initFinalPassResources();
+    initCompositePassResources();
 
     depthPass_ = DepthPass(device_, viewport_);
 
@@ -174,6 +174,31 @@ void Renderer::draw(const Camera& camera, AppState state) {
             textureManager_.getTextureSet()
         };
 
+        // Transition draw image.
+        {
+            vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                // PERF: we really toppin da pipe with this one
+                .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .oldLayout = vk::ImageLayout::eUndefined,
+                .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .image = *drawImage.getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers},
+            };
+
+            vk::DependencyInfo dependencyInfo{
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers = &imageMemoryBarrier
+            };
+            frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+        }
+
         lightingPass_.render(LightingPass::RenderInfo{
             .commandBuffer = frame.commandBuffer,
             .context = drawContext_,
@@ -182,19 +207,40 @@ void Renderer::draw(const Camera& camera, AppState state) {
             .sceneDataBuffer = sceneDataBuffer_,
             .color =
                 RenderAttachment{
-                              .image = drawImage.getImage(), .imageView = drawImageView
-                },
+                                 .image = drawImage.getImage(),.imageView = drawImageView                                    },
             .normal =
                 RenderAttachment{
-                              .image = normalImage_.getImage(),
-                              .imageView = normalImageView_
-                },
+                                 .image = normalImage_.getImage(),
+                                 .imageView = normalImageView_ },
             .depth =
                 RenderAttachment{
-                              viewport_->getDepthImage().getImage(),
-                              viewport_->getDepthImageView()
-                }
+                                 viewport_->getDepthImage().getImage(),
+                                 viewport_->getDepthImageView()}
         });
+
+        // Transition draw image
+        vk::ImageMemoryBarrier2 drawImageBarrier{
+            .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+            .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+            .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+ // TODO: is this correct?
+            .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+            .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+            .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+            .image = drawImage.getImage(),
+            .subresourceRange{
+                              .aspectMask = vk::ImageAspectFlagBits::eColor,
+                              .baseMipLevel = 0,
+                              .levelCount = vk::RemainingMipLevels,
+                              .baseArrayLayer = 0,
+                              .layerCount = vk::RemainingArrayLayers}
+        };
+
+        vk::DependencyInfo dependencyInfo{
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers = &drawImageBarrier
+        };
+        frame.commandBuffer.pipelineBarrier2(dependencyInfo);
 
         // Transition swapchain image layout to PRESENT_SRC before
         // presenting
@@ -203,6 +249,20 @@ void Renderer::draw(const Camera& camera, AppState state) {
             vk::ImageLayout::eColorAttachmentOptimal,
             vk::ImageLayout::ePresentSrcKHR
         );
+
+        std::vector<vk::DescriptorSet> descSets{compositeDescriptorSet_};
+        compositePass_.render(CompositePass::RenderInfo{
+            .commandBuffer = frame.commandBuffer,
+            .viewportExtent = viewport_->getExtent(),
+            .descriptorSets = descSets,
+            .color =
+                RenderAttachment{
+                                 .image = image.image,.imageView = image.imageView                                               },
+            .depth =
+                RenderAttachment{
+                                 .image = viewport_->getDepthImage().getImage(),
+                                 .imageView = viewport_->getDepthImageView()}
+        });
 
         frame.commandBuffer.end();
 
@@ -486,15 +546,15 @@ void Renderer::initSkybox() {
     );
 }
 
-void Renderer::initFinalPassResources() {
+void Renderer::initCompositePassResources() {
     // Create descriptor set/layout.
     DescriptorLayoutBuilder layoutBuilder(device_);
 
-    finalDescriptorSetLayout_ =
+    compositeDescriptorSetLayout_ =
         layoutBuilder
             .addBinding(vk::DescriptorSetLayoutBinding{
                 .binding = 0,
-                .descriptorType = vk::DescriptorType::eInputAttachment,
+                .descriptorType = vk::DescriptorType::eSampledImage,
                 .descriptorCount = 1,
                 .stageFlags = vk::ShaderStageFlagBits::eFragment
             })
@@ -507,7 +567,7 @@ void Renderer::initFinalPassResources() {
 
     std::vector<vk::DescriptorPoolSize> poolSizes{
         vk::DescriptorPoolSize{
-                               .type = vk::DescriptorType::eInputAttachment, .descriptorCount = 1}
+                               .type = vk::DescriptorType::eSampledImage, .descriptorCount = 1}
     };
 
     vk::DescriptorPoolCreateInfo poolInfo{
@@ -516,82 +576,53 @@ void Renderer::initFinalPassResources() {
         .pPoolSizes = poolSizes.data(),
     };
 
-    finalDescriptorPool_ = device_->getDevice().createDescriptorPool(poolInfo);
+    compositeDescriptorPool_ =
+        device_->getDevice().createDescriptorPool(poolInfo);
 
     vk::DescriptorSetAllocateInfo allocInfo{
-        .descriptorPool = *finalDescriptorPool_,
+        .descriptorPool = *compositeDescriptorPool_,
         .descriptorSetCount = 1,
-        .pSetLayouts = &*finalDescriptorSetLayout_
+        .pSetLayouts = &*compositeDescriptorSetLayout_
     };
 
     vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
-    finalDescriptorSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
-
-    // Create pipeline.
-    auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device_);
-    auto fragShader = loadShader("shaders/screen_quad.frag.spv", *device_);
+    compositeDescriptorSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
 
     std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
-        *finalDescriptorSetLayout_
+        *compositeDescriptorSetLayout_
     };
-
-    finalPipelineLayout_ =
-        createPipelineLayout(*device_, descriptorSetLayouts, {});
-    PipelineBuilder builder(finalPipelineLayout_);
-
-    std::array<vk::Format, 2> formats = {
-        viewport_->getSwapChainImageFormat(), viewport_->getDrawImageFormat()
-    };
-
-    finalPipeline_ =
-        builder.setShaders(vertShader, fragShader)
-            .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-            .setPolygonMode(vk::PolygonMode::eFill)
-            .setCullMode(
-                vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise
-            )
-            .setMultisamplingNone()
-            .disableBlending()
-            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
-            .setColorAttachmentFormats(formats)
-            .setDepthFormat(viewport_->getDepthFormat())
-            .build(*device_);
-
-    const uint32_t numIndices = 6;
-    std::array<uint32_t, numIndices> indices = {0, 1, 2, 1, 3, 2};
-
-    vk::DeviceSize bufferSize = sizeof(indices[0]) * numIndices;
-    finalIndexBuffer_ = Buffer(
-        &device_->allocator(),
-        vk::BufferCreateInfo{
-            .size = bufferSize,
-            .usage = vk::BufferUsageFlagBits::eIndexBuffer |
-                     vk::BufferUsageFlagBits::eTransferDst
-        },
-        VmaAllocationCreateInfo{.usage = VMA_MEMORY_USAGE_GPU_ONLY}
-    );
-
-    finalIndexBuffer_.upload(*device_, indices.data(), bufferSize, 0);
 
     // Update descriptor set.
     vk::DescriptorImageInfo descImageInfo{
         .sampler = nullptr,
         .imageView = *viewport_->getDrawImageView(),
-        .imageLayout = vk::ImageLayout::eRenderingLocalReadKHR,
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 
     device_->getDevice().updateDescriptorSets(
         {
             vk::WriteDescriptorSet{
-                                   .dstSet = *finalDescriptorSet_,
+                                   .dstSet = *compositeDescriptorSet_,
                                    .dstBinding = 0,
                                    .dstArrayElement = 0,
                                    .descriptorCount = 1,
-                                   .descriptorType = vk::DescriptorType::eInputAttachment,
+                                   .descriptorType = vk::DescriptorType::eSampledImage,
                                    .pImageInfo = &descImageInfo}
     },
         {}
     );
+
+    std::vector<vk::Format> colorAttachmentFormats{
+        viewport_->getSwapChainImageFormat()
+    };
+
+    compositePass_ = CompositePass(CompositePass::CreateInfo{
+        .device = device_,
+        .descriptorSetLayouts = descriptorSetLayouts,
+        .pushConstantRanges = {},
+        .colorAttachmentFormats = colorAttachmentFormats,
+        .depthFormat = viewport_->getDepthFormat()
+    });
 }
 
 void Renderer::createNormalAttachment() {

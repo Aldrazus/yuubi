@@ -27,11 +27,10 @@ CompositePass::CompositePass(const CreateInfo& createInfo) {
             )
             .setMultisamplingNone()
             .disableBlending()
-            .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
+            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
             .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
             .setDepthFormat(createInfo.depthFormat)
             .build(*device);
-
 }
 
 CompositePass& CompositePass::operator=(CompositePass&& rhs) noexcept {
@@ -43,25 +42,21 @@ CompositePass& CompositePass::operator=(CompositePass&& rhs) noexcept {
 }
 
 void CompositePass::render(const RenderInfo& renderInfo) {
-    std::array<vk::RenderingAttachmentInfo, 2> colorAttachmentInfos{
+    std::array<vk::RenderingAttachmentInfo, 1> colorAttachmentInfos{
         vk::RenderingAttachmentInfo{
                                     .imageView = renderInfo.color.imageView,
                                     .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
                                     .loadOp = vk::AttachmentLoadOp::eClear,
                                     .storeOp = vk::AttachmentStoreOp::eStore,
                                     .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}},
-        vk::RenderingAttachmentInfo{
-                                    .imageView = renderInfo.normal.imageView,
-                                    .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                    .loadOp = vk::AttachmentLoadOp::eClear,
-                                    .storeOp = vk::AttachmentStoreOp::eStore,
-                                    .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}}
     };
 
     vk::RenderingAttachmentInfo depthAttachmentInfo{
         .imageView = renderInfo.depth.imageView,
         .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-        .loadOp = vk::AttachmentLoadOp::eLoad
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .clearValue = {.depthStencil = {1, 0}}
     };
 
     vk::RenderingInfo renderingInfo{

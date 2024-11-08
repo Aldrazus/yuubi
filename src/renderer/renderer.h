@@ -16,6 +16,7 @@
 #include "pch.h"
 #include "renderer/vertex.h"
 #include "renderer/loaded_gltf.h"
+#include "renderer/passes/composite_pass.h"
 
 struct AppState;
 
@@ -30,8 +31,7 @@ public:
 
 private:
     void initSkybox();
-    void initFinalPassResources();
-    void createDescriptor();
+    void initCompositePassResources();
     void updateScene(const Camera& camera);
     void createNormalAttachment();
 
@@ -54,12 +54,9 @@ private:
     vk::raii::DescriptorPool skyboxDescriptorPool_ = nullptr;
     vk::raii::DescriptorSet skyboxDescriptorSet_ = nullptr;
 
-    vk::raii::PipelineLayout finalPipelineLayout_ = nullptr;
-    vk::raii::Pipeline finalPipeline_ = nullptr;
-    vk::raii::DescriptorSetLayout finalDescriptorSetLayout_ = nullptr;
-    vk::raii::DescriptorPool finalDescriptorPool_ = nullptr;
-    vk::raii::DescriptorSet finalDescriptorSet_ = nullptr;
-    Buffer finalIndexBuffer_;
+    vk::raii::DescriptorSetLayout compositeDescriptorSetLayout_ = nullptr;
+    vk::raii::DescriptorPool compositeDescriptorPool_ = nullptr;
+    vk::raii::DescriptorSet compositeDescriptorSet_ = nullptr;
 
     DrawContext drawContext_;
     GLTFAsset asset_;
@@ -82,6 +79,7 @@ private:
 
     DepthPass depthPass_;
     LightingPass lightingPass_;
+    CompositePass compositePass_;
 };
 
 }

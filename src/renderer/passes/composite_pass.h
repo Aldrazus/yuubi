@@ -24,12 +24,9 @@ public:
 
     struct RenderInfo {
         const vk::raii::CommandBuffer& commandBuffer;
-        const DrawContext& context;
         vk::Extent2D viewportExtent;
         std::span<vk::DescriptorSet> descriptorSets;
-        const Buffer& sceneDataBuffer;
         RenderAttachment color;
-        RenderAttachment normal;
         RenderAttachment depth;
     };
 

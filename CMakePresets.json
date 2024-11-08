@@ -10,14 +10,26 @@
       "displayName": "Ninja Multi-Config",
       "description": "Default build using Ninja Multi-Config generator",
       "generator": "Ninja Multi-Config",
-      "binaryDir": "${sourceDir}/build"
+      "binaryDir": "${sourceDir}/build",
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "enableMicrosoftCodeAnalysis": true,
+          "enableClangTidyCodeAnalysis": true
+        }
+      }
     },
     {
       "name": "vs",
       "inherits": "default",
       "displayName": "Visual Studio Config",
       "description": "Default build using Visual Studio",
-      "generator": "Visual Studio 17 2022"
+      "generator": "Visual Studio 17 2022",
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "enableMicrosoftCodeAnalysis": true,
+          "enableClangTidyCodeAnalysis": true
+        }
+      }
     }
   ]
 }

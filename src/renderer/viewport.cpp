@@ -143,7 +143,7 @@ void Viewport::createDrawImage() {
             // TODO: check if this should be a sampled image or an input
             // attachment.
             .usage = vk::ImageUsageFlagBits::eColorAttachment |
-                     vk::ImageUsageFlagBits::eInputAttachment,
+                     vk::ImageUsageFlagBits::eSampled,
             .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
         }
     );
@@ -151,33 +151,6 @@ void Viewport::createDrawImage() {
     drawImageView_ = device_->createImageView(
         *drawImage_.getImage(), drawImageFormat_,
         vk::ImageAspectFlagBits::eColor
-    );
-
-    device_->submitImmediateCommands(
-        [this](const vk::raii::CommandBuffer& commandBuffer) {
-            vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                .srcStageMask =
-                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                .dstStageMask =
-                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                .oldLayout = vk::ImageLayout::eUndefined,
-                .newLayout = vk::ImageLayout::eRenderingLocalReadKHR,
-                .image = *drawImage_.getImage(),
-                .subresourceRange{
-                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                  .baseMipLevel = 0,
-                                  .levelCount = vk::RemainingMipLevels,
-                                  .baseArrayLayer = 0,
-                                  .layerCount = vk::RemainingArrayLayers},
-            };
-
-            vk::DependencyInfo dependencyInfo{
-                .imageMemoryBarrierCount = 1,
-                .pImageMemoryBarriers = &imageMemoryBarrier
-            };
-            commandBuffer.pipelineBarrier2(dependencyInfo);
-        }
     );
 }
 

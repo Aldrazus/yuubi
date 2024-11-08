@@ -13,6 +13,7 @@ target_sources(
     "renderer/imgui_manager.cpp"
     "renderer/instance.cpp"
     "renderer/loaded_gltf.cpp"
+    "renderer/passes/composite_pass.cpp"
     "renderer/passes/depth_pass.cpp"
     "renderer/passes/lighting_pass.cpp"
     "renderer/pipeline_builder.cpp"

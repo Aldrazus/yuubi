@@ -7,6 +7,7 @@
 
 namespace yuubi {
 
+// TODO: only render to normals in opaque pass.
 LightingPass::LightingPass(const CreateInfo& createInfo) {
     auto device = createInfo.device;
 
