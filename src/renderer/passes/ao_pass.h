@@ -3,6 +3,7 @@
 #include "renderer/vulkan_usage.h"
 #include "pch.h"
 #include "renderer/push_constants.h"
+#include "renderer/passes/render_attachment.h"
 
 namespace yuubi {
 
@@ -10,11 +11,6 @@ class Device;
 class DrawContext;
 class Image;
 class Buffer;
-
-struct RenderAttachment {
-    vk::Image image;
-    vk::ImageView imageView;
-};
 
 class AOPass : NonCopyable {
 public:
@@ -28,12 +24,9 @@ public:
 
     struct RenderInfo {
         const vk::raii::CommandBuffer& commandBuffer;
-        const DrawContext& context;
         vk::Extent2D viewportExtent;
         std::span<vk::DescriptorSet> descriptorSets;
-        const Buffer& sceneDataBuffer;
         RenderAttachment color;
-        RenderAttachment normal;
         RenderAttachment depth;
     };
 
@@ -46,8 +39,7 @@ public:
 
 private:
     vk::raii::PipelineLayout pipelineLayout_ = nullptr;
-    vk::raii::Pipeline opaquePipeline_ = nullptr;
-    vk::raii::Pipeline transparentPipeline_ = nullptr;
+    vk::raii::Pipeline pipeline_ = nullptr;
 };
 
 }

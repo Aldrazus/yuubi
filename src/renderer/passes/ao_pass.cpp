@@ -10,15 +10,15 @@ namespace yuubi {
 AOPass::AOPass(const CreateInfo& createInfo) {
     auto device = createInfo.device;
 
-    auto vertShader = loadShader("shaders/mesh.vert.spv", *device);
-    auto fragShader = loadShader("shaders/mesh.frag.spv", *device);
+    auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device);
+    auto fragShader = loadShader("shaders/ssao.frag.spv", *device);
 
     pipelineLayout_ = createPipelineLayout(
         *device, createInfo.descriptorSetLayouts, createInfo.pushConstantRanges
     );
 
     PipelineBuilder builder(pipelineLayout_);
-    opaquePipeline_ =
+    pipeline_ =
         builder.setShaders(vertShader, fragShader)
             .setInputTopology(vk::PrimitiveTopology::eTriangleList)
             .setPolygonMode(vk::PolygonMode::eFill)
@@ -27,46 +27,36 @@ AOPass::AOPass(const CreateInfo& createInfo) {
             )
             .setMultisamplingNone()
             .disableBlending()
-            .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
+            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
             .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
             .setDepthFormat(createInfo.depthFormat)
-            .build(*device);
-
-    transparentPipeline_ =
-        builder.enableBlendingAlphaBlend()
-            .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
             .build(*device);
 }
 
 AOPass& AOPass::operator=(AOPass&& rhs) noexcept {
     if (this != &rhs) {
-        std::swap(opaquePipeline_, rhs.opaquePipeline_);
-        std::swap(transparentPipeline_, rhs.transparentPipeline_);
+        std::swap(pipeline_, rhs.pipeline_);
         std::swap(pipelineLayout_, rhs.pipelineLayout_);
     }
     return *this;
 }
 
 void AOPass::render(const RenderInfo& renderInfo) {
-    std::array<vk::RenderingAttachmentInfo, 2> colorAttachmentInfos{
+    std::array<vk::RenderingAttachmentInfo, 1> colorAttachmentInfos{
         vk::RenderingAttachmentInfo{
                                     .imageView = renderInfo.color.imageView,
                                     .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
                                     .loadOp = vk::AttachmentLoadOp::eClear,
                                     .storeOp = vk::AttachmentStoreOp::eStore,
                                     .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}},
-        vk::RenderingAttachmentInfo{
-                                    .imageView = renderInfo.normal.imageView,
-                                    .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                    .loadOp = vk::AttachmentLoadOp::eClear,
-                                    .storeOp = vk::AttachmentStoreOp::eStore,
-                                    .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}}
     };
 
     vk::RenderingAttachmentInfo depthAttachmentInfo{
         .imageView = renderInfo.depth.imageView,
         .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-        .loadOp = vk::AttachmentLoadOp::eLoad
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .clearValue = {.depthStencil = {1, 0}}
     };
 
     vk::RenderingInfo renderingInfo{
@@ -82,7 +72,7 @@ void AOPass::render(const RenderInfo& renderInfo) {
     commandBuffer.beginRendering(renderingInfo);
 
     commandBuffer.bindPipeline(
-        vk::PipelineBindPoint::eGraphics, *opaquePipeline_
+        vk::PipelineBindPoint::eGraphics, *pipeline_
     );
 
     // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
@@ -111,60 +101,7 @@ void AOPass::render(const RenderInfo& renderInfo) {
         {renderInfo.descriptorSets}, {}
     );
 
-    for (const auto& renderObject : renderInfo.context.opaqueSurfaces) {
-        commandBuffer.bindIndexBuffer(
-            *renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32
-        );
-
-        commandBuffer.pushConstants<PushConstants>(
-            *pipelineLayout_,
-            vk::ShaderStageFlagBits::eVertex |
-                vk::ShaderStageFlagBits::eFragment,
-            0,
-            {
-                PushConstants{
-                              renderObject.transform,
-                              renderInfo.sceneDataBuffer.getAddress(),
-                              renderObject.vertexBuffer->getAddress(),
-                              renderObject.materialId}
-        }
-        );
-
-        commandBuffer.drawIndexed(
-            static_cast<uint32_t>(renderObject.indexCount), 1,
-            renderObject.firstIndex, 0, 0
-        );
-    }
-
-    commandBuffer.bindPipeline(
-        vk::PipelineBindPoint::eGraphics, *transparentPipeline_
-    );
-
-    // TODO: Sort surfaces for correct output
-    for (const auto& renderObject : renderInfo.context.transparentSurfaces) {
-        commandBuffer.bindIndexBuffer(
-            *renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32
-        );
-
-        commandBuffer.pushConstants<PushConstants>(
-            *pipelineLayout_,
-            vk::ShaderStageFlagBits::eVertex |
-                vk::ShaderStageFlagBits::eFragment,
-            0,
-            {
-                PushConstants{
-                              renderObject.transform,
-                              renderInfo.sceneDataBuffer.getAddress(),
-                              renderObject.vertexBuffer->getAddress(),
-                              renderObject.materialId}
-        }
-        );
-
-        commandBuffer.drawIndexed(
-            static_cast<uint32_t>(renderObject.indexCount), 1,
-            renderObject.firstIndex, 0, 0
-        );
-    }
+    commandBuffer.draw(3, 1, 0, 0);
 
     commandBuffer.endRendering();
 }
