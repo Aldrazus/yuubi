@@ -115,6 +115,8 @@ Renderer::Renderer(const Window& window) : window_(window) {
         .colorAttachmentFormats = formats,
         .depthFormat = viewport_->getDepthFormat()
     });
+
+    initAOPassResources();
 }
 
 Renderer::~Renderer() { device_->getDevice().waitIdle(); }
@@ -177,13 +179,40 @@ void Renderer::draw(const Camera& camera, AppState state) {
         // Transition draw image.
         {
             vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                // PERF: we really toppin da pipe with this one
+  // PERF: we really toppin da pipe with this one
                 .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstStageMask =
+                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                 .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
                 .oldLayout = vk::ImageLayout::eUndefined,
                 .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
                 .image = *drawImage.getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers},
+            };
+
+            vk::DependencyInfo dependencyInfo{
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers = &imageMemoryBarrier
+            };
+            frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+        }
+
+        {
+            vk::ImageMemoryBarrier2 imageMemoryBarrier{
+  // PERF: we really toppin da pipe with this one
+                .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                .srcAccessMask = vk::AccessFlagBits2::eNone,
+                .dstStageMask =
+                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .oldLayout = vk::ImageLayout::eUndefined,
+                .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .image = *normalImage_.getImage(),
                 .subresourceRange{
                                   .aspectMask = vk::ImageAspectFlagBits::eColor,
                                   .baseMipLevel = 0,
@@ -217,6 +246,74 @@ void Renderer::draw(const Camera& camera, AppState state) {
                                  viewport_->getDepthImage().getImage(),
                                  viewport_->getDepthImageView()}
         });
+
+        // Transition normal image.
+        {
+            vk::ImageMemoryBarrier2 normalImageBarrier{
+                .srcStageMask =
+                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+ // TODO: is this correct?
+                .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+                .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                .image = normalImage_.getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers}
+            };
+
+            vk::DependencyInfo dependencyInfo{
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers = &normalImageBarrier
+            };
+            frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+        }
+
+        // Transition depth image.
+        {
+            vk::ImageMemoryBarrier2 depthImageBarrier{
+  // TODO: fix srcstagemask
+                .srcStageMask =
+                    vk::PipelineStageFlagBits2::eAllGraphics,
+                .srcAccessMask =
+                    vk::AccessFlagBits2::eDepthStencilAttachmentRead,
+                .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+                .oldLayout = vk::ImageLayout::eDepthReadOnlyOptimal,
+                .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                .image = viewport_->getDepthImage().getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eDepth,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers}
+            };
+
+            vk::DependencyInfo dependencyInfo{
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers = &depthImageBarrier
+            };
+            frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+        }
+
+        {
+            std::vector<vk::DescriptorSet> descSets{aoDescriptorSet_};
+            aoPass_.render(AOPass::RenderInfo{
+                .commandBuffer = frame.commandBuffer,
+
+                .viewportExtent = viewport_->getExtent(),
+                .descriptorSets = descSets,
+                .color =
+                    RenderAttachment{
+                                     .image = aoImage_.getImage(), .imageView = aoImageView_},
+            });
+        }
 
         // Transition draw image
         vk::ImageMemoryBarrier2 drawImageBarrier{
@@ -257,11 +354,7 @@ void Renderer::draw(const Camera& camera, AppState state) {
             .descriptorSets = descSets,
             .color =
                 RenderAttachment{
-                                 .image = image.image,.imageView = image.imageView                                               },
-            .depth =
-                RenderAttachment{
-                                 .image = viewport_->getDepthImage().getImage(),
-                                 .imageView = viewport_->getDepthImageView()}
+                                 .image = image.image, .imageView = image.imageView},
         });
 
         frame.commandBuffer.end();
@@ -546,6 +639,148 @@ void Renderer::initSkybox() {
     );
 }
 
+void Renderer::initAOPassResources() {
+    // Create ao attachment resources
+    aoImage_ = Image(
+        &device_->allocator(),
+        ImageCreateInfo{
+            .width = viewport_->getExtent().width,
+            .height = viewport_->getExtent().height,
+            .format = aoFormat_,
+            .tiling = vk::ImageTiling::eOptimal,
+            .usage = vk::ImageUsageFlagBits::eColorAttachment |
+                     vk::ImageUsageFlagBits::eSampled,
+            .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+        }
+    );
+
+    aoImageView_ = device_->createImageView(
+        // TODO: is this the right aspect flag?
+        *aoImage_.getImage(), aoFormat_, vk::ImageAspectFlagBits::eColor
+    );
+
+    device_->submitImmediateCommands(
+        [this](const vk::raii::CommandBuffer& commandBuffer) {
+            vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                .srcAccessMask = vk::AccessFlagBits2::eNone,
+                .dstStageMask =
+                    vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .oldLayout = vk::ImageLayout::eUndefined,
+                .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .image = *aoImage_.getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers},
+            };
+
+            vk::DependencyInfo dependencyInfo{
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers = &imageMemoryBarrier
+            };
+            commandBuffer.pipelineBarrier2(dependencyInfo);
+        }
+    );
+
+    // Create descriptor set/layout.
+    DescriptorLayoutBuilder layoutBuilder(device_);
+
+    aoDescriptorSetLayout_ =
+        layoutBuilder
+            .addBinding(vk::DescriptorSetLayoutBinding{
+                .binding = 0,
+                .descriptorType = vk::DescriptorType::eSampledImage,
+                .descriptorCount = 1,
+                .stageFlags = vk::ShaderStageFlagBits::eFragment
+            })
+            .addBinding(vk::DescriptorSetLayoutBinding{
+                .binding = 1,
+                .descriptorType = vk::DescriptorType::eSampledImage,
+                .descriptorCount = 1,
+                .stageFlags = vk::ShaderStageFlagBits::eFragment
+            })
+            .build(
+                vk::DescriptorSetLayoutBindingFlagsCreateInfo{
+                    .bindingCount = 0, .pBindingFlags = nullptr
+                },
+                vk::DescriptorSetLayoutCreateFlags{}
+            );
+
+    std::vector<vk::DescriptorPoolSize> poolSizes{
+        vk::DescriptorPoolSize{
+                               .type = vk::DescriptorType::eSampledImage, .descriptorCount = 2}
+    };
+
+    vk::DescriptorPoolCreateInfo poolInfo{
+        .maxSets = 1,
+        .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+        .pPoolSizes = poolSizes.data(),
+    };
+
+    aoDescriptorPool_ = device_->getDevice().createDescriptorPool(poolInfo);
+
+    vk::DescriptorSetAllocateInfo allocInfo{
+        .descriptorPool = *aoDescriptorPool_,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &*aoDescriptorSetLayout_
+    };
+
+    vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
+    aoDescriptorSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
+
+    std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
+        *aoDescriptorSetLayout_
+    };
+
+    // Update descriptor set.
+    vk::DescriptorImageInfo depthImageInfo{
+        .sampler = nullptr,
+        .imageView = *viewport_->getDepthImageView(),
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    };
+
+    vk::DescriptorImageInfo normalImageInfo{
+        .sampler = nullptr,
+        .imageView = *normalImageView_,
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    };
+
+    device_->getDevice().updateDescriptorSets(
+        {
+            vk::WriteDescriptorSet{
+                                   .dstSet = *aoDescriptorSet_,
+                                   .dstBinding = 0,
+                                   .dstArrayElement = 0,
+                                   .descriptorCount = 1,
+                                   .descriptorType = vk::DescriptorType::eSampledImage,
+                                   .pImageInfo = &depthImageInfo },
+            vk::WriteDescriptorSet{
+                                   .dstSet = *aoDescriptorSet_,
+                                   .dstBinding = 1,
+                                   .dstArrayElement = 0,
+                                   .descriptorCount = 1,
+                                   .descriptorType = vk::DescriptorType::eSampledImage,
+                                   .pImageInfo = &normalImageInfo},
+    },
+        {}
+    );
+
+    std::vector<vk::Format> colorAttachmentFormats{
+        aoFormat_
+    };
+
+    aoPass_ = AOPass(AOPass::CreateInfo{
+        .device = device_,
+        .descriptorSetLayouts = descriptorSetLayouts,
+        .pushConstantRanges = {},
+        .colorAttachmentFormats = colorAttachmentFormats,
+    });
+}
+
 void Renderer::initCompositePassResources() {
     // Create descriptor set/layout.
     DescriptorLayoutBuilder layoutBuilder(device_);
@@ -621,7 +856,6 @@ void Renderer::initCompositePassResources() {
         .descriptorSetLayouts = descriptorSetLayouts,
         .pushConstantRanges = {},
         .colorAttachmentFormats = colorAttachmentFormats,
-        .depthFormat = viewport_->getDepthFormat()
     });
 }
 

@@ -17,6 +17,7 @@
 #include "renderer/vertex.h"
 #include "renderer/loaded_gltf.h"
 #include "renderer/passes/composite_pass.h"
+#include "renderer/passes/ao_pass.h"
 
 struct AppState;
 
@@ -32,6 +33,7 @@ public:
 private:
     void initSkybox();
     void initCompositePassResources();
+    void initAOPassResources();
     void updateScene(const Camera& camera);
     void createNormalAttachment();
 
@@ -58,6 +60,13 @@ private:
     vk::raii::DescriptorPool compositeDescriptorPool_ = nullptr;
     vk::raii::DescriptorSet compositeDescriptorSet_ = nullptr;
 
+    vk::raii::DescriptorSetLayout aoDescriptorSetLayout_ = nullptr;
+    vk::raii::DescriptorPool aoDescriptorPool_ = nullptr;
+    vk::raii::DescriptorSet aoDescriptorSet_ = nullptr;
+    Image aoImage_;
+    vk::raii::ImageView aoImageView_ = nullptr;
+    vk::Format aoFormat_ = vk::Format::eR16Sfloat;
+
     DrawContext drawContext_;
     GLTFAsset asset_;
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes_;
@@ -79,6 +88,7 @@ private:
 
     DepthPass depthPass_;
     LightingPass lightingPass_;
+    AOPass aoPass_;
     CompositePass compositePass_;
 };
 

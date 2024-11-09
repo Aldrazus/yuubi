@@ -34,4 +34,6 @@ void main() {
     // https://jcgt.org/published/0003/02/01/
     // https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html
     vec3 normal = texture(normalTex, texCoords).xyz;
+
+    ambientOcclusion = 1.0f;
 }

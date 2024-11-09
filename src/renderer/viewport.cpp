@@ -121,7 +121,7 @@ void Viewport::createDepthStencil() {
             .height = swapChainExtent_.height,
             .format = depthImageFormat_,
             .tiling = vk::ImageTiling::eOptimal,
-            .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
+            .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
             .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
         }
     );

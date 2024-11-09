@@ -27,9 +27,8 @@ CompositePass::CompositePass(const CreateInfo& createInfo) {
             )
             .setMultisamplingNone()
             .disableBlending()
-            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
+            .disableDepthTest()
             .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
-            .setDepthFormat(createInfo.depthFormat)
             .build(*device);
 }
 
@@ -51,20 +50,11 @@ void CompositePass::render(const RenderInfo& renderInfo) {
                                     .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}},
     };
 
-    vk::RenderingAttachmentInfo depthAttachmentInfo{
-        .imageView = renderInfo.depth.imageView,
-        .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .clearValue = {.depthStencil = {1, 0}}
-    };
-
     vk::RenderingInfo renderingInfo{
         .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
         .layerCount = 1,
         .colorAttachmentCount = colorAttachmentInfos.size(),
         .pColorAttachments = colorAttachmentInfos.data(),
-        .pDepthAttachment = &depthAttachmentInfo
     };
 
     const auto& commandBuffer = renderInfo.commandBuffer;

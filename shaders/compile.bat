@@ -6,4 +6,5 @@ glslangvalidator --target-env vulkan1.3 -e main -o screen_quad.vert.spv screen_q
 glslangvalidator --target-env vulkan1.3 -e main -o screen_quad.frag.spv screen_quad.frag
 glslangvalidator --target-env vulkan1.3 -e main -o depth.vert.spv depth.vert
 glslangvalidator --target-env vulkan1.3 -e main -o depth.frag.spv depth.frag
+glslangvalidator --target-env vulkan1.3 -e main -o ssao.frag.spv ssao.frag
 pause

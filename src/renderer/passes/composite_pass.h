@@ -19,7 +19,6 @@ public:
         std::span<vk::DescriptorSetLayout> descriptorSetLayouts;
         std::span<vk::PushConstantRange> pushConstantRanges;
         std::span<vk::Format> colorAttachmentFormats;
-        vk::Format depthFormat;
     };
 
     struct RenderInfo {
@@ -27,7 +26,6 @@ public:
         vk::Extent2D viewportExtent;
         std::span<vk::DescriptorSet> descriptorSets;
         RenderAttachment color;
-        RenderAttachment depth;
     };
 
     CompositePass() = default;
