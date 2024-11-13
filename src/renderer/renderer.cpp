@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vulkan/vulkan_enums.hpp>
 #include <stb_image.h>
+#include <random>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -202,6 +203,7 @@ void Renderer::draw(const Camera& camera, AppState state) {
             frame.commandBuffer.pipelineBarrier2(dependencyInfo);
         }
 
+        // Transition normal image.
         {
             vk::ImageMemoryBarrier2 imageMemoryBarrier{
   // PERF: we really toppin da pipe with this one
@@ -278,8 +280,7 @@ void Renderer::draw(const Camera& camera, AppState state) {
         {
             vk::ImageMemoryBarrier2 depthImageBarrier{
   // TODO: fix srcstagemask
-                .srcStageMask =
-                    vk::PipelineStageFlagBits2::eAllGraphics,
+                .srcStageMask = vk::PipelineStageFlagBits2::eAllGraphics,
                 .srcAccessMask =
                     vk::AccessFlagBits2::eDepthStencilAttachmentRead,
                 .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
@@ -312,6 +313,7 @@ void Renderer::draw(const Camera& camera, AppState state) {
                 .color =
                     RenderAttachment{
                                      .image = aoImage_.getImage(), .imageView = aoImageView_},
+                .projection = camera.getProjectionMatrix()
             });
         }
 
@@ -640,6 +642,80 @@ void Renderer::initSkybox() {
 }
 
 void Renderer::initAOPassResources() {
+    // Create noise texture.
+    const size_t textureWidth = 4;
+
+    std::vector<unsigned char> pixels;
+    pixels.reserve(textureWidth * textureWidth * 4);
+
+    ImageData imageData{
+        .pixels = pixels.data(),
+        .width = textureWidth,
+        .height = textureWidth,
+        .numChannels = 4,
+        .format = vk::Format::eR8G8B8A8Srgb
+    };
+
+    std::uniform_real_distribution<float> randomFloats(
+        0.0, 1.0
+    );  // random floats between [0.0, 1.0]
+    std::default_random_engine generator;
+    for (size_t i = 0; i < (textureWidth * textureWidth); i++) {
+        imageData.pixels[i * 4] = glm::packUnorm4x8(glm::vec4(
+            randomFloats(generator) * 2.0 - 1.0,
+            randomFloats(generator) * 2.0 - 1.0, 0.0, 1.0
+        ));
+    }
+
+    aoNoiseImage_ = createImageFromData(*device_, imageData);
+    aoNoiseImageView_ = device_->createImageView(*aoNoiseImage_.getImage(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
+    aoNoiseSampler_ = device_->getDevice().createSampler(vk::SamplerCreateInfo{
+        .magFilter = vk::Filter::eNearest,
+        .minFilter = vk::Filter::eNearest,
+        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+        .addressModeU = vk::SamplerAddressMode::eRepeat,
+        .addressModeV = vk::SamplerAddressMode::eRepeat,
+        .addressModeW = vk::SamplerAddressMode::eRepeat,
+        .mipLodBias = 0.0f,
+        .anisotropyEnable = vk::True,
+        .maxAnisotropy = device_->getPhysicalDevice()
+        .getProperties()
+        .limits.maxSamplerAnisotropy,
+        .compareEnable = vk::False,
+        .compareOp = vk::CompareOp::eAlways,
+        .minLod = 0.0f,
+        .maxLod = 0.0f,
+        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+        .unnormalizedCoordinates = vk::False,
+    });
+
+    // device_->submitImmediateCommands(
+    //     [this](const vk::raii::CommandBuffer& commandBuffer) {
+    //         vk::ImageMemoryBarrier2 imageMemoryBarrier{
+    //             .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+    //             .srcAccessMask = vk::AccessFlagBits2::eNone,
+    //             .dstStageMask =
+    //                 vk::PipelineStageFlagBits2::eFragmentShader,
+    //             .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+    //             .oldLayout = vk::ImageLayout::eUndefined,
+    //             .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    //             .image = *aoImage_.getImage(),
+    //             .subresourceRange{
+    //                               .aspectMask = vk::ImageAspectFlagBits::eColor,
+    //                               .baseMipLevel = 0,
+    //                               .levelCount = vk::RemainingMipLevels,
+    //                               .baseArrayLayer = 0,
+    //                               .layerCount = vk::RemainingArrayLayers},
+    //         };
+    //
+    //         vk::DependencyInfo dependencyInfo{
+    //             .imageMemoryBarrierCount = 1,
+    //             .pImageMemoryBarriers = &imageMemoryBarrier
+    //         };
+    //         commandBuffer.pipelineBarrier2(dependencyInfo);
+    //     }
+    // );
+
     // Create ao attachment resources
     aoImage_ = Image(
         &device_->allocator(),
@@ -703,6 +779,12 @@ void Renderer::initAOPassResources() {
                 .descriptorCount = 1,
                 .stageFlags = vk::ShaderStageFlagBits::eFragment
             })
+            .addBinding(vk::DescriptorSetLayoutBinding{
+                .binding = 2,
+                .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                .descriptorCount = 1,
+                .stageFlags = vk::ShaderStageFlagBits::eFragment
+            })
             .build(
                 vk::DescriptorSetLayoutBindingFlagsCreateInfo{
                     .bindingCount = 0, .pBindingFlags = nullptr
@@ -712,7 +794,10 @@ void Renderer::initAOPassResources() {
 
     std::vector<vk::DescriptorPoolSize> poolSizes{
         vk::DescriptorPoolSize{
-                               .type = vk::DescriptorType::eSampledImage, .descriptorCount = 2}
+                               .type = vk::DescriptorType::eSampledImage, .descriptorCount = 2},
+        vk::DescriptorPoolSize{
+            .type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1
+        }
     };
 
     vk::DescriptorPoolCreateInfo poolInfo{
@@ -749,6 +834,12 @@ void Renderer::initAOPassResources() {
         .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 
+    vk::DescriptorImageInfo noiseImageInfo{
+        .sampler = aoNoiseSampler_,
+        .imageView = *aoNoiseImageView_,
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+    };
+
     device_->getDevice().updateDescriptorSets(
         {
             vk::WriteDescriptorSet{
@@ -765,18 +856,30 @@ void Renderer::initAOPassResources() {
                                    .descriptorCount = 1,
                                    .descriptorType = vk::DescriptorType::eSampledImage,
                                    .pImageInfo = &normalImageInfo},
+            vk::WriteDescriptorSet{
+                                   .dstSet = *aoDescriptorSet_,
+                                   .dstBinding = 2,
+                                   .dstArrayElement = 0,
+                                   .descriptorCount = 1,
+                                   .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                   .pImageInfo = &noiseImageInfo},
     },
         {}
     );
 
-    std::vector<vk::Format> colorAttachmentFormats{
-        aoFormat_
+    std::vector<vk::Format> colorAttachmentFormats{aoFormat_};
+    std::vector<vk::PushConstantRange> pushConstantRanges{
+        vk::PushConstantRange{
+            .stageFlags = vk::ShaderStageFlagBits::eFragment,
+            .offset = 0,
+            .size = sizeof(glm::mat4),
+        }
     };
 
     aoPass_ = AOPass(AOPass::CreateInfo{
         .device = device_,
         .descriptorSetLayouts = descriptorSetLayouts,
-        .pushConstantRanges = {},
+        .pushConstantRanges = pushConstantRanges,
         .colorAttachmentFormats = colorAttachmentFormats,
     });
 }

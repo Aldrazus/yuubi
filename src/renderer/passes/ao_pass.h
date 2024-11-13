@@ -26,6 +26,7 @@ public:
         vk::Extent2D viewportExtent;
         std::span<vk::DescriptorSet> descriptorSets;
         RenderAttachment color;
+        glm::mat4 projection;
     };
 
     AOPass() = default;

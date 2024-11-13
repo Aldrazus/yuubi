@@ -45,11 +45,11 @@ void main() {
     // https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
     // https://jcgt.org/published/0003/02/01/
     // https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html
-    vec3 normal = texture(normalTex, texCoords).xyz;
+    vec3 normal = normalize(texture(normalTex, texCoords).xyz * 2.0 - 1.0);
     vec3 randomVec = normalize(texture(noiseTex, texCoords).rgb);
     
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
-    vec3 bitangent = cross(normal, tangent);
+    vec3 bitangent = cross(tangent, normal);
     mat3 TBN = mat3(tangent, bitangent, normal);
 
     float occlusion = 0.0;
@@ -65,9 +65,10 @@ void main() {
         offset.xyz /= offset.w;
         offset.xyz = offset.xyz * 0.5 + 0.5;
 
-        float sampleDepth = texture(depthTex, offset.xy).r; 
+        float sampleDepth = -texture(depthTex, offset.xy).r; 
 
         float rangeCheck = smoothstep(0.0, 1.0, radius / abs(position.z - sampleDepth));
+        occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;
     }
 
     occlusion = 1.0 - (occlusion / kernelSamples.length());

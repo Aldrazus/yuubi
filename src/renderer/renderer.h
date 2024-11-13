@@ -66,6 +66,9 @@ private:
     Image aoImage_;
     vk::raii::ImageView aoImageView_ = nullptr;
     vk::Format aoFormat_ = vk::Format::eR16Sfloat;
+    Image aoNoiseImage_;
+    vk::raii::ImageView aoNoiseImageView_ = nullptr;
+    vk::raii::Sampler aoNoiseSampler_ = nullptr;
 
     DrawContext drawContext_;
     GLTFAsset asset_;
