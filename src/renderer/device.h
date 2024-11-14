@@ -27,7 +27,8 @@ public:
     const vk::raii::Device& getDevice() const { return device_; }
     const vk::raii::PhysicalDevice& getPhysicalDevice() const { return physicalDevice_; }
 
-    vk::raii::ImageView createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels = 1, vk::ImageViewType type = vk::ImageViewType::e2D);
+    vk::raii::ImageView createImageView(const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels = 1, vk::ImageViewType type = vk::ImageViewType::e2D
+    ) const;
 
     const Queue& getQueue() {
         return graphicsQueue_;
@@ -35,14 +36,14 @@ public:
 
     inline Allocator& allocator() const { return *allocator_; } 
 
-    Image createImage(const ImageCreateInfo& createInfo);
-    Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo);
-    void submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function);
+    Image createImage(const ImageCreateInfo& createInfo) const;
+    Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo) const;
+    void submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function) const;
 
 private:
     void selectPhysicalDevice(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface);
     bool isDeviceSuitable(const vk::raii::PhysicalDevice& physicalDevice, const vk::raii::SurfaceKHR& surface);
-    bool supportsFeatures(const vk::raii::PhysicalDevice& physicalDevice);
+    static bool supportsFeatures(const vk::raii::PhysicalDevice& physicalDevice);
     void createLogicalDevice(const vk::raii::Instance& instance);
     void createImmediateCommandResources();
 
