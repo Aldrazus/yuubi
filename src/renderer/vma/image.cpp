@@ -168,8 +168,6 @@ Image createImageFromData(Device& device, const ImageData& data) {
             vk::ImageMemoryBarrier2 barrier{
                 .srcStageMask = vk::PipelineStageFlagBits2::eTransfer,
                 .dstStageMask = vk::PipelineStageFlagBits2::eTransfer,
-                .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
-                .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
                 .image = *image.getImage(),
                 .subresourceRange =
                     vk::ImageSubresourceRange{
@@ -189,6 +187,8 @@ Image createImageFromData(Device& device, const ImageData& data) {
                 barrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
                 barrier.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
                 barrier.dstAccessMask = vk::AccessFlagBits2::eTransferRead;
+                barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+                barrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
 
                 vk::DependencyInfo dependencyInfo{
                     .imageMemoryBarrierCount = 1,
@@ -235,11 +235,24 @@ Image createImageFromData(Device& device, const ImageData& data) {
                     .filter = vk::Filter::eLinear,  // TODO: fix!!
                 });
 
+                barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+                barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+                barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead,
+                barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
+                barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+                barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+
+                commandBuffer.pipelineBarrier2(vk::DependencyInfo{
+                    .imageMemoryBarrierCount = 1,
+                    .pImageMemoryBarriers = &barrier
+                });
+
                 if (mipWidth > 1) mipWidth /= 2;
                 if (mipHeight > 1) mipHeight /= 2;
             }
 
-            barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+            barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+            barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
             barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
             barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead,
             barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
