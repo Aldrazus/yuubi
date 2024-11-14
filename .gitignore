@@ -5,6 +5,7 @@ bin/
 build/
 build32/
 build64/
+.idea/
 buildjs
 imgui.ini
 shaders/*.spv
