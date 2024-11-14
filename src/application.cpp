@@ -12,27 +12,19 @@
 #include "renderer/camera.h"
 #include <GLFW/glfw3.h>
 
-#define UB_BIND_EVENT_FN(fn)                                    \
-    [this](auto&&... args) -> decltype(auto) {                  \
-        return this->fn(std::forward<decltype(args)>(args)...); \
-    }
+#define UB_BIND_EVENT_FN(fn) \
+    [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 #if 0
 #define UB_BIND_EVENT_FN(fn) [this](Event& e) { fn(e); }
 #endif
 
 Application* Application::instance_ = nullptr;
 
-Application::Application()
-    : window_(1600, 900, "Yuubi"),
-      renderer_(window_),
-      // TODO: initialize camera with aspect ratio calculated using viewport
-      camera_(
-          glm::vec3(2.0f, 0.0f, 2.0f),
-          glm::vec3(0.0f),
-          0.0f,
-          0.0f,
-          (float)1600 / (float)900
-      ) {
+Application::Application() :
+    window_(1600, 900, "Yuubi"), renderer_(window_),
+    // TODO: initialize camera with aspect ratio calculated using viewport
+    camera_(glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f,
+            static_cast<float>(1600) / static_cast<float>(900)) {
     if (instance_ != nullptr) {
         UB_ERROR("Application already exists");
         exit(1);
@@ -57,8 +49,8 @@ bool Application::onWindowResize(WindowResizeEvent& e) {
     }
     state_.isMinimized = false;
     camera_ = yuubi::Camera(
-        glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f,
-        (float)e.getWidth() / (float)e.getHeight()
+            glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f,
+            static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight())
     );
     // TODO: let renderer resize
     // renderer_.resize();
@@ -92,9 +84,7 @@ bool Application::onKeyRelease(KeyReleasedEvent& e) {
     switch (e.keyCode) {
         case Key::Escape: {
             state_.isLocked = false;
-            glfwSetInputMode(
-                window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL
-            );
+            glfwSetInputMode(window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
         case Key::W: {
             camera_.velocity.z = 0;
@@ -122,7 +112,7 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
     const double deltaX = e.xPos - oldX;
     const double deltaY = e.yPos - oldY;
 
-    const float sensitivity = 1.0f;
+    constexpr float sensitivity = 1.0f;
 
     camera_.yaw += deltaX * sensitivity;
 
@@ -144,24 +134,12 @@ bool Application::onMouseButtonPressed(MouseButtonPressedEvent& e) {
 
 void Application::onEvent(Event& e) {
     EventDispatcher dispatcher(e);
-    dispatcher.dispatch<WindowCloseEvent>(
-        UB_BIND_EVENT_FN(Application::onWindowClose)
-    );
-    dispatcher.dispatch<WindowResizeEvent>(
-        UB_BIND_EVENT_FN(Application::onWindowResize)
-    );
-    dispatcher.dispatch<KeyPressedEvent>(
-        UB_BIND_EVENT_FN(Application::onKeyPress)
-    );
-    dispatcher.dispatch<KeyReleasedEvent>(
-        UB_BIND_EVENT_FN(Application::onKeyRelease)
-    );
-    dispatcher.dispatch<MouseMovedEvent>(
-        UB_BIND_EVENT_FN(Application::onMouseMove)
-    );
-    dispatcher.dispatch<MouseButtonPressedEvent>(
-        UB_BIND_EVENT_FN(Application::onMouseButtonPressed)
-    );
+    dispatcher.dispatch<WindowCloseEvent>(UB_BIND_EVENT_FN(Application::onWindowClose));
+    dispatcher.dispatch<WindowResizeEvent>(UB_BIND_EVENT_FN(Application::onWindowResize));
+    dispatcher.dispatch<KeyPressedEvent>(UB_BIND_EVENT_FN(Application::onKeyPress));
+    dispatcher.dispatch<KeyReleasedEvent>(UB_BIND_EVENT_FN(Application::onKeyRelease));
+    dispatcher.dispatch<MouseMovedEvent>(UB_BIND_EVENT_FN(Application::onMouseMove));
+    dispatcher.dispatch<MouseButtonPressedEvent>(UB_BIND_EVENT_FN(Application::onMouseButtonPressed));
 }
 
 void Application::run() {
@@ -171,20 +149,19 @@ void Application::run() {
     // Game loop based on Glenn Fiedler's "Fix Your Timestep!" blog post:
     // https://gafferongames.com/post/fix_your_timestep/
 
-    const float simulationFramesPerSecond = 60.0f;
-    const float fixedTimestep = 1.0f / simulationFramesPerSecond;
+    constexpr float simulationFramesPerSecond = 60.0f;
+    constexpr float fixedTimestep = 1.0f / simulationFramesPerSecond;
 
-    std::chrono::time_point<std::chrono::high_resolution_clock>
-        previousFrameTime = std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<std::chrono::high_resolution_clock> previousFrameTime =
+            std::chrono::high_resolution_clock::now();
 
     float accumulator = 0.0f;
 
     while (running_) {
         // 0. Manage time and frame rate.
-        std::chrono::time_point<std::chrono::high_resolution_clock>
-            currentFrameTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> frameTime =
-            currentFrameTime - previousFrameTime;
+        std::chrono::time_point<std::chrono::high_resolution_clock> currentFrameTime =
+                std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> frameTime = currentFrameTime - previousFrameTime;
         previousFrameTime = currentFrameTime;
         deltaTime_ = frameTime.count();
         accumulator += deltaTime_;
@@ -214,12 +191,11 @@ void Application::run() {
         // Limit frame rate.
         {
             const auto now = std::chrono::high_resolution_clock::now();
-            const auto frameTime =
-                std::chrono::duration<float>(now - previousFrameTime).count();
+            const auto frameTime = std::chrono::duration<float>(now - previousFrameTime).count();
             if (fixedTimestep > frameTime) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(
-                    int((fixedTimestep - frameTime) * 1000.0)
-                ));
+                std::this_thread::sleep_for(
+                        std::chrono::milliseconds(static_cast<int>((fixedTimestep - frameTime) * 1000.0))
+                );
             }
         }
     }

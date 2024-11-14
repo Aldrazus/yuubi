@@ -38,7 +38,9 @@ public:
 
     Image createImage(const ImageCreateInfo& createInfo) const;
     Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo) const;
-    void submitImmediateCommands(std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function) const;
+    void submitImmediateCommands(
+            const std::function<void(const vk::raii::CommandBuffer& commandBuffer)>& function
+    ) const;
 
 private:
     void selectPhysicalDevice(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface);

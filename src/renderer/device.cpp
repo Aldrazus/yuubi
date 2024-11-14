@@ -7,9 +7,8 @@
 
 namespace util {
     uint32_t findGraphicsQueueFamilyIndex(const vk::raii::PhysicalDevice& physicalDevice) {
-        auto properties = physicalDevice.getQueueFamilyProperties();
-
-        for (const auto [i, p]: std::views::enumerate(properties)) {
+        for (auto properties = physicalDevice.getQueueFamilyProperties();
+             const auto [i, p]: std::views::enumerate(properties)) {
             if (p.queueFlags & vk::QueueFlagBits::eGraphics) {
                 return i;
             }
@@ -74,19 +73,27 @@ namespace yuubi {
 
         auto availableFeatures12 = supportedFeatures.get<vk::PhysicalDeviceVulkan12Features>();
         auto requiredFeatures12 = requiredFeatures_.get<vk::PhysicalDeviceVulkan12Features>();
-        if (requiredFeatures12.descriptorIndexing && !availableFeatures12.descriptorIndexing) return false;
-        if (requiredFeatures12.bufferDeviceAddress && !availableFeatures12.bufferDeviceAddress) return false;
+        if (requiredFeatures12.descriptorIndexing && !availableFeatures12.descriptorIndexing) {
+            return false;
+        }
+        if (requiredFeatures12.bufferDeviceAddress && !availableFeatures12.bufferDeviceAddress) {
+            return false;
+        }
 
         auto availableFeatures13 = supportedFeatures.get<vk::PhysicalDeviceVulkan13Features>();
         auto requiredFeatures13 = requiredFeatures_.get<vk::PhysicalDeviceVulkan13Features>();
-        if (requiredFeatures13.dynamicRendering && !availableFeatures13.dynamicRendering) return false;
-        if (requiredFeatures13.synchronization2 && !availableFeatures13.synchronization2) return false;
+        if (requiredFeatures13.dynamicRendering && !availableFeatures13.dynamicRendering) {
+            return false;
+        }
+        if (requiredFeatures13.synchronization2 && !availableFeatures13.synchronization2) {
+            return false;
+        }
 
         return true;
     }
 
     void Device::createLogicalDevice(const vk::raii::Instance& instance) {
-        float priority = 1.0f;
+        constexpr float priority = 1.0f;
         const auto graphicsFamilyIndex = util::findGraphicsQueueFamilyIndex(physicalDevice_);
 
         const vk::DeviceQueueCreateInfo queueCreateInfo{
@@ -167,7 +174,7 @@ namespace yuubi {
     // blocking the main thread. Handle these operations asynchronously instead
     // via C++20 coroutines.
     void Device::submitImmediateCommands(
-            std::function<void(const vk::raii::CommandBuffer& commandBuffer)>&& function
+            const std::function<void(const vk::raii::CommandBuffer& commandBuffer)>& function
     ) const {
         device_.resetFences(*immediateCommandFence_);
         immediateCommandBuffer_.reset();

@@ -12,14 +12,14 @@ public:
 
     ~Window();
 
-    void processInput();
+    static void processInput();
 
     void setEventCallback(EventCallbackFn);
 
     GLFWwindow* getWindow() const;
 
 private:
-    void initCallbacks();
+    void initCallbacks() const;
 
     uint32_t width_;
     uint32_t height_;
