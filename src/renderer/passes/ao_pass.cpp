@@ -91,8 +91,8 @@ void AOPass::render(const RenderInfo& renderInfo) {
         {renderInfo.descriptorSets}, {}
     );
 
-    commandBuffer.pushConstants<glm::mat4>(*pipelineLayout_, vk::ShaderStageFlagBits::eFragment, 0, {
-        renderInfo.projection
+    commandBuffer.pushConstants<PushConstants>(*pipelineLayout_, vk::ShaderStageFlagBits::eFragment, 0, {
+        renderInfo.pushConstants
     });
 
     commandBuffer.draw(3, 1, 0, 0);

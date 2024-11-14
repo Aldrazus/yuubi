@@ -313,7 +313,11 @@ void Renderer::draw(const Camera& camera, AppState state) {
                 .color =
                     RenderAttachment{
                                      .image = aoImage_.getImage(), .imageView = aoImageView_},
-                .projection = camera.getProjectionMatrix()
+                .pushConstants = AOPass::PushConstants{
+                    .projection = camera.getProjectionMatrix(),
+                    .nearPlane = camera.near,
+                    .farPlane = camera.far
+                }
             });
         }
 
@@ -668,7 +672,7 @@ void Renderer::initAOPassResources() {
     }
 
     aoNoiseImage_ = createImageFromData(*device_, imageData);
-    aoNoiseImageView_ = device_->createImageView(*aoNoiseImage_.getImage(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
+    aoNoiseImageView_ = device_->createImageView(*aoNoiseImage_.getImage(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, aoNoiseImage_.getMipLevels());
     aoNoiseSampler_ = device_->getDevice().createSampler(vk::SamplerCreateInfo{
         .magFilter = vk::Filter::eNearest,
         .minFilter = vk::Filter::eNearest,
@@ -872,7 +876,7 @@ void Renderer::initAOPassResources() {
         vk::PushConstantRange{
             .stageFlags = vk::ShaderStageFlagBits::eFragment,
             .offset = 0,
-            .size = sizeof(glm::mat4),
+            .size = sizeof(AOPass::PushConstants),
         }
     };
 

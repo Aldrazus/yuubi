@@ -20,22 +20,29 @@ vec3 kernelSamples[16] = {
     vec3(0.049326677, 0.056126736, 0.0721665), vec3(-0.09466426, 0.02916146, 0.097996004),
 };
 
-layout(location = 0) out float ambientOcclusion;
+layout(location = 0) out vec4 ambientOcclusion;
 
 layout (push_constant, scalar) uniform constants {
     mat4 projection;
+    float nearPlane;
+    float farPlane;
 } PushConstants;
+
+float linearizeDepth(float depth) {
+    float zNear = PushConstants.nearPlane;
+    float zFar = PushConstants.farPlane;
+    //return (2.0 * zNear * zFar) / (zFar + zNear - depth * (zFar - zNear));
+    return (zNear * zFar) / (zFar - depth * (zFar - zNear));
+}
 
 // Position reconstruction code was obtained from this blog:
 // https://wickedengine.net/2019/09/improved-normal-reconstruction-from-depth/
 vec3 reconstructPosition() {
     float depth = texture(depthTex, texCoords).r;
-    float x = texCoords.x * 2.0 - 1.0;
-    float y = (1.0 - texCoords.y) * 2.0 - 1.0;
-    vec4 pos = vec4(x, y, depth, 1.0);
-    vec4 viewSpacePos = inverse(PushConstants.projection) * pos;
-    return viewSpacePos.xyz / viewSpacePos.w;
+    vec4 upos = inverse(PushConstants.projection) * vec4(texCoords * 2.0 - 1.0, depth, 1.0);
+    return upos.xyz / upos.w;
 }
+
 
 void main() {
     vec3 position = reconstructPosition();
@@ -46,7 +53,11 @@ void main() {
     // https://jcgt.org/published/0003/02/01/
     // https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html
     vec3 normal = normalize(texture(normalTex, texCoords).xyz * 2.0 - 1.0);
-    vec3 randomVec = normalize(texture(noiseTex, texCoords).rgb);
+
+    ivec2 texDim = textureSize(depthTex, 0);
+    ivec2 noiseDim = textureSize(noiseTex, 0);
+    const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) * texCoords;
+    vec3 randomVec = texture(noiseTex, noiseUV).rgb * 2.0 - 1.0;
     
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
     vec3 bitangent = cross(tangent, normal);
@@ -72,5 +83,7 @@ void main() {
     }
 
     occlusion = 1.0 - (occlusion / kernelSamples.length());
-    ambientOcclusion = occlusion;
+
+    float depth = linearizeDepth(texture(depthTex, texCoords).r);
+    ambientOcclusion = vec4(depth, depth, depth, 1.0);
 }

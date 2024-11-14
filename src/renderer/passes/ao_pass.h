@@ -21,12 +21,18 @@ public:
         std::span<vk::Format> colorAttachmentFormats;
     };
 
+    struct PushConstants {
+        glm::mat4 projection;
+        float nearPlane;
+        float farPlane;
+    };
+
     struct RenderInfo {
         const vk::raii::CommandBuffer& commandBuffer;
         vk::Extent2D viewportExtent;
         std::span<vk::DescriptorSet> descriptorSets;
         RenderAttachment color;
-        glm::mat4 projection;
+        PushConstants pushConstants;
     };
 
     AOPass() = default;

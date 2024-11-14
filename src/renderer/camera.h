@@ -20,11 +20,11 @@ public:
     glm::vec3 velocity;
     float pitch = 0.0f;
     float yaw = 0.0f;
+    // TODO: look into why this is more precise
+    float near = 10000.f;
+    float far = .1f;
 private:
     glm::vec3 position_;
-    // TODO: look into why this is more precise
-    float near_ = 10000.f;
-    float far_ = .1f;
 
     float aspectRatio_ = 800.0f / 600.0f;
     float fov_ = glm::radians(90.0f);

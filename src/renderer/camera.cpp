@@ -30,7 +30,7 @@ glm::mat4 Camera::getViewMatrix() const {
 }
 
 glm::mat4 Camera::getProjectionMatrix() const {
-    return glm::perspective(fov_, aspectRatio_, near_, far_);
+    return glm::perspective(fov_, aspectRatio_, near, far);
 }
 
 glm::mat4 Camera::getViewProjectionMatrix() const {
