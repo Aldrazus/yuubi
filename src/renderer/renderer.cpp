@@ -85,7 +85,12 @@ Renderer::Renderer(const Window& window) : window_(window) {
     initSkybox();
     initCompositePassResources();
 
-    depthPass_ = DepthPass(device_, viewport_);
+    {
+        std::vector<vk::DescriptorSetLayout> setLayouts{
+            *textureManager_.getTextureSetLayout()
+        };
+        depthPass_ = DepthPass(device_, viewport_, setLayouts);
+    }
 
     // Create normal attachment.
     createNormalAttachment();
@@ -171,7 +176,7 @@ void Renderer::draw(const Camera& camera, AppState state) {
             vk::ImageLayout::eColorAttachmentOptimal
         );
 
-        depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_);
+        depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_, textureManager_.getTextureSet());
 
         std::vector<vk::DescriptorSet> descriptorSets{
             textureManager_.getTextureSet()
@@ -412,6 +417,7 @@ void Renderer::initSkybox() {
     };
 
     vk::DescriptorPoolCreateInfo poolInfo{
+        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = 1,
         .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
         .pPoolSizes = poolSizes.data(),
@@ -805,6 +811,7 @@ void Renderer::initAOPassResources() {
     };
 
     vk::DescriptorPoolCreateInfo poolInfo{
+        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = 1,
         .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
         .pPoolSizes = poolSizes.data(),
@@ -913,6 +920,7 @@ void Renderer::initCompositePassResources() {
     };
 
     vk::DescriptorPoolCreateInfo poolInfo{
+        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = 1,
         .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
         .pPoolSizes = poolSizes.data(),

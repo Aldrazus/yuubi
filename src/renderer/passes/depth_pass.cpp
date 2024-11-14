@@ -3,12 +3,13 @@
 #include "renderer/device.h"
 #include "renderer/pipeline_builder.h"
 #include "renderer/viewport.h"
+#include "renderer/push_constants.h"
 #include "pch.h"
 
 namespace yuubi {
 
 DepthPass::DepthPass(
-    std::shared_ptr<Device> device, std::shared_ptr<Viewport> viewport
+    std::shared_ptr<Device> device, std::shared_ptr<Viewport> viewport, std::span<vk::DescriptorSetLayout> setLayouts
 )
     : device_(std::move(device)), viewport_(std::move(viewport)) {
     auto vertShader = loadShader("shaders/depth.vert.spv", *device_);
@@ -22,18 +23,21 @@ DepthPass::DepthPass(
                               .size = sizeof(PushConstants)}
     };
 
-    pipelineLayout_ = createPipelineLayout(*device_, {}, pushConstantRanges);
+    pipelineLayout_ = createPipelineLayout(*device_, setLayouts, pushConstantRanges);
     PipelineBuilder builder(pipelineLayout_);
 
-    pipeline_ = builder.setShaders(vertShader, fragShader)
-        .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-        .setPolygonMode(vk::PolygonMode::eFill)
-        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
-        .setMultisamplingNone()
-        .disableBlending()
-        .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
-        .setDepthFormat(viewport_->getDepthFormat())
-        .build(*device_);
+    pipeline_ =
+        builder.setShaders(vertShader, fragShader)
+            .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+            .setPolygonMode(vk::PolygonMode::eFill)
+            .setCullMode(
+                vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise
+            )
+            .setMultisamplingNone()
+            .disableBlending()
+            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
+            .setDepthFormat(viewport_->getDepthFormat())
+            .build(*device_);
 }
 
 DepthPass& DepthPass::operator=(DepthPass&& rhs) noexcept {
@@ -47,34 +51,37 @@ DepthPass& DepthPass::operator=(DepthPass&& rhs) noexcept {
     return *this;
 }
 
-void DepthPass::render(const vk::raii::CommandBuffer& commandBuffer, const DrawContext& drawContext, const Buffer& sceneDataBuffer) {
+void DepthPass::render(
+    const vk::raii::CommandBuffer& commandBuffer,
+    const DrawContext& drawContext,
+    const Buffer& sceneDataBuffer,
+    const vk::DescriptorSet& descriptorSet
+) {
     // Transition depth image to DepthAttachmentOptimal
-    vk::ImageMemoryBarrier2 depthImageBarrier {
+    vk::ImageMemoryBarrier2 depthImageBarrier{
         .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
         .srcAccessMask = vk::AccessFlagBits2::eNone,
         .dstStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests,
-        .dstAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite | vk::AccessFlagBits2::eDepthStencilAttachmentRead,
+        .dstAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite |
+                         vk::AccessFlagBits2::eDepthStencilAttachmentRead,
         .oldLayout = vk::ImageLayout::eUndefined,
         .newLayout = vk::ImageLayout::eDepthAttachmentOptimal,
         .image = viewport_->getDepthImage().getImage(),
         .subresourceRange{
-            .aspectMask = vk::ImageAspectFlagBits::eDepth,
-            .baseMipLevel = 0,
-            .levelCount = vk::RemainingMipLevels,
-            .baseArrayLayer = 0,
-            .layerCount = vk::RemainingArrayLayers
-        },
+                          .aspectMask = vk::ImageAspectFlagBits::eDepth,
+                          .baseMipLevel = 0,
+                          .levelCount = vk::RemainingMipLevels,
+                          .baseArrayLayer = 0,
+                          .layerCount = vk::RemainingArrayLayers},
     };
 
-    vk::DependencyInfo dependencyInfo {
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers = &depthImageBarrier
+    vk::DependencyInfo dependencyInfo{
+        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &depthImageBarrier
     };
 
     commandBuffer.pipelineBarrier2(dependencyInfo);
 
-
-    vk::RenderingAttachmentInfo depthAttachmentInfo {
+    vk::RenderingAttachmentInfo depthAttachmentInfo{
         .imageView = *viewport_->getDepthImageView(),
         .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
         .loadOp = vk::AttachmentLoadOp::eClear,
@@ -83,10 +90,7 @@ void DepthPass::render(const vk::raii::CommandBuffer& commandBuffer, const DrawC
     };
 
     vk::RenderingInfo renderInfo{
-        .renderArea = {
-            .offset = {0, 0},
-            .extent = viewport_->getExtent()
-        },
+        .renderArea = {.offset = {0, 0}, .extent = viewport_->getExtent()},
         .layerCount = 1,
         .colorAttachmentCount = 0,
         .pDepthAttachment = &depthAttachmentInfo
@@ -109,16 +113,20 @@ void DepthPass::render(const vk::raii::CommandBuffer& commandBuffer, const DrawC
 
     vk::Rect2D scissor{
         .offset = {0, 0},
-        .extent = viewport_->getExtent()
+          .extent = viewport_->getExtent()
     };
 
     commandBuffer.setScissor(0, {scissor});
 
+    commandBuffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {descriptorSet},
+        {}
+    );
+
     // TODO: handle transparent objects
     for (const auto& renderObject : drawContext.opaqueSurfaces) {
         commandBuffer.bindIndexBuffer(
-            *renderObject.indexBuffer->getBuffer(), 0,
-            vk::IndexType::eUint32
+            *renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32
         );
 
         commandBuffer.pushConstants<PushConstants>(
@@ -128,9 +136,9 @@ void DepthPass::render(const vk::raii::CommandBuffer& commandBuffer, const DrawC
             0,
             {
                 PushConstants{
-                              renderObject.transform,
-                              sceneDataBuffer.getAddress(),
-                              renderObject.vertexBuffer->getAddress()}
+                              renderObject.transform, sceneDataBuffer.getAddress(),
+                              renderObject.vertexBuffer->getAddress(),
+                              renderObject.materialId}
         }
         );
 
@@ -142,7 +150,7 @@ void DepthPass::render(const vk::raii::CommandBuffer& commandBuffer, const DrawC
     commandBuffer.endRendering();
 
     // Transition depth image to DepthReadOnlyOptimal
-    depthImageBarrier  = {
+    depthImageBarrier = {
         .srcStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests,
         .srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
         .dstStageMask = vk::PipelineStageFlagBits2::eLateFragmentTests,
@@ -151,17 +159,15 @@ void DepthPass::render(const vk::raii::CommandBuffer& commandBuffer, const DrawC
         .newLayout = vk::ImageLayout::eDepthReadOnlyOptimal,
         .image = viewport_->getDepthImage().getImage(),
         .subresourceRange{
-            .aspectMask = vk::ImageAspectFlagBits::eDepth,
-            .baseMipLevel = 0,
-            .levelCount = vk::RemainingMipLevels,
-            .baseArrayLayer = 0,
-            .layerCount = vk::RemainingArrayLayers
-        },
+                          .aspectMask = vk::ImageAspectFlagBits::eDepth,
+                          .baseMipLevel = 0,
+                          .levelCount = vk::RemainingMipLevels,
+                          .baseArrayLayer = 0,
+                          .layerCount = vk::RemainingArrayLayers},
     };
 
     dependencyInfo = {
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers = &depthImageBarrier
+        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &depthImageBarrier
     };
 
     commandBuffer.pipelineBarrier2(dependencyInfo);

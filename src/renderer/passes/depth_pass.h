@@ -13,21 +13,23 @@ class DepthPass : NonCopyable {
 public:
     DepthPass() = default;
 
-    DepthPass(std::shared_ptr<Device> device, std::shared_ptr<Viewport> viewport);
-    
+    DepthPass(
+        std::shared_ptr<Device> device, std::shared_ptr<Viewport> viewport,
+        std::span<vk::DescriptorSetLayout> setLayouts
+    );
+
     DepthPass(DepthPass&&) = default;
 
     DepthPass& operator=(DepthPass&& rhs) noexcept;
 
-    void render(const vk::raii::CommandBuffer&, const DrawContext& context, const Buffer& sceneDataBuffer);
+    void render(
+        const vk::raii::CommandBuffer&,
+        const DrawContext& context,
+        const Buffer& sceneDataBuffer,
+        const vk::DescriptorSet& descriptorSet
+    );
 
 private:
-    struct PushConstants {
-        glm::mat4 transform;
-        vk::DeviceAddress sceneDataBuffer;
-        vk::DeviceAddress vertexBuffer;
-    };
-
     std::shared_ptr<Device> device_;
     std::shared_ptr<Viewport> viewport_;
 

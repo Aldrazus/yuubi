@@ -1,17 +1,8 @@
 #version 460
 
 #extension GL_GOOGLE_include_directive : require
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_scalar_block_layout : require
 
-#include "scene_data.glsl"
-#include "vertex.glsl"
-
-layout (push_constant, scalar) uniform constants {
-    mat4 transform;
-    SceneDataBuffer sceneData;
-    VertexBuffer vertexBuffer;
-} PushConstants;
+#include "push_constants.glsl"
 
 layout(location = 0) out vec2 outUv;
 
