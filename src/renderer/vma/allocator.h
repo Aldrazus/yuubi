@@ -1,11 +1,9 @@
 #pragma once
 
-#include <print>
-#include "core/util.h"
+#include "pch.h"
 #include "renderer/vulkan_usage.h"
 
 namespace yuubi {
-
 
     // RAII wrapper over vma::Allocator
     class Allocator : NonCopyable {
@@ -19,8 +17,8 @@ namespace yuubi {
         Allocator& operator=(Allocator&& rhs) noexcept;
         ~Allocator();
 
-        inline const VmaAllocator& getAllocator() const { return allocator_; }
-        inline const vk::raii::Device& getDevice() const { return *device_; }
+        [[nodiscard]] inline const VmaAllocator& getAllocator() const { return allocator_; }
+        [[nodiscard]] inline const vk::raii::Device& getDevice() const { return *device_; }
 
     private:
         VmaAllocator allocator_;

@@ -1,6 +1,5 @@
 #include "window.h"
 
-#include "core/log.h"
 #include "event/window_event.h"
 #include "event/key_event.h"
 #include "event/mouse_event.h"

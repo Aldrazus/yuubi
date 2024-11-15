@@ -5,43 +5,42 @@
 #include "event.h"
 
 class MouseButtonEvent : public Event {
-    public:
+public:
     EVENT_CLASS_CATEGORY(EventCategoryMouseButton | EventCategoryMouse | EventCategoryInput)
     MouseCode mouseCode;
 
-    protected:
-MouseButtonEvent(const MouseCode mousecode) : mouseCode(mousecode) {}
+protected:
+    explicit MouseButtonEvent(const MouseCode mouseCode) : mouseCode(mouseCode) {}
 };
 
-class MouseButtonPressedEvent : public MouseButtonEvent {
-    public:
-        EVENT_CLASS_TYPE(MouseButtonPressed)
-        MouseButtonPressedEvent(const MouseCode mousecode) : MouseButtonEvent(mousecode) {}
+class MouseButtonPressedEvent final : public MouseButtonEvent {
+public:
+    EVENT_CLASS_TYPE(MouseButtonPressed)
+    explicit MouseButtonPressedEvent(const MouseCode mouseCode) : MouseButtonEvent(mouseCode) {}
 };
 
-class MouseButtonReleasedEvent : public MouseButtonEvent {
-    public:
-        EVENT_CLASS_TYPE(MouseButtonReleased)
-        MouseButtonReleasedEvent(const MouseCode mousecode) : MouseButtonEvent(mousecode) {}
+class MouseButtonReleasedEvent final : public MouseButtonEvent {
+public:
+    EVENT_CLASS_TYPE(MouseButtonReleased)
+    explicit MouseButtonReleasedEvent(const MouseCode mouseCode) : MouseButtonEvent(mouseCode) {}
 };
 
-class MouseScrollEvent : public Event {
-    public:
-        EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
-        EVENT_CLASS_TYPE(MouseMoved)
+class MouseScrollEvent final : public Event {
+public:
+    EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
+    EVENT_CLASS_TYPE(MouseMoved)
 
-        MouseScrollEvent(const double xoffset, const double yoffset) : xOffset(xoffset), yOffset(yoffset) {}
-        double xOffset;
-        double yOffset;
+    MouseScrollEvent(const double xOffset, const double yOffset) : xOffset(xOffset), yOffset(yOffset) {}
+    double xOffset;
+    double yOffset;
 };
 
-class MouseMovedEvent : public Event {
-    public:
-        EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
-        EVENT_CLASS_TYPE(MouseMoved)
+class MouseMovedEvent final : public Event {
+public:
+    EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
+    EVENT_CLASS_TYPE(MouseMoved)
 
-        MouseMovedEvent(const double xpos, const double ypos) : xPos(xpos), yPos(ypos) {}
-        double xPos;
-        double yPos;
-
+    MouseMovedEvent(const double xPos, const double yPos) : xPos(xPos), yPos(yPos) {}
+    double xPos;
+    double yPos;
 };

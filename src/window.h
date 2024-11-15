@@ -2,6 +2,7 @@
 
 #include "pch.h"
 #include "event/event.h"
+#include <functional>
 
 struct GLFWwindow;
 
