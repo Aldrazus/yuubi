@@ -1,68 +1,82 @@
-#include "renderer/passes/composite_pass.h"
-#include "renderer/device.h"
-#include "renderer/vma/image.h"
-#include "renderer/vma/buffer.h"
+#include "renderer/passes/skybox_pass.h"
 #include "renderer/pipeline_builder.h"
-#include "renderer/render_object.h"
+#include "pch.h"
+
+#include <glm/fwd.hpp>
 
 namespace yuubi {
+    SkyboxPass::SkyboxPass(const CreateInfo &createInfo) {
+        const auto device = createInfo.device;
 
-    CompositePass::CompositePass(const CreateInfo& createInfo) {
-        auto device = createInfo.device;
+        const auto vertShader = loadShader("shaders/skybox.vert.spv", *device);
+        const auto fragShader = loadShader("shaders/skybox.frag.spv", *device);
 
-        auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device);
-        auto fragShader = loadShader("shaders/screen_quad.frag.spv", *device);
-
-        pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, createInfo.pushConstantRanges);
+        std::vector pushConstantRanges{
+                vk::PushConstantRange{
+                                      .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+                                      .offset = 0,
+                                      .size = sizeof(PushConstants)
+                }
+        };
+        pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, pushConstantRanges);
 
         PipelineBuilder builder(pipelineLayout_);
+
         pipeline_ = builder.setShaders(vertShader, fragShader)
                             .setInputTopology(vk::PrimitiveTopology::eTriangleList)
                             .setPolygonMode(vk::PolygonMode::eFill)
                             .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
                             .setMultisamplingNone()
                             .disableBlending()
-                            .disableDepthTest()
+                            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
                             .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
+                            .setDepthFormat(createInfo.depthAttachmentFormat)
                             .build(*device);
     }
 
-    CompositePass& CompositePass::operator=(CompositePass&& rhs) noexcept {
+    SkyboxPass &SkyboxPass::operator=(SkyboxPass &&rhs) noexcept {
         if (this != &rhs) {
-            std::swap(pipeline_, rhs.pipeline_);
             std::swap(pipelineLayout_, rhs.pipelineLayout_);
+            std::swap(pipeline_, rhs.pipeline_);
         }
+
         return *this;
     }
-
-    void CompositePass::render(const RenderInfo& renderInfo) {
-        std::array<vk::RenderingAttachmentInfo, 1> colorAttachmentInfos{
+    void SkyboxPass::render(const RenderInfo &renderInfo) const {
+        const std::array colorAttachmentInfos{
                 vk::RenderingAttachmentInfo{
                                             .imageView = renderInfo.color.imageView,
                                             .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                            .loadOp = vk::AttachmentLoadOp::eClear,
+                                            .loadOp = vk::AttachmentLoadOp::eLoad,
                                             .storeOp = vk::AttachmentStoreOp::eStore,
-                                            .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}
-                },
+                                            }
         };
 
-        vk::RenderingInfo renderingInfo{
+        const vk::RenderingAttachmentInfo depthAttachmentInfo{
+                .imageView = renderInfo.depth.imageView,
+                .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                .loadOp = vk::AttachmentLoadOp::eLoad,
+                .storeOp = vk::AttachmentStoreOp::eNone,
+        };
+
+        const vk::RenderingInfo renderingInfo{
                 .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
                 .layerCount = 1,
                 .colorAttachmentCount = colorAttachmentInfos.size(),
                 .pColorAttachments = colorAttachmentInfos.data(),
+                .pDepthAttachment = &depthAttachmentInfo
         };
 
-        const auto& commandBuffer = renderInfo.commandBuffer;
+        const auto &commandBuffer = renderInfo.commandBuffer;
 
         commandBuffer.beginRendering(renderingInfo);
 
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline_);
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline_);
 
         // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
         // clip coordinate system where the origin is at the bottom left
         // and the y-axis points upwards.
-        vk::Viewport viewport{
+        const vk::Viewport viewport{
                 .x = 0.0f,
                 .y = static_cast<float>(renderInfo.viewportExtent.height),
                 .width = static_cast<float>(renderInfo.viewportExtent.width),
@@ -73,7 +87,7 @@ namespace yuubi {
 
         commandBuffer.setViewport(0, {viewport});
 
-        vk::Rect2D scissor{
+        const vk::Rect2D scissor{
                 .offset = {0, 0},
                   .extent = renderInfo.viewportExtent
         };
@@ -84,9 +98,13 @@ namespace yuubi {
                 vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {renderInfo.descriptorSets}, {}
         );
 
-        commandBuffer.draw(3, 1, 0, 0);
+        commandBuffer.pushConstants<PushConstants>(
+                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+                renderInfo.pushConstants
+        );
+
+        commandBuffer.draw(36, 1, 0, 0);
 
         commandBuffer.endRendering();
     }
-
-}
+} // yuubi

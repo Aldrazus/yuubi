@@ -18,81 +18,84 @@
 #include "renderer/loaded_gltf.h"
 #include "renderer/passes/composite_pass.h"
 #include "renderer/passes/ao_pass.h"
+#include "renderer/passes/skybox_pass.h"
 
 struct AppState;
 
 namespace yuubi {
-class Renderer {
-public:
-    explicit Renderer(const Window& window);
-    ~Renderer();
+    class Renderer {
+    public:
+        explicit Renderer(const Window& window);
+        ~Renderer();
 
-    void draw(const Camera& camera, AppState state);
-    void renderScene(std::function<void(Renderer&)> f);
+        void draw(const Camera& camera, AppState state);
+        void renderScene(std::function<void(Renderer&)> f);
 
-private:
-    void initSkybox();
-    void initCompositePassResources();
-    void initAOPassResources();
-    void updateScene(const Camera& camera);
-    void createNormalAttachment();
+    private:
+        void initSkybox();
+        void initCompositePassResources();
+        void initAOPassResources();
+        void updateScene(const Camera& camera);
+        void createNormalAttachment();
 
-    const Window& window_;
-    vk::raii::Context context_;
-    Instance instance_;
-    std::shared_ptr<vk::raii::SurfaceKHR> surface_;
-    std::shared_ptr<Device> device_;
-    std::shared_ptr<Viewport> viewport_;
-    ImguiManager imguiManager_;
+        const Window& window_;
+        vk::raii::Context context_;
+        Instance instance_;
+        std::shared_ptr<vk::raii::SurfaceKHR> surface_;
+        std::shared_ptr<Device> device_;
+        std::shared_ptr<Viewport> viewport_;
+        ImguiManager imguiManager_;
 
-    vk::raii::PipelineLayout skyboxPipelineLayout_ = nullptr;
-    vk::raii::Pipeline skyboxPipeline_ = nullptr;
-    Buffer skyboxIndexBuffer_;
-    Image skyboxImage_;
-    vk::raii::ImageView skyboxImageView_ = nullptr;
-    vk::raii::Sampler skyboxSampler_ = nullptr;
+        // Skybox.
+        Image skyboxImage_;
+        vk::raii::ImageView skyboxImageView_ = nullptr;
+        vk::raii::Sampler skyboxSampler_ = nullptr;
+        vk::raii::DescriptorSetLayout skyboxDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorPool skyboxDescriptorPool_ = nullptr;
+        vk::raii::DescriptorSet skyboxDescriptorSet_ = nullptr;
+        SkyboxPass skyboxPass_;
 
-    vk::raii::DescriptorSetLayout skyboxDescriptorSetLayout_ = nullptr;
-    vk::raii::DescriptorPool skyboxDescriptorPool_ = nullptr;
-    vk::raii::DescriptorSet skyboxDescriptorSet_ = nullptr;
+        // Composite.
+        vk::raii::DescriptorSetLayout compositeDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorPool compositeDescriptorPool_ = nullptr;
+        vk::raii::DescriptorSet compositeDescriptorSet_ = nullptr;
+        CompositePass compositePass_;
 
-    vk::raii::DescriptorSetLayout compositeDescriptorSetLayout_ = nullptr;
-    vk::raii::DescriptorPool compositeDescriptorPool_ = nullptr;
-    vk::raii::DescriptorSet compositeDescriptorSet_ = nullptr;
 
-    vk::raii::DescriptorSetLayout aoDescriptorSetLayout_ = nullptr;
-    vk::raii::DescriptorPool aoDescriptorPool_ = nullptr;
-    vk::raii::DescriptorSet aoDescriptorSet_ = nullptr;
-    Image aoImage_;
-    vk::raii::ImageView aoImageView_ = nullptr;
-    vk::Format aoFormat_ = vk::Format::eR16G16B16A16Sfloat;
-    Image aoNoiseImage_;
-    vk::raii::ImageView aoNoiseImageView_ = nullptr;
-    vk::raii::Sampler aoNoiseSampler_ = nullptr;
+        // Ambient occlusion.
+        vk::raii::DescriptorSetLayout aoDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorPool aoDescriptorPool_ = nullptr;
+        vk::raii::DescriptorSet aoDescriptorSet_ = nullptr;
+        Image aoImage_;
+        vk::raii::ImageView aoImageView_ = nullptr;
+        vk::Format aoFormat_ = vk::Format::eR16G16B16A16Sfloat;
+        Image aoNoiseImage_;
+        vk::raii::ImageView aoNoiseImageView_ = nullptr;
+        vk::raii::Sampler aoNoiseSampler_ = nullptr;
+        AOPass aoPass_;
 
-    DrawContext drawContext_;
-    GLTFAsset asset_;
-    std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes_;
-    std::shared_ptr<Mesh> mesh_;
-    TextureManager textureManager_;
 
-    // Global scene data updated once per frame/draw call.
-    Buffer sceneDataBuffer_;
+        DrawContext drawContext_;
+        GLTFAsset asset_;
+        std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes_;
+        std::shared_ptr<Mesh> mesh_;
+        TextureManager textureManager_;
 
-    MaterialManager materialManager_;
+        // Global scene data updated once per frame/draw call.
+        Buffer sceneDataBuffer_;
 
-    Image normalImage_;
-    vk::raii::ImageView normalImageView_ = nullptr;
-    // TODO: change format to eR16G16Sfloat eventually
-    // eR16G16B16Sfloat is not well supported with optimal image tiling,
-    // so the alpha component is added.
-    // See: https://vulkan.gpuinfo.org/listoptimaltilingformats.php
-    vk::Format normalFormat_ = vk::Format::eR16G16B16A16Sfloat;
+        MaterialManager materialManager_;
 
-    DepthPass depthPass_;
-    LightingPass lightingPass_;
-    AOPass aoPass_;
-    CompositePass compositePass_;
-};
+        Image normalImage_;
+        vk::raii::ImageView normalImageView_ = nullptr;
+        // TODO: change format to eR16G16Sfloat eventually
+        // eR16G16B16Sfloat is not well supported with optimal image tiling,
+        // so the alpha component is added.
+        // See: https://vulkan.gpuinfo.org/listoptimaltilingformats.php
+        vk::Format normalFormat_ = vk::Format::eR16G16B16A16Sfloat;
+
+        DepthPass depthPass_;
+        LightingPass lightingPass_;
+    };
 
 }

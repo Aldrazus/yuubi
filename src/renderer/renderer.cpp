@@ -232,6 +232,26 @@ namespace yuubi {
             }
             );
 
+            {
+                std::vector descriptorSets{*skyboxDescriptorSet_};
+
+                const auto viewProjection = camera.getProjectionMatrix() * glm::mat4(glm::mat3(camera.getViewMatrix()));
+                skyboxPass_.render(
+                        SkyboxPass::RenderInfo{
+                                .commandBuffer = frame.commandBuffer,
+                                .descriptorSets = {descriptorSets},
+                                .color = RenderAttachment{.image = drawImage.getImage(), .imageView = drawImageView},
+                                .pushConstants = SkyboxPass::PushConstants{.viewProjection = viewProjection},
+                                .viewportExtent = viewport_->getExtent(),
+                                .depth =
+                                        RenderAttachment{
+                                                   viewport_->getDepthImage().getImage(), viewport_->getDepthImageView()
+                                        }
+                }
+                );
+            }
+
+
             // Transition normal image.
             {
                 vk::ImageMemoryBarrier2 normalImageBarrier{
@@ -406,52 +426,9 @@ namespace yuubi {
         vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
         skyboxDescriptorSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
 
-        // Create pipeline.
-        auto vertShader = loadShader("shaders/skybox.vert.spv", *device_);
-        auto fragShader = loadShader("shaders/skybox.frag.spv", *device_);
+        std::vector descriptorSetLayouts = {*skyboxDescriptorSetLayout_};
 
-        std::vector<vk::PushConstantRange> pushConstantRanges = {
-                vk::PushConstantRange{
-                                      .stageFlags = vk::ShaderStageFlagBits::eVertex,
-                                      .offset = 0,
-                                      .size = sizeof(glm::mat4),
-                                      }
-        };
-
-        std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {*skyboxDescriptorSetLayout_};
-
-        skyboxPipelineLayout_ = createPipelineLayout(*device_, descriptorSetLayouts, pushConstantRanges);
-        PipelineBuilder builder(skyboxPipelineLayout_);
-
-        std::array<vk::Format, 2> formats = {viewport_->getSwapChainImageFormat(), viewport_->getDrawImageFormat()};
-
-        skyboxPipeline_ = builder.setShaders(vertShader, fragShader)
-                                  .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-                                  .setPolygonMode(vk::PolygonMode::eFill)
-                                  // TODO: simplify by just culling the front faces
-                                  .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
-                                  .setMultisamplingNone()
-                                  .disableBlending()
-                                  .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
-                                  .setColorAttachmentFormats(formats)
-                                  .setDepthFormat(viewport_->getDepthFormat())
-                                  .build(*device_);
-
-        const uint32_t numIndices = 6 * 2 * 3;
-        std::array<uint32_t, numIndices> indices = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                                                    12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                                                    24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35};
-
-        vk::DeviceSize bufferSize = sizeof(indices[0]) * numIndices;
-        skyboxIndexBuffer_ =
-                Buffer(&device_->allocator(),
-                       vk::BufferCreateInfo{
-                               .size = bufferSize,
-                               .usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst
-                       },
-                       VmaAllocationCreateInfo{.usage = VMA_MEMORY_USAGE_GPU_ONLY});
-
-        skyboxIndexBuffer_.upload(*device_, indices.data(), bufferSize, 0);
+        std::array formats = {viewport_->getDrawImageFormat()};
 
         // Load skybox images.
 
@@ -596,11 +573,20 @@ namespace yuubi {
         },
                 {}
         );
+
+        skyboxPass_ = SkyboxPass(
+                SkyboxPass::CreateInfo{
+                        .device = device_,
+                        .colorAttachmentFormats = formats,
+                        .descriptorSetLayouts = descriptorSetLayouts,
+                        .depthAttachmentFormat = viewport_->getDepthFormat()
+                }
+        );
     }
 
     void Renderer::initAOPassResources() {
         // Create noise texture.
-        const size_t textureWidth = 4;
+        constexpr size_t textureWidth = 4;
 
         std::vector<unsigned char> pixels;
         pixels.reserve(textureWidth * textureWidth * 4);
@@ -927,5 +913,4 @@ namespace yuubi {
             commandBuffer.pipelineBarrier2(dependencyInfo);
         });
     }
-
 }
