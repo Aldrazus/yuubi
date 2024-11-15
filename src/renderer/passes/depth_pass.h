@@ -27,7 +27,7 @@ public:
         const DrawContext& context,
         const Buffer& sceneDataBuffer,
         const vk::DescriptorSet& descriptorSet
-    );
+    ) const;
 
 private:
     std::shared_ptr<Device> device_;

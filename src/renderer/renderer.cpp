@@ -31,9 +31,7 @@ namespace yuubi {
         instance_ = Instance{context_};
 
         VkSurfaceKHR tmp;
-        if (glfwCreateWindowSurface(
-                    static_cast<VkInstance>(*instance_.getInstance()), window_.getWindow(), nullptr, &tmp
-            ) != VK_SUCCESS) {
+        if (glfwCreateWindowSurface(*instance_.getInstance(), window_.getWindow(), nullptr, &tmp) != VK_SUCCESS) {
             UB_ERROR("Unable to create window surface!");
         }
 
@@ -45,25 +43,23 @@ namespace yuubi {
 
         materialManager_ = MaterialManager(device_);
 
-        // asset_ = GLTFAsset(*device_, textureManager_, materialManager_,
-        // "assets/monkey/monkey.glb");
         asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/sponza/Sponza.gltf");
 
         {
-            vk::DeviceSize bufferSize = sizeof(SceneData);
-            vk::BufferCreateInfo bufferCreateInfo{
+            constexpr vk::DeviceSize bufferSize = sizeof(SceneData);
+            constexpr vk::BufferCreateInfo bufferCreateInfo{
                     .size = bufferSize,
                     .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
                              vk::BufferUsageFlagBits::eShaderDeviceAddress
             };
 
-            VmaAllocationCreateInfo shaderDataBufferAllocInfo{
+            constexpr VmaAllocationCreateInfo shaderDataBufferAllocInfo{
                     .usage = VMA_MEMORY_USAGE_GPU_ONLY,
             };
 
             sceneDataBuffer_ = device_->createBuffer(bufferCreateInfo, shaderDataBufferAllocInfo);
 
-            SceneData data{
+            const SceneData data{
                     .view = {},
                     .proj = {},
                     .viewproj = {},
@@ -81,7 +77,7 @@ namespace yuubi {
         initCompositePassResources();
 
         {
-            std::vector<vk::DescriptorSetLayout> setLayouts{*textureManager_.getTextureSetLayout()};
+            std::vector setLayouts{*textureManager_.getTextureSetLayout()};
             depthPass_ = DepthPass(device_, viewport_, setLayouts);
         }
 
@@ -89,9 +85,9 @@ namespace yuubi {
         createNormalAttachment();
 
         // Create lighting pass.
-        std::vector<vk::DescriptorSetLayout> setLayouts = {*textureManager_.getTextureSetLayout()};
+        std::vector setLayouts = {*textureManager_.getTextureSetLayout()};
 
-        std::vector<vk::PushConstantRange> pushConstantRanges = {
+        std::vector pushConstantRanges = {
                 vk::PushConstantRange{
                                       .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
                                       .offset = 0,
@@ -99,7 +95,7 @@ namespace yuubi {
                                       }
         };
 
-        std::array<vk::Format, 2> formats{
+        std::array formats{
                 // TODO: reevaluate normal format, maybe Snorm?
                 viewport_->getDrawImageFormat(), normalFormat_
         };
@@ -124,7 +120,7 @@ namespace yuubi {
 
         asset_.draw(glm::mat4(1.0f), drawContext_);
 
-        SceneData data{
+        const SceneData data{
                 .view = camera.getViewMatrix(),
                 .proj = camera.getViewProjectionMatrix(), // TODO: only push proj matrix
                 .viewproj = camera.getViewProjectionMatrix(),
@@ -388,7 +384,7 @@ namespace yuubi {
                                 vk::DescriptorSetLayoutCreateFlags{}
                         );
 
-        std::vector<vk::DescriptorPoolSize> poolSizes{
+        std::vector poolSizes{
                 vk::DescriptorPoolSize{.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1}
         };
 
