@@ -17,15 +17,7 @@ namespace yuubi {
         auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device);
         const auto fragShader = loadShader("shaders/cubemap.frag.spv", *device);
 
-        std::vector pushConstantRanges{
-                vk::PushConstantRange{
-                                      .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
-                                      .offset = 0,
-                                      .size = sizeof(PushConstants)
-                }
-        };
-
-        pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, pushConstantRanges);
+        pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, {});
 
         PipelineBuilder builder(pipelineLayout_);
 
@@ -33,59 +25,19 @@ namespace yuubi {
         pipeline_ = builder.setShaders(vertShader, fragShader)
                             .setInputTopology(vk::PrimitiveTopology::eTriangleList)
                             .setPolygonMode(vk::PolygonMode::eFill)
-                            .setCullMode(vk::CullModeFlagBits::eNone, vk::FrontFace::eClockwise)
+                            .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
                             .setMultisamplingNone()
                             .disableBlending()
                             .disableDepthTest()
                             .setColorAttachmentFormats(colorAttachmentFormats)
                             .setViewMask(0b00111111)
                             .build(*device);
-
-        viewProjectionMatricesBuffer_ = device->createBuffer(
-                vk::BufferCreateInfo{
-                        .size = sizeof(glm::mat4) * 6,
-                        .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
-                                 vk::BufferUsageFlagBits::eShaderDeviceAddress
-                },
-                VmaAllocationCreateInfo{.usage = VMA_MEMORY_USAGE_GPU_ONLY}
-        );
-
-        const glm::mat4 projectionMatrix = glm::perspective(glm::radians(90.0F), 1.0F, 1000.0F, 0.001F);
-        const std::array projectionViewMatrices{
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)
-                        )
-        };
-
-        viewProjectionMatricesBuffer_.upload(*device, projectionViewMatrices.data(), sizeof(projectionViewMatrices), 0);
     }
 
     CubemapPass &CubemapPass::operator=(CubemapPass &&rhs) noexcept {
         if (this != &rhs) {
             std::swap(pipelineLayout_, rhs.pipelineLayout_);
             std::swap(pipeline_, rhs.pipeline_);
-            std::swap(viewProjectionMatricesBuffer_, rhs.viewProjectionMatricesBuffer_);
         }
         return *this;
     }
@@ -131,11 +83,6 @@ namespace yuubi {
         };
 
         commandBuffer.setScissor(0, {scissor});
-
-        commandBuffer.pushConstants<PushConstants>(
-                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
-                PushConstants{.viewProjectionMatrices = viewProjectionMatricesBuffer_.getAddress()}
-        );
 
         // TODO: consider dispatching a compute shader
         commandBuffer.draw(3, 1, 0, 0);
