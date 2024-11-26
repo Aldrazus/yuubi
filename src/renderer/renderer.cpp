@@ -848,40 +848,18 @@ namespace yuubi {
             commandBuffer.pipelineBarrier2(dependencyInfo);
         });
 
-        for (uint32_t i = 0; i < 6; i++) {
-            cubemapDebugViews_.push_back(device_->getDevice().createImageView(
-                    vk::ImageViewCreateInfo{
-                            .image = cubemapImage_.getImage(),
-                            .viewType = vk::ImageViewType::e2D,
-                            .format = vk::Format::eR16G16B16A16Sfloat,
-                            .subresourceRange =
-                                    {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                       .baseMipLevel = 0,
-                                                       .levelCount = vk::RemainingMipLevels,
-                                                       .baseArrayLayer = i,
-                                                       .layerCount = 1}
-            }
-            ));
+        cubemapImageView_ = device_->getDevice().createImageView(
+                vk::ImageViewCreateInfo{
+                        .image = cubemapImage_.getImage(),
+                        .viewType = vk::ImageViewType::eCube,
+                        .format = vk::Format::eR16G16B16A16Sfloat,
+                        .subresourceRange =
+                                {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                   .baseMipLevel = 0,
+                                                   .levelCount = vk::RemainingMipLevels,
+                                                   .baseArrayLayer = 0,
+                                                   .layerCount = 6}
         }
-        for (const auto& [i, view]: cubemapDebugViews_ | std::views::enumerate) {
-            view = device_->getDevice().createImageView(
-                    vk::ImageViewCreateInfo{
-                            .image = cubemapImage_.getImage(),
-                            .viewType = vk::ImageViewType::e2D,
-                            .format = vk::Format::eR16G16B16A16Sfloat,
-                            .subresourceRange =
-                                    {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                       .baseMipLevel = 0,
-                                                       .levelCount = vk::RemainingMipLevels,
-                                                       .baseArrayLayer = static_cast<uint32_t>(i),
-                                                       .layerCount = 1}
-            }
-            );
-        }
-
-        cubemapImageView_ = device_->createImageView(
-                *cubemapImage_.getImage(), vk::Format::eR16G16B16A16Sfloat, vk::ImageAspectFlagBits::eColor, 1,
-                vk::ImageViewType::eCube
         );
 
         cubemapSampler_ = device_->getDevice().createSampler(

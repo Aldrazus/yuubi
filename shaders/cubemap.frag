@@ -1,6 +1,7 @@
 #version 460
 
-layout (location = 0) in vec3 worldPos;
+#extension GL_EXT_multiview : require
+layout (location = 0) in vec2 texCoords;
 
 layout (location = 0) out vec4 outColor;
 
@@ -14,8 +15,22 @@ vec2 sampleSphericalMap(vec3 v) {
     return uv;
 }
 
+vec3 getWorldPosition(vec2 coord) {
+    switch (gl_ViewIndex) {
+        case 0U: return normalize(vec3(1.0, texCoords.y, -texCoords.x));
+        case 1U: return normalize(vec3(-1.0, texCoords.yx));
+        case 2U: return normalize(vec3(texCoords.x, -1.0, texCoords.y));
+        case 3U: return normalize(vec3(texCoords.x, 1.0, -texCoords.y));
+        case 4U: return normalize(vec3(texCoords, 1.0));
+        case 5U: return normalize(vec3(-texCoords.x, texCoords.y, -1.0));
+    }
+    // Unreachable
+    return vec3(0);
+}
+
 void main() {
-    vec2 uv = sampleSphericalMap(normalize(worldPos));
+    vec3 worldPos = getWorldPosition(texCoords);
+    vec2 uv = sampleSphericalMap(worldPos);
     // vec3 color = texture(equirectangularMap, uv).rgb;
     //outColor = vec4(color, 1.0);
     outColor = vec4(1.0, 0.0, 0.0, 1.0);

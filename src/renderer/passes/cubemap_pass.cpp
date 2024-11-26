@@ -14,7 +14,7 @@ namespace yuubi {
     CubemapPass::CubemapPass(const CreateInfo &createInfo) {
         const auto device = createInfo.device;
 
-        const auto vertShader = loadShader("shaders/cubemap.vert.spv", *device);
+        auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device);
         const auto fragShader = loadShader("shaders/cubemap.frag.spv", *device);
 
         std::vector pushConstantRanges{
@@ -33,7 +33,7 @@ namespace yuubi {
         pipeline_ = builder.setShaders(vertShader, fragShader)
                             .setInputTopology(vk::PrimitiveTopology::eTriangleList)
                             .setPolygonMode(vk::PolygonMode::eFill)
-                            .setCullMode(vk::CullModeFlagBits::eFront, vk::FrontFace::eClockwise)
+                            .setCullMode(vk::CullModeFlagBits::eNone, vk::FrontFace::eClockwise)
                             .setMultisamplingNone()
                             .disableBlending()
                             .disableDepthTest()
@@ -118,7 +118,7 @@ namespace yuubi {
                 .x = 0.0f,
                 .y = static_cast<float>(renderInfo.viewportExtent.height),
                 .width = static_cast<float>(renderInfo.viewportExtent.width),
-                .height = static_cast<float>(renderInfo.viewportExtent.height),
+                .height = -static_cast<float>(renderInfo.viewportExtent.height),
                 .minDepth = 0.0f,
                 .maxDepth = 1.0f
         };
@@ -137,7 +137,8 @@ namespace yuubi {
                 PushConstants{.viewProjectionMatrices = viewProjectionMatricesBuffer_.getAddress()}
         );
 
-        commandBuffer.draw(36, 1, 0, 0);
+        // TODO: consider dispatching a compute shader
+        commandBuffer.draw(3, 1, 0, 0);
 
         commandBuffer.endRendering();
     }

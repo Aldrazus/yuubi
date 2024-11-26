@@ -61,5 +61,5 @@ const vec3 positions[36] = {
 
 void main() {
     worldPos = positions[gl_VertexIndex];
-    gl_Position = PushConstants.projectionViewMatrices.matrices[gl_ViewIndex] * vec4(worldPos, 1.0f);
+    gl_Position = PushConstants.projectionViewMatrices.matrices[0] * vec4(worldPos, 1.0f);
 }
