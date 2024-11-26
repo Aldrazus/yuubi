@@ -240,5 +240,9 @@ namespace yuubi {
         vertexInputInfo_.pVertexAttributeDescriptions = attributeDescriptions.data();
         return *this;
     }
+    PipelineBuilder& PipelineBuilder::setViewMask(uint32_t viewMask) {
+        renderInfo_.viewMask = viewMask;
+        return *this;
+    }
 
 }

@@ -110,6 +110,8 @@ namespace yuubi {
                 }
         );
 
+        initCubemapPassResources();
+
         initAOPassResources();
     }
 
@@ -247,6 +249,20 @@ namespace yuubi {
                                         RenderAttachment{
                                                    viewport_->getDepthImage().getImage(), viewport_->getDepthImageView()
                                         }
+                }
+                );
+            }
+
+            {
+                cubemapPass_.render(
+                        CubemapPass::RenderInfo{
+                                .commandBuffer = frame.commandBuffer,
+                                .viewportExtent = vk::Extent2D(512, 512),
+                                .color =
+                                        RenderAttachment{
+                                                         .image = cubemapImage_.getImage(), .imageView = cubemapImageView_
+                                        },
+                                .descriptorSets = {}
                 }
                 );
             }
@@ -793,6 +809,108 @@ namespace yuubi {
                         .pushConstantRanges = pushConstantRanges,
                         .colorAttachmentFormats = colorAttachmentFormats,
                 });
+    }
+    void Renderer::initCubemapPassResources() {
+        cubemapImage_ =
+                Image(&device_->allocator(),
+                      ImageCreateInfo{
+                              // TODO: magic number used for width and height
+                              .width = static_cast<uint32_t>(512),
+                              .height = static_cast<uint32_t>(512),
+                              .format = vk::Format::eR16G16B16A16Sfloat,
+                              .tiling = vk::ImageTiling::eOptimal,
+                              .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment,
+                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal,
+                              .mipLevels = 1,
+                              .arrayLayers = 6
+                      });
+
+        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
+            // Transition to color attachment
+            const vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                    .oldLayout = vk::ImageLayout::eUndefined,
+                    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                    .image = *cubemapImage_.getImage(),
+                    .subresourceRange =
+                            {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                               .baseMipLevel = 0,
+                                               .levelCount = vk::RemainingMipLevels,
+                                               .baseArrayLayer = 0,
+                                               .layerCount = vk::RemainingArrayLayers}
+            };
+
+            const vk::DependencyInfo dependencyInfo{
+                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+            };
+            commandBuffer.pipelineBarrier2(dependencyInfo);
+        });
+
+        for (uint32_t i = 0; i < 6; i++) {
+            cubemapDebugViews_.push_back(device_->getDevice().createImageView(
+                    vk::ImageViewCreateInfo{
+                            .image = cubemapImage_.getImage(),
+                            .viewType = vk::ImageViewType::e2D,
+                            .format = vk::Format::eR16G16B16A16Sfloat,
+                            .subresourceRange =
+                                    {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                       .baseMipLevel = 0,
+                                                       .levelCount = vk::RemainingMipLevels,
+                                                       .baseArrayLayer = i,
+                                                       .layerCount = 1}
+            }
+            ));
+        }
+        for (const auto& [i, view]: cubemapDebugViews_ | std::views::enumerate) {
+            view = device_->getDevice().createImageView(
+                    vk::ImageViewCreateInfo{
+                            .image = cubemapImage_.getImage(),
+                            .viewType = vk::ImageViewType::e2D,
+                            .format = vk::Format::eR16G16B16A16Sfloat,
+                            .subresourceRange =
+                                    {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                       .baseMipLevel = 0,
+                                                       .levelCount = vk::RemainingMipLevels,
+                                                       .baseArrayLayer = static_cast<uint32_t>(i),
+                                                       .layerCount = 1}
+            }
+            );
+        }
+
+        cubemapImageView_ = device_->createImageView(
+                *cubemapImage_.getImage(), vk::Format::eR16G16B16A16Sfloat, vk::ImageAspectFlagBits::eColor, 1,
+                vk::ImageViewType::eCube
+        );
+
+        cubemapSampler_ = device_->getDevice().createSampler(
+                vk::SamplerCreateInfo{
+                        .magFilter = vk::Filter::eLinear,
+                        .minFilter = vk::Filter::eLinear,
+                        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                        .addressModeU = vk::SamplerAddressMode::eRepeat,
+                        .addressModeV = vk::SamplerAddressMode::eRepeat,
+                        .addressModeW = vk::SamplerAddressMode::eRepeat,
+                        .mipLodBias = 0.0F,
+                        .anisotropyEnable = vk::True,
+                        .maxAnisotropy = device_->getPhysicalDevice().getProperties().limits.maxSamplerAnisotropy,
+                        .compareEnable = vk::False,
+                        .compareOp = vk::CompareOp::eAlways,
+                        .minLod = 0.0F,
+                        .maxLod = 0.0F,
+                        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+                        .unnormalizedCoordinates = vk::False,
+                }
+        );
+
+        cubemapPass_ = CubemapPass(
+                CubemapPass::CreateInfo{
+                        .device = device_,
+                        .descriptorSetLayouts = {},
+                        .colorAttachmentFormat = vk::Format::eR16G16B16A16Sfloat
+                }
+        );
     }
 
     void Renderer::initCompositePassResources() {

@@ -3,24 +3,24 @@
 #include "renderer/vulkan_usage.h"
 #include "pch.h"
 #include "renderer/passes/render_attachment.h"
-
 #include <glm/glm.hpp>
+#include <renderer/vma/buffer.h>
 
 namespace yuubi {
+
     class Device;
 
-    // Renders a cubemap as a skybox in the scene.
-    class SkyboxPass : NonCopyable {
+    // Renders equirectangular map to cubemap
+    class CubemapPass : NonCopyable {
     public:
         struct CreateInfo {
             std::shared_ptr<Device> device;
             std::span<vk::DescriptorSetLayout> descriptorSetLayouts;
-            std::span<vk::Format> colorAttachmentFormats;
-            vk::Format depthAttachmentFormat;
+            vk::Format colorAttachmentFormat;
         };
 
         struct PushConstants {
-            glm::mat4 viewProjection;
+            vk::DeviceAddress viewProjectionMatrices;
         };
 
         struct RenderInfo {
@@ -28,20 +28,19 @@ namespace yuubi {
             vk::Extent2D viewportExtent;
             std::span<vk::DescriptorSet> descriptorSets;
             RenderAttachment color;
-            RenderAttachment depth;
-            PushConstants pushConstants;
         };
 
-        SkyboxPass() = default;
-        explicit SkyboxPass(const CreateInfo& createInfo);
-        SkyboxPass(SkyboxPass&&) = default;
-        SkyboxPass& operator=(SkyboxPass&& rhs) noexcept;
+        CubemapPass() = default;
+        explicit CubemapPass(const CreateInfo& createInfo);
+        CubemapPass(CubemapPass&&) = default;
+        CubemapPass& operator=(CubemapPass&& rhs) noexcept;
 
         void render(const RenderInfo& renderInfo) const;
 
     private:
         vk::raii::PipelineLayout pipelineLayout_ = nullptr;
         vk::raii::Pipeline pipeline_ = nullptr;
+        Buffer viewProjectionMatricesBuffer_;
     };
 
 } // yuubi

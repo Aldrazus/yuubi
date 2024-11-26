@@ -207,8 +207,8 @@ namespace yuubi {
             vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan12Features,
             vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR>
             Device::requiredFeatures_{
-                    vk::PhysicalDeviceFeatures2{.features = {.samplerAnisotropy = vk::True}},
-                    vk::PhysicalDeviceVulkan11Features{},
+                    vk::PhysicalDeviceFeatures2{.features = {.samplerAnisotropy = vk::True, .multiViewport = vk::True}},
+                    vk::PhysicalDeviceVulkan11Features{.multiview = vk::True},
                     vk::PhysicalDeviceVulkan12Features{
                                                 .descriptorIndexing = vk::True,
                                                 .shaderSampledImageArrayNonUniformIndexing = vk::True,

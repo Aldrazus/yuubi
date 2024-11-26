@@ -15,6 +15,7 @@ target_sources(
         "renderer/loaded_gltf.cpp"
         "renderer/passes/ao_pass.cpp"
         "renderer/passes/composite_pass.cpp"
+        "renderer/passes/cubemap_pass.cpp"
         "renderer/passes/depth_pass.cpp"
         "renderer/passes/lighting_pass.cpp"
         "renderer/passes/skybox_pass.cpp"

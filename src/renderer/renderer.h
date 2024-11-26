@@ -14,6 +14,7 @@
 #include "renderer/resources/texture_manager.h"
 #include "window.h"
 #include "pch.h"
+#include "passes/cubemap_pass.h"
 #include "renderer/vertex.h"
 #include "renderer/loaded_gltf.h"
 #include "renderer/passes/composite_pass.h"
@@ -29,12 +30,12 @@ namespace yuubi {
         ~Renderer();
 
         void draw(const Camera& camera, AppState state);
-        void renderScene(std::function<void(Renderer&)> f);
 
     private:
         void initSkybox();
         void initCompositePassResources();
         void initAOPassResources();
+        void initCubemapPassResources();
         void updateScene(const Camera& camera);
         void createNormalAttachment();
 
@@ -96,6 +97,15 @@ namespace yuubi {
 
         DepthPass depthPass_;
         LightingPass lightingPass_;
+
+        CubemapPass cubemapPass_;
+        Image equirectangularMapImage_;
+        vk::raii::ImageView equirectangularMapImageView_ = nullptr;
+        vk::raii::Sampler equirectangularMapSampler_ = nullptr;
+        Image cubemapImage_;
+        vk::raii::ImageView cubemapImageView_ = nullptr;
+        vk::raii::Sampler cubemapSampler_ = nullptr;
+        std::vector<vk::raii::ImageView> cubemapDebugViews_;
     };
 
 }
