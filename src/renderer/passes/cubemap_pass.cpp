@@ -14,7 +14,7 @@ namespace yuubi {
     CubemapPass::CubemapPass(const CreateInfo &createInfo) {
         const auto device = createInfo.device;
 
-        auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device);
+        const auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device);
         const auto fragShader = loadShader("shaders/cubemap.frag.spv", *device);
 
         pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, {});

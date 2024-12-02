@@ -48,9 +48,6 @@ namespace yuubi {
         ImguiManager imguiManager_;
 
         // Skybox.
-        Image skyboxImage_;
-        vk::raii::ImageView skyboxImageView_ = nullptr;
-        vk::raii::Sampler skyboxSampler_ = nullptr;
         vk::raii::DescriptorSetLayout skyboxDescriptorSetLayout_ = nullptr;
         vk::raii::DescriptorPool skyboxDescriptorPool_ = nullptr;
         vk::raii::DescriptorSet skyboxDescriptorSet_ = nullptr;

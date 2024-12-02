@@ -73,6 +73,7 @@ namespace yuubi {
             sceneDataBuffer_.upload(*device_, &data, sizeof(data), 0);
         }
 
+        initCubemapPassResources();
         initSkybox();
         initCompositePassResources();
 
@@ -110,7 +111,6 @@ namespace yuubi {
                 }
         );
 
-        initCubemapPassResources();
 
         initAOPassResources();
     }
@@ -164,6 +164,7 @@ namespace yuubi {
                     vk::ImageLayout::eColorAttachmentOptimal
             );
 
+            // Depth pre-pass
             depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_, textureManager_.getTextureSet());
 
             std::vector<vk::DescriptorSet> descriptorSets{textureManager_.getTextureSet()};
@@ -219,6 +220,7 @@ namespace yuubi {
                 frame.commandBuffer.pipelineBarrier2(dependencyInfo);
             }
 
+            // Lighting pass.
             lightingPass_.render(
                     LightingPass::RenderInfo{
                             .commandBuffer = frame.commandBuffer,
@@ -234,6 +236,74 @@ namespace yuubi {
             }
             );
 
+            // Transition cubemap image to COLOR_ATTACHMENT_OPTIMAL
+            {
+                vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                        // PERF: we really toppin da pipe with this one
+                        .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                        .srcAccessMask = vk::AccessFlagBits2::eNone,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                        .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .oldLayout = vk::ImageLayout::eUndefined,
+                        .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                        .image = *cubemapImage_.getImage(),
+                        .subresourceRange{
+                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                          .baseMipLevel = 0,
+                                          .levelCount = vk::RemainingMipLevels,
+                                          .baseArrayLayer = 0,
+                                          .layerCount = vk::RemainingArrayLayers
+                        },
+                };
+
+                vk::DependencyInfo dependencyInfo{
+                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                };
+                frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+
+            // Equirectangular to Cubemap pass.
+            {
+                cubemapPass_.render(
+                        CubemapPass::RenderInfo{
+                                .commandBuffer = frame.commandBuffer,
+                                .viewportExtent = vk::Extent2D(512, 512),
+                                .color =
+                                        RenderAttachment{
+                                                         .image = cubemapImage_.getImage(), .imageView = cubemapImageView_
+                                        },
+                                .descriptorSets = {}
+                }
+                );
+            }
+
+            // Transition cubemap image.
+            // Transition draw image.
+            {
+                vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                        .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                        .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+                        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                        .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                        .image = cubemapImage_.getImage(),
+                        .subresourceRange{
+                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                          .baseMipLevel = 0,
+                                          .levelCount = vk::RemainingMipLevels,
+                                          .baseArrayLayer = 0,
+                                          .layerCount = vk::RemainingArrayLayers
+                        },
+                };
+
+                vk::DependencyInfo dependencyInfo{
+                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                };
+                frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+
+            // Skybox pass.
             {
                 std::vector descriptorSets{*skyboxDescriptorSet_};
 
@@ -252,21 +322,6 @@ namespace yuubi {
                 }
                 );
             }
-
-            {
-                cubemapPass_.render(
-                        CubemapPass::RenderInfo{
-                                .commandBuffer = frame.commandBuffer,
-                                .viewportExtent = vk::Extent2D(512, 512),
-                                .color =
-                                        RenderAttachment{
-                                                         .image = cubemapImage_.getImage(), .imageView = cubemapImageView_
-                                        },
-                                .descriptorSets = {}
-                }
-                );
-            }
-
 
             // Transition normal image.
             {
@@ -320,6 +375,7 @@ namespace yuubi {
                 frame.commandBuffer.pipelineBarrier2(dependencyInfo);
             }
 
+            // Screen-space Ambient Occlusion pass.
             {
                 std::vector<vk::DescriptorSet> descSets{aoDescriptorSet_};
                 aoPass_.render(
@@ -368,6 +424,7 @@ namespace yuubi {
                     vk::ImageLayout::ePresentSrcKHR
             );
 
+            // Composite pass.
             std::vector<vk::DescriptorSet> descSets{compositeDescriptorSet_};
             compositePass_.render(
                     CompositePass::RenderInfo{
@@ -446,133 +503,10 @@ namespace yuubi {
 
         std::array formats = {viewport_->getDrawImageFormat()};
 
-        // Load skybox images.
-
-        // Per Vulkan 1.3 Section 12.5:
-        // For cube and cube array image views, the layers of the image view
-        // starting at baseArrayLayer correspond to faces in the order +X, -X, +Y,
-        // -Y, +Z, -Z.
-        const std::array<std::string, 6> filePaths = {
-                "assets/skybox/right.jpg",  "assets/skybox/left.jpg",  "assets/skybox/top.jpg",
-                "assets/skybox/bottom.jpg", "assets/skybox/front.jpg", "assets/skybox/back.jpg",
-        };
-
-        std::array<stbi_uc*, 6> sidePixels;
-        int width, height, numChannels;
-
-        for (const auto& [i, path]: filePaths | std::views::enumerate) {
-            UB_INFO("Loading side {}: {}", i, path);
-            sidePixels[i] = stbi_load(path.c_str(), &width, &height, &numChannels, 4);
-            if (sidePixels[i] == nullptr) {
-                UB_ERROR("sizePixels is nullptr");
-            }
-            numChannels = 4;
-        }
-
-        vk::DeviceSize imageSize = width * height * 4 * sizeof(stbi_uc) * 6;
-
-        vk::BufferCreateInfo stagingBufferCreateInfo{
-                .size = imageSize,
-                .usage = vk::BufferUsageFlagBits::eTransferSrc,
-        };
-
-        VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
-                .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                .usage = VMA_MEMORY_USAGE_AUTO,
-        };
-
-        Buffer stagingBuffer = device_->createBuffer(stagingBufferCreateInfo, stagingBufferAllocCreateInfo);
-
-        for (auto&& [i, ptr]: sidePixels | std::views::enumerate) {
-            const size_t size = width * height * numChannels * sizeof(stbi_uc);
-            auto pixels = std::span{ptr, size};
-            std::ranges::copy(pixels, static_cast<stbi_uc*>(stagingBuffer.getMappedMemory()) + size * i);
-            stbi_image_free(ptr);
-        }
-
-        skyboxImage_ =
-                Image(&device_->allocator(),
-                      ImageCreateInfo{
-                              .width = static_cast<uint32_t>(width),
-                              .height = static_cast<uint32_t>(height),
-                              .format = vk::Format::eR8G8B8A8Srgb,
-                              .tiling = vk::ImageTiling::eOptimal,
-                              .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc |
-                                       vk::ImageUsageFlagBits::eTransferDst,
-                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal,
-                              .mipLevels = 1,
-                              .arrayLayers = 6
-                      });
-
-        device_->submitImmediateCommands([&stagingBuffer, this, width,
-                                          height](const vk::raii::CommandBuffer& commandBuffer) {
-            transitionImage(
-                    commandBuffer, *skyboxImage_.getImage(), vk::ImageLayout::eUndefined,
-                    vk::ImageLayout::eTransferDstOptimal
-            );
-
-            vk::BufferImageCopy copyRegion{
-                    .bufferOffset = 0,
-                    .bufferRowLength = 0,
-                    .bufferImageHeight = 0,
-                    .imageSubresource =
-                            vk::ImageSubresourceLayers{
-                                                       .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                       .mipLevel = 0,
-                                                       .baseArrayLayer = 0,
-                                                       .layerCount = 6
-                            },
-                    .imageOffset = {0, 0, 0},
-                    .imageExtent =
-                            vk::Extent3D{
-                                                       .width = static_cast<uint32_t>(width),
-                                                       .height = static_cast<uint32_t>(height),
-                                                       .depth = 1
-                            }
-            };
-
-            commandBuffer.copyBufferToImage(
-                    *stagingBuffer.getBuffer(), *skyboxImage_.getImage(), vk::ImageLayout::eTransferDstOptimal,
-                    {copyRegion}
-            );
-
-            transitionImage(
-                    commandBuffer, *skyboxImage_.getImage(), vk::ImageLayout::eTransferDstOptimal,
-                    vk::ImageLayout::eShaderReadOnlyOptimal
-            );
-        });
-
-        // Create image view.
-        skyboxImageView_ = device_->createImageView(
-                *skyboxImage_.getImage(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, 1,
-                vk::ImageViewType::eCube
-        );
-
-        // Create sampler.
-        skyboxSampler_ = device_->getDevice().createSampler(
-                vk::SamplerCreateInfo{
-                        .magFilter = vk::Filter::eLinear,
-                        .minFilter = vk::Filter::eLinear,
-                        .mipmapMode = vk::SamplerMipmapMode::eLinear,
-                        .addressModeU = vk::SamplerAddressMode::eRepeat,
-                        .addressModeV = vk::SamplerAddressMode::eRepeat,
-                        .addressModeW = vk::SamplerAddressMode::eRepeat,
-                        .mipLodBias = 0.0f,
-                        .anisotropyEnable = vk::True,
-                        .maxAnisotropy = device_->getPhysicalDevice().getProperties().limits.maxSamplerAnisotropy,
-                        .compareEnable = vk::False,
-                        .compareOp = vk::CompareOp::eAlways,
-                        .minLod = 0.0f,
-                        .maxLod = 0.0f,
-                        .borderColor = vk::BorderColor::eIntOpaqueBlack,
-                        .unnormalizedCoordinates = vk::False,
-                }
-        );
-
         // Update descriptor set.
-        vk::DescriptorImageInfo descImageInfo{
-                .sampler = *skyboxSampler_,
-                .imageView = *skyboxImageView_,
+        const vk::DescriptorImageInfo descImageInfo{
+                .sampler = *cubemapSampler_,
+                .imageView = *cubemapImageView_,
                 .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
         };
 
