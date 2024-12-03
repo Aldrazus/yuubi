@@ -264,6 +264,8 @@ namespace yuubi {
 
             // Equirectangular to Cubemap pass.
             {
+                std::vector descriptorSets{*cubemapDescriptorSet_};
+                const auto viewProjection = camera.getProjectionMatrix() * glm::mat4(glm::mat3(camera.getViewMatrix()));
                 cubemapPass_.render(
                         CubemapPass::RenderInfo{
                                 .commandBuffer = frame.commandBuffer,
@@ -272,13 +274,12 @@ namespace yuubi {
                                         RenderAttachment{
                                                          .image = cubemapImage_.getImage(), .imageView = cubemapImageView_
                                         },
-                                .descriptorSets = {}
+                                .descriptorSets = descriptorSets,
                 }
                 );
             }
 
             // Transition cubemap image.
-            // Transition draw image.
             {
                 vk::ImageMemoryBarrier2 imageMemoryBarrier{
                         .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
@@ -745,6 +746,201 @@ namespace yuubi {
                 });
     }
     void Renderer::initCubemapPassResources() {
+        // Load HDR equirectangular map image file.
+        int width, height, nrComponents;
+        float* data = stbi_loadf("assets/skybox/newport_loft.hdr", &width, &height, &nrComponents, 4);
+        if (data == nullptr) {
+            UB_ERROR("Failed to load texture image");
+        }
+
+
+        const vk::DeviceSize imageSize = width * height * 4 * 4;
+        const vk::BufferCreateInfo stagingBufferCreateInfo{
+                .size = imageSize, .usage = vk::BufferUsageFlagBits::eTransferSrc
+        };
+
+        VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
+                .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                .usage = VMA_MEMORY_USAGE_AUTO,
+        };
+
+        const Buffer stagingBuffer = device_->createBuffer(stagingBufferCreateInfo, stagingBufferAllocCreateInfo);
+
+        auto pixels = std::span{data, static_cast<size_t>(width * height * 4)};
+        std::ranges::copy(pixels, static_cast<float*>(stagingBuffer.getMappedMemory()));
+        stbi_image_free(data);
+
+        // Create equirectangular map image.
+        equirectangularMapImage_ =
+                Image(&device_->allocator(),
+                      ImageCreateInfo{
+                              .width = static_cast<uint32_t>(width),
+                              .height = static_cast<uint32_t>(height),
+                              .format = vk::Format::eR32G32B32A32Sfloat,
+                              .tiling = vk::ImageTiling::eOptimal,
+                              .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc |
+                                       vk::ImageUsageFlagBits::eTransferDst,
+                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal,
+                              .mipLevels = 1
+                      });
+
+        // Upload data to image.
+        device_->submitImmediateCommands([this, &stagingBuffer, width,
+                                          height](const vk::raii::CommandBuffer& commandBuffer) {
+            transitionImage(
+                    commandBuffer, *equirectangularMapImage_.getImage(), vk::ImageLayout::eUndefined,
+                    vk::ImageLayout::eTransferDstOptimal
+            );
+            vk::BufferImageCopy copyRegion{
+                    .bufferOffset = 0,
+                    .bufferRowLength = 0,
+                    .bufferImageHeight = 0,
+                    .imageSubresource =
+                            vk::ImageSubresourceLayers{
+                                                       .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                       .mipLevel = 0,
+                                                       .baseArrayLayer = 0,
+                                                       .layerCount = 1
+                            },
+                    .imageOffset = {0, 0, 0},
+                    .imageExtent =
+                            vk::Extent3D{
+                                                       .width = static_cast<uint32_t>(width),
+                                                       .height = static_cast<uint32_t>(height),
+                                                       .depth = 1
+                            }
+            };
+            commandBuffer.copyBufferToImage(
+                    *stagingBuffer.getBuffer(), *equirectangularMapImage_.getImage(),
+                    vk::ImageLayout::eTransferDstOptimal, {copyRegion}
+            );
+
+            vk::ImageMemoryBarrier2 barrier{
+                    .srcAccessMask = vk::AccessFlagBits2::eTransferWrite,
+                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+                    .srcStageMask = vk::PipelineStageFlagBits2::eTransfer,
+                    .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                    .oldLayout = vk::ImageLayout::eTransferDstOptimal,
+                    .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                    .image = *equirectangularMapImage_.getImage(),
+                    .subresourceRange =
+                            vk::ImageSubresourceRange{
+                                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                      .baseMipLevel = 0,
+                                                      .levelCount = 1,
+                                                      .baseArrayLayer = 0,
+                                                      .layerCount = 1,
+                                                      },
+            };
+
+            commandBuffer.pipelineBarrier2(
+                    vk::DependencyInfo{.imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier}
+            );
+        });
+
+        equirectangularMapImageView_ = device_->getDevice().createImageView(
+                vk::ImageViewCreateInfo{
+                        .image = equirectangularMapImage_.getImage(),
+                        .viewType = vk::ImageViewType::e2D,
+                        .format = vk::Format::eR32G32B32A32Sfloat,
+                        .subresourceRange =
+                                {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                   .baseMipLevel = 0,
+                                                   .levelCount = vk::RemainingMipLevels,
+                                                   .baseArrayLayer = 0,
+                                                   .layerCount = 1}
+        }
+        );
+
+        equirectangularMapSampler_ = device_->getDevice().createSampler(
+                vk::SamplerCreateInfo{
+                        .magFilter = vk::Filter::eLinear,
+                        .minFilter = vk::Filter::eLinear,
+                        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                        .addressModeU = vk::SamplerAddressMode::eRepeat,
+                        .addressModeV = vk::SamplerAddressMode::eRepeat,
+                        .addressModeW = vk::SamplerAddressMode::eRepeat,
+                        .mipLodBias = 0.0F,
+                        .anisotropyEnable = vk::True,
+                        .maxAnisotropy = device_->getPhysicalDevice().getProperties().limits.maxSamplerAnisotropy,
+                        .compareEnable = vk::False,
+                        .compareOp = vk::CompareOp::eAlways,
+                        .minLod = 0.0F,
+                        .maxLod = 0.0F,
+                        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+                        .unnormalizedCoordinates = vk::False,
+                }
+        );
+
+        // Create descriptor set/layout.
+        DescriptorLayoutBuilder layoutBuilder(device_);
+
+        cubemapDescriptorSetLayout_ =
+                layoutBuilder
+                        .addBinding(
+                                vk::DescriptorSetLayoutBinding{
+                                        .binding = 0,
+                                        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                        .descriptorCount = 1,
+                                        .stageFlags = vk::ShaderStageFlagBits::eFragment
+                                }
+                        )
+                        .build(
+                                vk::DescriptorSetLayoutBindingFlagsCreateInfo{
+                                        .bindingCount = 0, .pBindingFlags = nullptr
+                                },
+                                vk::DescriptorSetLayoutCreateFlags{}
+                        );
+
+        std::vector poolSizes{
+                vk::DescriptorPoolSize{.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1}
+        };
+
+        vk::DescriptorPoolCreateInfo poolInfo{
+                .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+                .maxSets = 1,
+                .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+                .pPoolSizes = poolSizes.data(),
+        };
+
+        cubemapDescriptorPool_ = device_->getDevice().createDescriptorPool(poolInfo);
+
+        vk::DescriptorSetAllocateInfo allocInfo{
+                .descriptorPool = *cubemapDescriptorPool_,
+                .descriptorSetCount = 1,
+                .pSetLayouts = &*cubemapDescriptorSetLayout_
+        };
+
+        vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
+        cubemapDescriptorSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
+
+        std::vector descriptorSetLayouts = {*cubemapDescriptorSetLayout_};
+
+        std::array formats = {viewport_->getDrawImageFormat()};
+
+        // Update descriptor set.
+        const vk::DescriptorImageInfo descImageInfo{
+                .sampler = *equirectangularMapSampler_,
+                .imageView = *equirectangularMapImageView_,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+
+        // TODO: share descriptor set with skybox pipeline/pass?
+        device_->getDevice().updateDescriptorSets(
+                {
+                        vk::WriteDescriptorSet{
+                                               .dstSet = *cubemapDescriptorSet_,
+                                               .dstBinding = 0,
+                                               .dstArrayElement = 0,
+                                               .descriptorCount = 1,
+                                               .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                               .pImageInfo = &descImageInfo
+                        }
+        },
+                {}
+        );
+
+        // Create cubemap image.
         cubemapImage_ =
                 Image(&device_->allocator(),
                       ImageCreateInfo{
@@ -819,7 +1015,7 @@ namespace yuubi {
         cubemapPass_ = CubemapPass(
                 CubemapPass::CreateInfo{
                         .device = device_,
-                        .descriptorSetLayouts = {},
+                        .descriptorSetLayouts = descriptorSetLayouts,
                         .colorAttachmentFormat = vk::Format::eR16G16B16A16Sfloat
                 }
         );

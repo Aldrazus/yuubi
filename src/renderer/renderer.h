@@ -95,6 +95,7 @@ namespace yuubi {
         DepthPass depthPass_;
         LightingPass lightingPass_;
 
+        // Cubemap.
         CubemapPass cubemapPass_;
         Image equirectangularMapImage_;
         vk::raii::ImageView equirectangularMapImageView_ = nullptr;
@@ -102,7 +103,9 @@ namespace yuubi {
         Image cubemapImage_;
         vk::raii::ImageView cubemapImageView_ = nullptr;
         vk::raii::Sampler cubemapSampler_ = nullptr;
-        std::vector<vk::raii::ImageView> cubemapDebugViews_;
+        vk::raii::DescriptorSetLayout cubemapDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorPool cubemapDescriptorPool_ = nullptr;
+        vk::raii::DescriptorSet cubemapDescriptorSet_ = nullptr;
     };
 
 }
