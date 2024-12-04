@@ -1,7 +1,7 @@
 #pragma once
 
-#include "renderer/vulkan_usage.h"
 #include "pch.h"
+#include "renderer/vulkan_usage.h"
 #include "renderer/passes/render_attachment.h"
 #include "renderer/vma/buffer.h"
 
@@ -9,8 +9,7 @@ namespace yuubi {
 
     class Device;
 
-    // Renders equirectangular map to cubemap
-    class CubemapPass : NonCopyable {
+    class IrradiancePass : NonCopyable {
     public:
         struct CreateInfo {
             std::shared_ptr<Device> device;
@@ -29,10 +28,10 @@ namespace yuubi {
             RenderAttachment color;
         };
 
-        CubemapPass() = default;
-        explicit CubemapPass(const CreateInfo& createInfo);
-        CubemapPass(CubemapPass&&) = default;
-        CubemapPass& operator=(CubemapPass&& rhs) noexcept;
+        IrradiancePass() = default;
+        explicit IrradiancePass(const CreateInfo& createInfo);
+        IrradiancePass(IrradiancePass&&) = default;
+        IrradiancePass& operator=(IrradiancePass&& rhs) noexcept;
 
         void render(const RenderInfo& renderInfo) const;
 

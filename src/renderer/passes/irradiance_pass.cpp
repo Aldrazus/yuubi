@@ -1,29 +1,23 @@
-//
-// Created by aespi on 11/15/2024.
-//
+#include "renderer/passes/irradiance_pass.h"
+#include "renderer/device.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
-#include "cubemap_pass.h"
-
-#include <glm/ext/matrix_clip_space.hpp>
-#include <glm/ext/matrix_transform.hpp>
-#include <renderer/device.h>
 #include "renderer/pipeline_builder.h"
 
-// Render onto a cubemap color attachment using multiview.
 namespace yuubi {
-    CubemapPass::CubemapPass(const CreateInfo &createInfo) {
+    IrradiancePass::IrradiancePass(const CreateInfo &createInfo) {
         const auto device = createInfo.device;
 
         const auto vertShader = loadShader("shaders/cubemap.vert.spv", *device);
-        const auto fragShader = loadShader("shaders/cubemap.frag.spv", *device);
+        const auto fragShader = loadShader("shaders/irradiance.frag.spv", *device);
 
         std::vector pushConstantRanges{
                 vk::PushConstantRange{
-                                      .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
-                                      .offset = 0,
-                                      .size = sizeof(PushConstants)
+                                      .stageFlags = vk::ShaderStageFlagBits::eVertex, .offset = 0, .size = sizeof(PushConstants)
                 }
         };
+
         pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, pushConstantRanges);
 
         PipelineBuilder builder(pipelineLayout_);
@@ -48,6 +42,7 @@ namespace yuubi {
                 },
                 VmaAllocationCreateInfo{.usage = VMA_MEMORY_USAGE_GPU_ONLY}
         );
+
         const glm::mat4 projectionMatrix = glm::perspective(glm::radians(90.0F), 1.0F, 1000.0F, 0.001F);
         const std::array projectionViewMatrices{
                 projectionMatrix *
@@ -79,7 +74,7 @@ namespace yuubi {
         viewProjectionMatricesBuffer_.upload(*device, projectionViewMatrices.data(), sizeof(projectionViewMatrices), 0);
     }
 
-    CubemapPass &CubemapPass::operator=(CubemapPass &&rhs) noexcept {
+    IrradiancePass &IrradiancePass::operator=(IrradiancePass &&rhs) noexcept {
         if (this != &rhs) {
             std::swap(pipelineLayout_, rhs.pipelineLayout_);
             std::swap(pipeline_, rhs.pipeline_);
@@ -87,8 +82,7 @@ namespace yuubi {
         }
         return *this;
     }
-
-    void CubemapPass::render(const RenderInfo &renderInfo) const {
+    void IrradiancePass::render(const RenderInfo &renderInfo) const {
         const std::array colorAttachmentInfos{
                 vk::RenderingAttachmentInfo{
                                             .imageView = renderInfo.color.imageView,
@@ -98,7 +92,6 @@ namespace yuubi {
                                             .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}
                 }
         };
-
         const vk::RenderingInfo renderingInfo{
                 .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
                 .layerCount = 6,
@@ -120,7 +113,6 @@ namespace yuubi {
                 .minDepth = 0.0f,
                 .maxDepth = 1.0f
         };
-
         commandBuffer.setViewport(0, {viewport});
 
         const vk::Rect2D scissor{
@@ -135,11 +127,10 @@ namespace yuubi {
         );
 
         commandBuffer.pushConstants<PushConstants>(
-                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex, 0,
                 PushConstants{.viewProjectionMatrices = viewProjectionMatricesBuffer_.getAddress()}
         );
 
-        // TODO: consider dispatching a compute shader or rendering fullscreen quad
         commandBuffer.draw(36, 1, 0, 0);
 
         commandBuffer.endRendering();

@@ -74,6 +74,7 @@ namespace yuubi {
         }
 
         initCubemapPassResources();
+        initIrradianceMapPassResources();
         initSkybox();
         initCompositePassResources();
 
@@ -265,7 +266,6 @@ namespace yuubi {
             // Equirectangular to Cubemap pass.
             {
                 std::vector descriptorSets{*cubemapDescriptorSet_};
-                const auto viewProjection = camera.getProjectionMatrix() * glm::mat4(glm::mat3(camera.getViewMatrix()));
                 cubemapPass_.render(
                         CubemapPass::RenderInfo{
                                 .commandBuffer = frame.commandBuffer,
@@ -302,6 +302,23 @@ namespace yuubi {
                         .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
                 };
                 frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+
+            // Irradiance map pass.
+            {
+                std::vector descriptorSets{*irradianceMapDescriptorSet_};
+                irradiancePass_.render(
+                        IrradiancePass::RenderInfo{
+                                .commandBuffer = frame.commandBuffer,
+                                .viewportExtent = vk::Extent2D(32, 32),
+                                .color =
+                                        RenderAttachment{
+                                                         .image = irradianceMapImage_.getImage(),
+                                                         .imageView = irradianceMapImageView_
+                                        },
+                                .descriptorSets = descriptorSets,
+                }
+                );
             }
 
             // Skybox pass.
@@ -916,8 +933,6 @@ namespace yuubi {
 
         std::vector descriptorSetLayouts = {*cubemapDescriptorSetLayout_};
 
-        std::array formats = {viewport_->getDrawImageFormat()};
-
         // Update descriptor set.
         const vk::DescriptorImageInfo descImageInfo{
                 .sampler = *equirectangularMapSampler_,
@@ -1138,5 +1153,152 @@ namespace yuubi {
             };
             commandBuffer.pipelineBarrier2(dependencyInfo);
         });
+    }
+    void Renderer::initIrradianceMapPassResources() {
+        // Create descriptor set/layout.
+        DescriptorLayoutBuilder layoutBuilder(device_);
+
+        irradianceMapDescriptorSetLayout_ =
+                layoutBuilder
+                        .addBinding(
+                                vk::DescriptorSetLayoutBinding{
+                                        .binding = 0,
+                                        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                        .descriptorCount = 1,
+                                        .stageFlags = vk::ShaderStageFlagBits::eFragment
+                                }
+                        )
+                        .build(
+                                vk::DescriptorSetLayoutBindingFlagsCreateInfo{
+                                        .bindingCount = 0, .pBindingFlags = nullptr
+                                },
+                                vk::DescriptorSetLayoutCreateFlags{}
+                        );
+
+        std::vector poolSizes{
+                vk::DescriptorPoolSize{.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1}
+        };
+
+        vk::DescriptorPoolCreateInfo poolInfo{
+                .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+                .maxSets = 1,
+                .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+                .pPoolSizes = poolSizes.data(),
+        };
+        irradianceMapDescriptorPool_ = device_->getDevice().createDescriptorPool(poolInfo);
+
+        vk::DescriptorSetAllocateInfo allocInfo{
+                .descriptorPool = *irradianceMapDescriptorPool_,
+                .descriptorSetCount = 1,
+                .pSetLayouts = &*irradianceMapDescriptorSetLayout_
+        };
+
+        vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
+        irradianceMapDescriptorSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
+
+        std::vector descriptorSetLayouts = {*cubemapDescriptorSetLayout_};
+
+        // Update descriptor set.
+        const vk::DescriptorImageInfo descImageInfo{
+                .sampler = *cubemapSampler_,
+                .imageView = *cubemapImageView_,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+
+        // TODO: share descriptor set with skybox pipeline/pass?
+        device_->getDevice().updateDescriptorSets(
+                {
+                        vk::WriteDescriptorSet{
+                                               .dstSet = *irradianceMapDescriptorSet_,
+                                               .dstBinding = 0,
+                                               .dstArrayElement = 0,
+                                               .descriptorCount = 1,
+                                               .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                               .pImageInfo = &descImageInfo
+                        }
+        },
+                {}
+        );
+
+        // Create irradiance map image.
+        // Create cubemap image.
+        irradianceMapImage_ =
+                Image(&device_->allocator(),
+                      ImageCreateInfo{
+                              // TODO: magic number used for width and height
+                              .width = static_cast<uint32_t>(32),
+                              .height = static_cast<uint32_t>(32),
+                              .format = vk::Format::eR16G16B16A16Sfloat,
+                              .tiling = vk::ImageTiling::eOptimal,
+                              .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment,
+                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal,
+                              .mipLevels = 1,
+                              .arrayLayers = 6
+                      });
+
+        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
+            // Transition to color attachment
+            const vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                    .oldLayout = vk::ImageLayout::eUndefined,
+                    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                    .image = *irradianceMapImage_.getImage(),
+                    .subresourceRange =
+                            {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                               .baseMipLevel = 0,
+                                               .levelCount = vk::RemainingMipLevels,
+                                               .baseArrayLayer = 0,
+                                               .layerCount = vk::RemainingArrayLayers}
+            };
+
+            const vk::DependencyInfo dependencyInfo{
+                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+            };
+            commandBuffer.pipelineBarrier2(dependencyInfo);
+        });
+
+        irradianceMapImageView_ = device_->getDevice().createImageView(
+                vk::ImageViewCreateInfo{
+                        .image = irradianceMapImage_.getImage(),
+                        .viewType = vk::ImageViewType::eCube,
+                        .format = vk::Format::eR16G16B16A16Sfloat,
+                        .subresourceRange =
+                                {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                   .baseMipLevel = 0,
+                                                   .levelCount = vk::RemainingMipLevels,
+                                                   .baseArrayLayer = 0,
+                                                   .layerCount = 6}
+        }
+        );
+
+        irradianceMapSampler_ = device_->getDevice().createSampler(
+                vk::SamplerCreateInfo{
+                        .magFilter = vk::Filter::eLinear,
+                        .minFilter = vk::Filter::eLinear,
+                        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                        .addressModeU = vk::SamplerAddressMode::eRepeat,
+                        .addressModeV = vk::SamplerAddressMode::eRepeat,
+                        .addressModeW = vk::SamplerAddressMode::eRepeat,
+                        .mipLodBias = 0.0F,
+                        .anisotropyEnable = vk::True,
+                        .maxAnisotropy = device_->getPhysicalDevice().getProperties().limits.maxSamplerAnisotropy,
+                        .compareEnable = vk::False,
+                        .compareOp = vk::CompareOp::eAlways,
+                        .minLod = 0.0F,
+                        .maxLod = 0.0F,
+                        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+                        .unnormalizedCoordinates = vk::False,
+                }
+        );
+
+        irradiancePass_ = IrradiancePass(
+                IrradiancePass::CreateInfo{
+                        .device = device_,
+                        .descriptorSetLayouts = descriptorSetLayouts,
+                        .colorAttachmentFormat = vk::Format::eR16G16B16A16Sfloat
+                }
+        );
     }
 }

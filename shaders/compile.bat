@@ -9,4 +9,5 @@ glslangvalidator --target-env vulkan1.3 -e main -o depth.frag.spv depth.frag
 glslangvalidator --target-env vulkan1.3 -e main -o ssao.frag.spv ssao.frag
 glslangvalidator --target-env vulkan1.3 -e main -o cubemap.vert.spv cubemap.vert
 glslangvalidator --target-env vulkan1.3 -e main -o cubemap.frag.spv cubemap.frag
+glslangvalidator --target-env vulkan1.3 -e main -o irradiance.frag.spv irradiance.frag
 pause

@@ -20,6 +20,7 @@
 #include "renderer/passes/composite_pass.h"
 #include "renderer/passes/ao_pass.h"
 #include "renderer/passes/skybox_pass.h"
+#include "renderer/passes/irradiance_pass.h"
 
 struct AppState;
 
@@ -38,6 +39,7 @@ namespace yuubi {
         void initCubemapPassResources();
         void updateScene(const Camera& camera);
         void createNormalAttachment();
+        void initIrradianceMapPassResources();
 
         const Window& window_;
         vk::raii::Context context_;
@@ -106,6 +108,15 @@ namespace yuubi {
         vk::raii::DescriptorSetLayout cubemapDescriptorSetLayout_ = nullptr;
         vk::raii::DescriptorPool cubemapDescriptorPool_ = nullptr;
         vk::raii::DescriptorSet cubemapDescriptorSet_ = nullptr;
+
+        // Irradiance map.
+        IrradiancePass irradiancePass_;
+        Image irradianceMapImage_;
+        vk::raii::ImageView irradianceMapImageView_ = nullptr;
+        vk::raii::Sampler irradianceMapSampler_ = nullptr;
+        vk::raii::DescriptorSetLayout irradianceMapDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorPool irradianceMapDescriptorPool_ = nullptr;
+        vk::raii::DescriptorSet irradianceMapDescriptorSet_ = nullptr;
     };
 
 }

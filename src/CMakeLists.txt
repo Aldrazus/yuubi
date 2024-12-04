@@ -17,6 +17,7 @@ target_sources(
         "renderer/passes/composite_pass.cpp"
         "renderer/passes/cubemap_pass.cpp"
         "renderer/passes/depth_pass.cpp"
+        "renderer/passes/irradiance_pass.cpp"
         "renderer/passes/lighting_pass.cpp"
         "renderer/passes/skybox_pass.cpp"
         "renderer/pipeline_builder.cpp"
