@@ -40,6 +40,8 @@ namespace yuubi {
         void updateScene(const Camera& camera);
         void createNormalAttachment();
         void initIrradianceMapPassResources();
+        void generateEnvironmentMap();
+        void generateIrradianceMap();
 
         const Window& window_;
         vk::raii::Context context_;

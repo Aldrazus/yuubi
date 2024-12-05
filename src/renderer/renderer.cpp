@@ -112,8 +112,11 @@ namespace yuubi {
                 }
         );
 
-
         initAOPassResources();
+
+        // TODO: Implement job queue instead of using immediate commands.
+        generateEnvironmentMap();
+        generateIrradianceMap();
     }
 
     Renderer::~Renderer() { device_->getDevice().waitIdle(); }
@@ -236,90 +239,6 @@ namespace yuubi {
                                                       viewport_->getDepthImage().getImage(), viewport_->getDepthImageView()}
             }
             );
-
-            // Transition cubemap image to COLOR_ATTACHMENT_OPTIMAL
-            {
-                vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                        // PERF: we really toppin da pipe with this one
-                        .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                        .srcAccessMask = vk::AccessFlagBits2::eNone,
-                        .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                        .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                        .oldLayout = vk::ImageLayout::eUndefined,
-                        .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                        .image = *cubemapImage_.getImage(),
-                        .subresourceRange{
-                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                          .baseMipLevel = 0,
-                                          .levelCount = vk::RemainingMipLevels,
-                                          .baseArrayLayer = 0,
-                                          .layerCount = vk::RemainingArrayLayers
-                        },
-                };
-
-                vk::DependencyInfo dependencyInfo{
-                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-                };
-                frame.commandBuffer.pipelineBarrier2(dependencyInfo);
-            }
-
-            // Equirectangular to Cubemap pass.
-            {
-                std::vector descriptorSets{*cubemapDescriptorSet_};
-                cubemapPass_.render(
-                        CubemapPass::RenderInfo{
-                                .commandBuffer = frame.commandBuffer,
-                                .viewportExtent = vk::Extent2D(512, 512),
-                                .color =
-                                        RenderAttachment{
-                                                         .image = cubemapImage_.getImage(), .imageView = cubemapImageView_
-                                        },
-                                .descriptorSets = descriptorSets,
-                }
-                );
-            }
-
-            // Transition cubemap image.
-            {
-                vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                        .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                        .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                        .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                        .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-                        .image = cubemapImage_.getImage(),
-                        .subresourceRange{
-                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                          .baseMipLevel = 0,
-                                          .levelCount = vk::RemainingMipLevels,
-                                          .baseArrayLayer = 0,
-                                          .layerCount = vk::RemainingArrayLayers
-                        },
-                };
-
-                vk::DependencyInfo dependencyInfo{
-                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-                };
-                frame.commandBuffer.pipelineBarrier2(dependencyInfo);
-            }
-
-            // Irradiance map pass.
-            {
-                std::vector descriptorSets{*irradianceMapDescriptorSet_};
-                irradiancePass_.render(
-                        IrradiancePass::RenderInfo{
-                                .commandBuffer = frame.commandBuffer,
-                                .viewportExtent = vk::Extent2D(32, 32),
-                                .color =
-                                        RenderAttachment{
-                                                         .image = irradianceMapImage_.getImage(),
-                                                         .imageView = irradianceMapImageView_
-                                        },
-                                .descriptorSets = descriptorSets,
-                }
-                );
-            }
 
             // Skybox pass.
             {
@@ -1300,5 +1219,95 @@ namespace yuubi {
                         .colorAttachmentFormat = vk::Format::eR16G16B16A16Sfloat
                 }
         );
+    }
+    void Renderer::generateEnvironmentMap() {
+        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
+            // Transition cubemap image to COLOR_ATTACHMENT_OPTIMAL
+            {
+                vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                        // PERF: we really toppin da pipe with this one
+                        .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                        .srcAccessMask = vk::AccessFlagBits2::eNone,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                        .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .oldLayout = vk::ImageLayout::eUndefined,
+                        .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                        .image = *cubemapImage_.getImage(),
+                        .subresourceRange{
+                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                          .baseMipLevel = 0,
+                                          .levelCount = vk::RemainingMipLevels,
+                                          .baseArrayLayer = 0,
+                                          .layerCount = vk::RemainingArrayLayers
+                        },
+                };
+
+                vk::DependencyInfo dependencyInfo{
+                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                };
+                commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+
+            // Equirectangular to Cubemap pass.
+            {
+                std::vector descriptorSets{*cubemapDescriptorSet_};
+                cubemapPass_.render(
+                        CubemapPass::RenderInfo{
+                                .commandBuffer = commandBuffer,
+                                .viewportExtent = vk::Extent2D(512, 512),
+                                .color =
+                                        RenderAttachment{
+                                                         .image = cubemapImage_.getImage(), .imageView = cubemapImageView_
+                                        },
+                                .descriptorSets = descriptorSets,
+                }
+                );
+            }
+        });
+    }
+    void Renderer::generateIrradianceMap() {
+        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
+            // Transition cubemap image.
+            {
+                vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                        .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                        .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+                        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                        .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                        .image = cubemapImage_.getImage(),
+                        .subresourceRange{
+                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                          .baseMipLevel = 0,
+                                          .levelCount = vk::RemainingMipLevels,
+                                          .baseArrayLayer = 0,
+                                          .layerCount = vk::RemainingArrayLayers
+                        },
+                };
+
+                vk::DependencyInfo dependencyInfo{
+                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                };
+                commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+
+            // Irradiance map pass.
+            {
+                std::vector descriptorSets{*irradianceMapDescriptorSet_};
+                irradiancePass_.render(
+                        IrradiancePass::RenderInfo{
+                                .commandBuffer = commandBuffer,
+                                .viewportExtent = vk::Extent2D(32, 32),
+                                .color =
+                                        RenderAttachment{
+                                                         .image = irradianceMapImage_.getImage(),
+                                                         .imageView = irradianceMapImageView_
+                                        },
+                                .descriptorSets = descriptorSets,
+                }
+                );
+            }
+        });
     }
 }
