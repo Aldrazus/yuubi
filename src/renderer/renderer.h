@@ -21,6 +21,7 @@
 #include "renderer/passes/ao_pass.h"
 #include "renderer/passes/skybox_pass.h"
 #include "renderer/passes/irradiance_pass.h"
+#include "renderer/passes/prefilter_pass.h"
 
 struct AppState;
 
@@ -40,8 +41,10 @@ namespace yuubi {
         void updateScene(const Camera& camera);
         void createNormalAttachment();
         void initIrradianceMapPassResources();
-        void generateEnvironmentMap();
-        void generateIrradianceMap();
+        void generateEnvironmentMap() const;
+        void generateIrradianceMap() const;
+        void initPrefilterMapPassResources();
+        void generatePrefilterMap() const;
 
         const Window& window_;
         vk::raii::Context context_;
@@ -119,6 +122,15 @@ namespace yuubi {
         vk::raii::DescriptorSetLayout irradianceMapDescriptorSetLayout_ = nullptr;
         vk::raii::DescriptorPool irradianceMapDescriptorPool_ = nullptr;
         vk::raii::DescriptorSet irradianceMapDescriptorSet_ = nullptr;
+
+        // Prefilter map.
+        PrefilterPass prefilterPass_;
+        Image prefilterMapImage_;
+        vk::raii::ImageView prefilterMapImageView_ = nullptr;
+        vk::raii::Sampler prefilterMapSampler_ = nullptr;
+        vk::raii::DescriptorSetLayout prefilterMapDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorPool prefilterMapDescriptorPool_ = nullptr;
+        vk::raii::DescriptorSet prefilterMapDescriptorSet_ = nullptr;
     };
 
 }

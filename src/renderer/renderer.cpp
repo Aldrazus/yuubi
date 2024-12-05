@@ -75,6 +75,7 @@ namespace yuubi {
 
         initCubemapPassResources();
         initIrradianceMapPassResources();
+        initPrefilterMapPassResources();
         initSkybox();
         initCompositePassResources();
 
@@ -117,6 +118,7 @@ namespace yuubi {
         // TODO: Implement job queue instead of using immediate commands.
         generateEnvironmentMap();
         generateIrradianceMap();
+        generatePrefilterMap();
     }
 
     Renderer::~Renderer() { device_->getDevice().waitIdle(); }
@@ -1115,7 +1117,7 @@ namespace yuubi {
         vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
         irradianceMapDescriptorSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
 
-        std::vector descriptorSetLayouts = {*cubemapDescriptorSetLayout_};
+        std::vector descriptorSetLayouts = {*irradianceMapDescriptorSetLayout_};
 
         // Update descriptor set.
         const vk::DescriptorImageInfo descImageInfo{
@@ -1220,7 +1222,7 @@ namespace yuubi {
                 }
         );
     }
-    void Renderer::generateEnvironmentMap() {
+    void Renderer::generateEnvironmentMap() const {
         device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
             // Transition cubemap image to COLOR_ATTACHMENT_OPTIMAL
             {
@@ -1263,13 +1265,10 @@ namespace yuubi {
                 }
                 );
             }
-        });
-    }
-    void Renderer::generateIrradianceMap() {
-        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
+
             // Transition cubemap image.
             {
-                vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
                         .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                         .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
@@ -1286,12 +1285,15 @@ namespace yuubi {
                         },
                 };
 
-                vk::DependencyInfo dependencyInfo{
+                const vk::DependencyInfo dependencyInfo{
                         .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
                 };
                 commandBuffer.pipelineBarrier2(dependencyInfo);
             }
-
+        });
+    }
+    void Renderer::generateIrradianceMap() const {
+        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
             // Irradiance map pass.
             {
                 std::vector descriptorSets{*irradianceMapDescriptorSet_};
@@ -1307,6 +1309,245 @@ namespace yuubi {
                                 .descriptorSets = descriptorSets,
                 }
                 );
+            }
+
+            // Transition irradiance map image.
+            {
+                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                        .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                        .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+                        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                        .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                        .image = irradianceMapImage_.getImage(),
+                        .subresourceRange{
+                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                          .baseMipLevel = 0,
+                                          .levelCount = vk::RemainingMipLevels,
+                                          .baseArrayLayer = 0,
+                                          .layerCount = vk::RemainingArrayLayers
+                        },
+                };
+
+                const vk::DependencyInfo dependencyInfo{
+                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                };
+                commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+        });
+    }
+    void Renderer::initPrefilterMapPassResources() {
+        // Create descriptor set/layout
+        DescriptorLayoutBuilder layoutBuilder(device_);
+        prefilterMapDescriptorSetLayout_ =
+                layoutBuilder
+                        .addBinding(
+                                vk::DescriptorSetLayoutBinding{
+                                        .binding = 0,
+                                        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                        .descriptorCount = 1,
+                                        .stageFlags = vk::ShaderStageFlagBits::eFragment
+                                }
+                        )
+                        .build(
+                                vk::DescriptorSetLayoutBindingFlagsCreateInfo{
+                                        .bindingCount = 0, .pBindingFlags = nullptr
+                                },
+                                vk::DescriptorSetLayoutCreateFlags{}
+                        );
+
+        std::vector poolSizes{
+                vk::DescriptorPoolSize{.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1}
+        };
+
+        vk::DescriptorPoolCreateInfo poolInfo{
+                .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+                .maxSets = 1,
+                .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+                .pPoolSizes = poolSizes.data(),
+        };
+
+        prefilterMapDescriptorPool_ = device_->getDevice().createDescriptorPool(poolInfo);
+
+        vk::DescriptorSetAllocateInfo allocInfo{
+                .descriptorPool = *prefilterMapDescriptorPool_,
+                .descriptorSetCount = 1,
+                .pSetLayouts = &*prefilterMapDescriptorSetLayout_
+        };
+
+        vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo);
+        prefilterMapDescriptorSet_ = vk::raii::DescriptorSet(std::move(sets[0]));
+
+        std::vector descriptorSetLayouts = {*prefilterMapDescriptorSetLayout_};
+
+        // Update descriptor set.
+        const vk::DescriptorImageInfo descImageInfo{
+                .sampler = *cubemapSampler_,
+                .imageView = *cubemapImageView_,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+
+        // TODO: share descriptor set with skybox pipeline/pass?
+        device_->getDevice().updateDescriptorSets(
+                {
+                        vk::WriteDescriptorSet{
+                                               .dstSet = *prefilterMapDescriptorSet_,
+                                               .dstBinding = 0,
+                                               .dstArrayElement = 0,
+                                               .descriptorCount = 1,
+                                               .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                               .pImageInfo = &descImageInfo
+                        }
+        },
+                {}
+        );
+
+        // Create prefilter map image.
+        constexpr int maxMipLevels = 5;
+        constexpr int imageSize = 128;
+        prefilterMapImage_ =
+                Image(&device_->allocator(),
+                      ImageCreateInfo{
+                              .width = static_cast<uint32_t>(imageSize),
+                              .height = static_cast<uint32_t>(imageSize),
+                              .format = vk::Format::eR16G16B16A16Sfloat,
+                              .tiling = vk::ImageTiling::eOptimal,
+                              .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment,
+                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal,
+                              .mipLevels = maxMipLevels,
+                              .arrayLayers = 6
+                      });
+
+        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
+            // Transition to color attachment
+            const vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                    .oldLayout = vk::ImageLayout::eUndefined,
+                    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                    .image = *prefilterMapImage_.getImage(),
+                    .subresourceRange =
+                            {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                               .baseMipLevel = 0,
+                                               .levelCount = vk::RemainingMipLevels,
+                                               .baseArrayLayer = 0,
+                                               .layerCount = vk::RemainingArrayLayers}
+            };
+
+            const vk::DependencyInfo dependencyInfo{
+                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+            };
+            commandBuffer.pipelineBarrier2(dependencyInfo);
+        });
+
+        prefilterMapImageView_ = device_->getDevice().createImageView(
+                vk::ImageViewCreateInfo{
+                        .image = prefilterMapImage_.getImage(),
+                        .viewType = vk::ImageViewType::eCube,
+                        .format = vk::Format::eR16G16B16A16Sfloat,
+                        .subresourceRange =
+                                {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                   .baseMipLevel = 0,
+                                                   .levelCount = vk::RemainingMipLevels,
+                                                   .baseArrayLayer = 0,
+                                                   .layerCount = 6}
+        }
+        );
+
+        prefilterMapSampler_ = device_->getDevice().createSampler(
+                vk::SamplerCreateInfo{
+                        .magFilter = vk::Filter::eLinear,
+                        .minFilter = vk::Filter::eLinear,
+                        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                        .addressModeU = vk::SamplerAddressMode::eRepeat,
+                        .addressModeV = vk::SamplerAddressMode::eRepeat,
+                        .addressModeW = vk::SamplerAddressMode::eRepeat,
+                        .mipLodBias = 0.0F,
+                        .anisotropyEnable = vk::True,
+                        .maxAnisotropy = device_->getPhysicalDevice().getProperties().limits.maxSamplerAnisotropy,
+                        .compareEnable = vk::False,
+                        .compareOp = vk::CompareOp::eAlways,
+                        .minLod = 0.0F,
+                        .maxLod = 0.0F,
+                        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+                        .unnormalizedCoordinates = vk::False,
+                }
+        );
+
+        prefilterPass_ = PrefilterPass(
+                PrefilterPass::CreateInfo{
+                        .device = device_,
+                        .descriptorSetLayouts = descriptorSetLayouts,
+                        .colorAttachmentFormat = vk::Format::eR16G16B16A16Sfloat,
+                }
+        );
+    }
+    void Renderer::generatePrefilterMap() const {
+        constexpr int maxMipLevels = 5;
+        for (uint32_t mipLevel = 0; mipLevel < maxMipLevels; ++mipLevel) {
+            constexpr uint32_t imageSize = 128;
+            const uint32_t mipSize = imageSize >> mipLevel;
+            const float roughness = static_cast<float>(mipLevel) / static_cast<float>(maxMipLevels - 1);
+
+            const auto imageView = device_->getDevice().createImageView(
+                    vk::ImageViewCreateInfo{
+                            .image = prefilterMapImage_.getImage(),
+                            .viewType = vk::ImageViewType::eCube,
+                            .format = vk::Format::eR16G16B16A16Sfloat,
+                            .subresourceRange =
+                                    {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                       .baseMipLevel = mipLevel,
+                                                       .levelCount = 1,
+                                                       .baseArrayLayer = 0,
+                                                       .layerCount = 6}
+            }
+            );
+
+            // TODO: Assumes environment map is in the right layout after environment map generation.
+            device_->submitImmediateCommands([this, &imageView, roughness,
+                                              mipSize](const vk::raii::CommandBuffer& commandBuffer) {
+                std::vector descriptorSets{*prefilterMapDescriptorSet_};
+                prefilterPass_.render(
+                        PrefilterPass::RenderInfo{
+                                .commandBuffer = commandBuffer,
+                                .viewportExtent = vk::Extent2D(mipSize, mipSize),
+                                .color =
+                                        RenderAttachment{
+                                                         .image = prefilterMapImage_.getImage(), .imageView = imageView
+                                        },
+                                .descriptorSets = descriptorSets,
+                                .roughness = roughness
+                }
+                );
+            });
+        }
+
+        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
+            // Transition prefilter map image.
+            {
+                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                        .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                        .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+                        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                        .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                        .image = prefilterMapImage_.getImage(),
+                        .subresourceRange{
+                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                          .baseMipLevel = 0,
+                                          .levelCount = vk::RemainingMipLevels,
+                                          .baseArrayLayer = 0,
+                                          .layerCount = vk::RemainingArrayLayers
+                        },
+                };
+
+                const vk::DependencyInfo dependencyInfo{
+                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                };
+                commandBuffer.pipelineBarrier2(dependencyInfo);
             }
         });
     }
