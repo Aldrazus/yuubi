@@ -102,7 +102,7 @@ void main() {
     vec3 albedo = material.albedoFactor.rgb;
     if (material.albedoTex != 0) {
         vec4 sampledAlbedo = sampleTexture(material.albedoTex);
-        albedo *= pow(sampledAlbedo.rgb, vec3(2.2));
+        albedo *= sampledAlbedo.rgb;
         alpha *= sampledAlbedo.a;
     }
 
