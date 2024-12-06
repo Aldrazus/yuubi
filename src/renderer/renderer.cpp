@@ -38,14 +38,9 @@ namespace yuubi {
         surface_ = std::make_shared<vk::raii::SurfaceKHR>(instance_.getInstance(), tmp);
         device_ = std::make_shared<Device>(instance_.getInstance(), *surface_);
         viewport_ = std::make_shared<Viewport>(surface_, device_);
-        initTextureManager();
         imguiManager_ = ImguiManager{instance_, *device_, window_, *viewport_};
 
         materialManager_ = MaterialManager(device_);
-
-        asset_ = GLTFAsset(
-                *device_, textureManager_, materialManager_, "assets/ABeautifulGame/glTF/ABeautifulGame.gltf"
-        );
 
         {
             constexpr vk::DeviceSize bufferSize = sizeof(SceneData);
@@ -81,9 +76,14 @@ namespace yuubi {
         initBRDFLUTPassResources();
         initSkybox();
         initCompositePassResources();
+        initTextureManager();
+
+        asset_ = GLTFAsset(
+                *device_, textureManager_, materialManager_, "assets/ABeautifulGame/glTF/ABeautifulGame.gltf"
+        );
 
         {
-            std::vector setLayouts{*lightingDescriptorSetLayout_};
+            std::vector setLayouts{*iblDescriptorSetLayout_, *textureDescriptorSetLayout_};
             depthPass_ = DepthPass(device_, viewport_, setLayouts);
         }
 
@@ -91,7 +91,7 @@ namespace yuubi {
         createNormalAttachment();
 
         // Create lighting pass.
-        std::vector setLayouts = {*lightingDescriptorSetLayout_};
+        std::vector setLayouts = {*iblDescriptorSetLayout_, *textureDescriptorSetLayout_};
 
         std::vector pushConstantRanges = {
                 vk::PushConstantRange{
@@ -174,10 +174,10 @@ namespace yuubi {
                     vk::ImageLayout::eColorAttachmentOptimal
             );
 
-            // Depth pre-pass
-            depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_, *textureDescriptorSet_);
+            std::vector<vk::DescriptorSet> descriptorSets{*iblDescriptorSet_, *textureDescriptorSet_};
 
-            std::vector<vk::DescriptorSet> descriptorSets{*textureDescriptorSet_};
+            // Depth pre-pass
+            depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_, descriptorSets);
 
             // Transition draw image.
             {
@@ -1668,7 +1668,7 @@ namespace yuubi {
                                                             vk::DescriptorBindingFlagBits::ePartiallyBound |
                                                             vk::DescriptorBindingFlagBits::eUpdateAfterBind;
 
-        lightingDescriptorSetLayout_ =
+        textureDescriptorSetLayout_ =
                 layoutBuilder
                         .addBinding(
                                 vk::DescriptorSetLayoutBinding{
@@ -1685,13 +1685,46 @@ namespace yuubi {
                                 vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool
                         );
 
+        iblDescriptorSetLayout_ = layoutBuilder
+                                          .addBinding(
+                                                  vk::DescriptorSetLayoutBinding{
+                                                          .binding = 0,
+                                                          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                                          .descriptorCount = 1,
+                                                          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+                                                  }
+                                          )
+                                          .addBinding(
+                                                  vk::DescriptorSetLayoutBinding{
+                                                          .binding = 1,
+                                                          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                                          .descriptorCount = 1,
+                                                          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+                                                  }
+                                          )
+                                          .addBinding(
+                                                  vk::DescriptorSetLayoutBinding{
+                                                          .binding = 2,
+                                                          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                                          .descriptorCount = 1,
+                                                          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+                                                  }
+                                          )
+                                          .build(
+                                                  vk::DescriptorSetLayoutBindingFlagsCreateInfo{
+                                                          .bindingCount = 0, .pBindingFlags = nullptr
+                                                  },
+                                                  vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool
+                                          );
+
         // Create pool.
+        // TODO: account for other first descriptor set properly
         std::vector poolSizes{
-                vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageImage, .descriptorCount = maxTextures                                       },
-                vk::DescriptorPoolSize{       .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = maxTextures},
-                vk::DescriptorPoolSize{             .type = vk::DescriptorType::eSampler, .descriptorCount = maxTextures},
+                vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageImage,     .descriptorCount = maxTextures                                       },
+                vk::DescriptorPoolSize{       .type = vk::DescriptorType::eUniformBuffer,     .descriptorCount = maxTextures},
+                vk::DescriptorPoolSize{             .type = vk::DescriptorType::eSampler,     .descriptorCount = maxTextures},
                 vk::DescriptorPoolSize{
-                                       .type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = maxTextures}
+                                       .type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = maxTextures + 3}
         };
 
         const vk::DescriptorPoolCreateInfo poolInfo{
@@ -1709,7 +1742,7 @@ namespace yuubi {
                 vk::DescriptorSetAllocateInfo{
                                               .descriptorPool = *lightingDescriptorPool_,
                                               .descriptorSetCount = 1,
-                                              .pSetLayouts = &*lightingDescriptorSetLayout_
+                                              .pSetLayouts = &*textureDescriptorSetLayout_
                 },
                 vk::DescriptorSetVariableDescriptorCountAllocateInfo{
                                               .descriptorSetCount = 1, .pDescriptorCounts = &maxTextures
@@ -1719,5 +1752,61 @@ namespace yuubi {
         vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo.get());
         textureDescriptorSet_ = std::make_shared<vk::raii::DescriptorSet>(std::move(sets[0]));
         textureManager_ = TextureManager(device_, textureDescriptorSet_);
+
+        {
+            vk::raii::DescriptorSets sets(
+                    device_->getDevice(),
+                    vk::DescriptorSetAllocateInfo{
+                            .descriptorPool = *lightingDescriptorPool_,
+                            .descriptorSetCount = 1,
+                            .pSetLayouts = &*iblDescriptorSetLayout_
+                    }
+            );
+            iblDescriptorSet_ = std::move(sets[0]);
+        }
+
+        // Update descriptor set.
+        const vk::DescriptorImageInfo irradianceDescImageInfo{
+                .sampler = *irradianceMapSampler_,
+                .imageView = *irradianceMapImageView_,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+        const vk::DescriptorImageInfo prefilterDescImageInfo{
+                .sampler = *prefilterMapSampler_,
+                .imageView = *prefilterMapImageView_,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+        const vk::DescriptorImageInfo brdfLutDescImageInfo{
+                .sampler = *brdfLutMapSampler_,
+                .imageView = *brdfLutMapImageView_,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+
+        device_->getDevice().updateDescriptorSets(
+                {
+                        vk::WriteDescriptorSet{
+                                               .dstSet = *iblDescriptorSet_,
+                                               .dstBinding = 0,
+                                               .dstArrayElement = 0,
+                                               .descriptorCount = 1,
+                                               .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                               .pImageInfo = &irradianceDescImageInfo},
+                        vk::WriteDescriptorSet{
+                                               .dstSet = *iblDescriptorSet_,
+                                               .dstBinding = 1,
+                                               .dstArrayElement = 0,
+                                               .descriptorCount = 1,
+                                               .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                               .pImageInfo = &prefilterDescImageInfo },
+                        vk::WriteDescriptorSet{
+                                               .dstSet = *iblDescriptorSet_,
+                                               .dstBinding = 2,
+                                               .dstArrayElement = 0,
+                                               .descriptorCount = 1,
+                                               .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                               .pImageInfo = &brdfLutDescImageInfo   }
+        },
+                {}
+        );
     }
 }

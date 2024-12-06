@@ -49,8 +49,8 @@ namespace yuubi {
     }
 
     void DepthPass::render(
-            const vk::raii::CommandBuffer& commandBuffer, const DrawContext& drawContext, const Buffer& sceneDataBuffer,
-            const vk::DescriptorSet& descriptorSet
+            const vk::raii::CommandBuffer& commandBuffer, const DrawContext& context, const Buffer& sceneDataBuffer,
+            std::span<vk::DescriptorSet> descriptorSets
     ) const {
         // Transition depth image to DepthAttachmentOptimal
         vk::ImageMemoryBarrier2 depthImageBarrier{
@@ -112,10 +112,10 @@ namespace yuubi {
 
         commandBuffer.setScissor(0, {scissor});
 
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {descriptorSet}, {});
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {descriptorSets}, {});
 
         // TODO: handle transparent objects
-        for (const auto& renderObject: drawContext.opaqueSurfaces) {
+        for (const auto& renderObject: context.opaqueSurfaces) {
             commandBuffer.bindIndexBuffer(*renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
             commandBuffer.pushConstants<PushConstants>(

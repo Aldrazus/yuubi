@@ -105,9 +105,10 @@ namespace yuubi {
         DepthPass depthPass_;
 
         // Lighting
-        vk::raii::DescriptorSetLayout lightingDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorSetLayout textureDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorSetLayout iblDescriptorSetLayout_ = nullptr;
         vk::raii::DescriptorPool lightingDescriptorPool_ = nullptr;
-        // vk::raii::DescriptorSet iblDescriptorSet_ = nullptr;
+        vk::raii::DescriptorSet iblDescriptorSet_ = nullptr;
         std::shared_ptr<vk::raii::DescriptorSet> textureDescriptorSet_;
         LightingPass lightingPass_;
         TextureManager textureManager_;

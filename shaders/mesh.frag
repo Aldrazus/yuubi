@@ -14,6 +14,11 @@ layout (location = 3) in mat3 inTBN;
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outNormal;
 
+layout(set = 0, binding = 0) uniform samplerCube irradianceMap;
+layout(set = 0, binding = 1) uniform samplerCube prefilterMap;
+layout(set = 0, binding = 2) uniform sampler2D brdfLut;
+
+
 const float PI = 3.14159265359;
 
 // PERF: Turn Array of Structures (AoS) to Structures of Arrays (SoA)
@@ -23,10 +28,10 @@ struct Light {
 };
 
 const Light lights[1] = Light[](
-    Light(
-        vec3(23.7, 21.31, 20.79),
-        vec3(1.0, 3.0, 1.0)
-    )
+Light(
+vec3(23.7, 21.31, 20.79),
+vec3(1.0, 3.0, 1.0)
+)
 );
 
 
@@ -62,7 +67,7 @@ float distributionGGX(vec3 N, vec3 H, float roughness) {
 float geometrySchlickGGX(float NdotV, float roughness) {
     float r = (roughness + 1.0);
     float k = (r * r) / 8.0;
-    
+
     float num = NdotV;
     float denom = NdotV * (1.0 - k) + k;
 
@@ -139,7 +144,7 @@ void main() {
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = vec3(0.001) * albedo; // * ao
+    vec3 ambient = vec3(0.001) * albedo;// * ao
     vec3 color = ambient + Lo;
 
     color = color / (color + vec3(1.0));
