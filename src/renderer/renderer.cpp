@@ -43,7 +43,9 @@ namespace yuubi {
 
         materialManager_ = MaterialManager(device_);
 
-        asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/sponza/Sponza.gltf");
+        asset_ = GLTFAsset(
+                *device_, textureManager_, materialManager_, "assets/ABeautifulGame/glTF/ABeautifulGame.gltf"
+        );
 
         {
             constexpr vk::DeviceSize bufferSize = sizeof(SceneData);
@@ -76,6 +78,7 @@ namespace yuubi {
         initCubemapPassResources();
         initIrradianceMapPassResources();
         initPrefilterMapPassResources();
+        initBRDFLUTPassResources();
         initSkybox();
         initCompositePassResources();
 
@@ -119,6 +122,7 @@ namespace yuubi {
         generateEnvironmentMap();
         generateIrradianceMap();
         generatePrefilterMap();
+        generateBRDFLUT();
     }
 
     Renderer::~Renderer() { device_->getDevice().waitIdle(); }
@@ -398,7 +402,6 @@ namespace yuubi {
     void Renderer::initSkybox() {
         // Create descriptor set/layout.
         DescriptorLayoutBuilder layoutBuilder(device_);
-
         skyboxDescriptorSetLayout_ =
                 layoutBuilder
                         .addBinding(
@@ -458,7 +461,7 @@ namespace yuubi {
                                                .descriptorCount = 1,
                                                .descriptorType = vk::DescriptorType::eCombinedImageSampler,
                                                .pImageInfo = &descImageInfo
-                        }
+                        },
         },
                 {}
         );
@@ -1535,6 +1538,111 @@ namespace yuubi {
                         .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
                         .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
                         .image = prefilterMapImage_.getImage(),
+                        .subresourceRange{
+                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                          .baseMipLevel = 0,
+                                          .levelCount = vk::RemainingMipLevels,
+                                          .baseArrayLayer = 0,
+                                          .layerCount = vk::RemainingArrayLayers
+                        },
+                };
+
+                const vk::DependencyInfo dependencyInfo{
+                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                };
+                commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+        });
+    }
+    void Renderer::initBRDFLUTPassResources() {
+        brdfLutMapImage_ =
+                Image(&device_->allocator(),
+                      ImageCreateInfo{
+                              .width = 512,
+                              .height = 512,
+                              .format = vk::Format::eR16G16Sfloat,
+                              .tiling = vk::ImageTiling::eOptimal,
+                              .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+                      });
+        brdfLutMapImageView_ = device_->createImageView(
+                *brdfLutMapImage_.getImage(), vk::Format::eR16G16Sfloat, vk::ImageAspectFlagBits::eColor
+        );
+
+        brdfLutMapSampler_ = device_->getDevice().createSampler(
+                vk::SamplerCreateInfo{
+                        .magFilter = vk::Filter::eLinear,
+                        .minFilter = vk::Filter::eLinear,
+                        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                        .addressModeU = vk::SamplerAddressMode::eClampToEdge,
+                        .addressModeV = vk::SamplerAddressMode::eClampToEdge,
+                        .addressModeW = vk::SamplerAddressMode::eClampToEdge,
+                        .mipLodBias = 0.0F,
+                        .anisotropyEnable = vk::True,
+                        .maxAnisotropy = device_->getPhysicalDevice().getProperties().limits.maxSamplerAnisotropy,
+                        .compareEnable = vk::False,
+                        .compareOp = vk::CompareOp::eAlways,
+                        .minLod = 0.0F,
+                        .maxLod = 0.0F,
+                        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+                        .unnormalizedCoordinates = vk::False,
+                }
+        );
+
+        brdflutPass_ = BRDFLUTPass(
+                BRDFLUTPass::CreateInfo{.device = device_, .colorAttachmentFormat = vk::Format::eR16G16Sfloat}
+        );
+    }
+    void Renderer::generateBRDFLUT() const {
+        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
+            // Transition BRDFLUT map image.
+            {
+                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                        .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                        .srcAccessMask = vk::AccessFlagBits2::eNone,
+                        .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .oldLayout = vk::ImageLayout::eUndefined,
+                        .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                        .image = brdfLutMapImage_.getImage(),
+                        .subresourceRange{
+                                          .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                          .baseMipLevel = 0,
+                                          .levelCount = vk::RemainingMipLevels,
+                                          .baseArrayLayer = 0,
+                                          .layerCount = vk::RemainingArrayLayers
+                        },
+                };
+
+                const vk::DependencyInfo dependencyInfo{
+                        .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                };
+                commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+
+            {
+                brdflutPass_.render(
+                        BRDFLUTPass::RenderInfo{
+                                .commandBuffer = commandBuffer,
+                                .viewportExtent = vk::Extent2D(512, 512),
+                                .color =
+                                        RenderAttachment{
+                                                         .image = brdfLutMapImage_.getImage(), .imageView = brdfLutMapImageView_
+                                        },
+                }
+                );
+            }
+
+            // Transition BRDFLUT map image.
+            {
+                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
+                        .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                        .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
+                        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                        .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                        .image = brdfLutMapImage_.getImage(),
                         .subresourceRange{
                                           .aspectMask = vk::ImageAspectFlagBits::eColor,
                                           .baseMipLevel = 0,

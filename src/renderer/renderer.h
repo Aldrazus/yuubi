@@ -14,6 +14,7 @@
 #include "renderer/resources/texture_manager.h"
 #include "window.h"
 #include "pch.h"
+#include "renderer/passes/brdflut_pass.h"
 #include "passes/cubemap_pass.h"
 #include "renderer/vertex.h"
 #include "renderer/loaded_gltf.h"
@@ -45,6 +46,8 @@ namespace yuubi {
         void generateIrradianceMap() const;
         void initPrefilterMapPassResources();
         void generatePrefilterMap() const;
+        void initBRDFLUTPassResources();
+        void generateBRDFLUT() const;
 
         const Window& window_;
         vk::raii::Context context_;
@@ -131,6 +134,12 @@ namespace yuubi {
         vk::raii::DescriptorSetLayout prefilterMapDescriptorSetLayout_ = nullptr;
         vk::raii::DescriptorPool prefilterMapDescriptorPool_ = nullptr;
         vk::raii::DescriptorSet prefilterMapDescriptorSet_ = nullptr;
+
+        // BRDFLUT map.
+        BRDFLUTPass brdflutPass_;
+        Image brdfLutMapImage_;
+        vk::raii::ImageView brdfLutMapImageView_ = nullptr;
+        vk::raii::Sampler brdfLutMapSampler_ = nullptr;
     };
 
 }

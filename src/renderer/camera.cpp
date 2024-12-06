@@ -35,7 +35,7 @@ namespace yuubi {
 
     void Camera::updatePosition(float deltaTime) {
         const auto cameraRotation = getRotationMatrix();
-        constexpr float moveSpeed = 10.0f;
+        constexpr float moveSpeed = 1.0f;
         position_ += glm::vec3(cameraRotation * glm::vec4(velocity * moveSpeed, 0.0f)) * deltaTime;
     }
 

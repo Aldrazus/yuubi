@@ -11,5 +11,6 @@ glslangvalidator --target-env vulkan1.3 -e main -o cubemap.vert.spv cubemap.vert
 glslangvalidator --target-env vulkan1.3 -e main -o cubemap.frag.spv cubemap.frag
 glslangvalidator --target-env vulkan1.3 -e main -o irradiance.frag.spv irradiance.frag
 glslangvalidator --target-env vulkan1.3 -e main -o prefilter.frag.spv prefilter.frag
+glslangvalidator --target-env vulkan1.3 -e main -o brdflut.frag.spv brdflut.frag
 
 pause

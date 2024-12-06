@@ -14,6 +14,7 @@ target_sources(
         "renderer/instance.cpp"
         "renderer/loaded_gltf.cpp"
         "renderer/passes/ao_pass.cpp"
+        "renderer/passes/brdflut_pass.cpp"
         "renderer/passes/composite_pass.cpp"
         "renderer/passes/cubemap_pass.cpp"
         "renderer/passes/depth_pass.cpp"

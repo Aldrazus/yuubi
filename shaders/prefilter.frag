@@ -67,7 +67,12 @@ vec3 importanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 }
 
 void main() {
-    vec3 N = normalize(worldPos);
+    // TODO: Figure out cubemap sampling in Vulkan's right-handed coordinate system.
+    // Vulkan has a right-handed coordinate system where +X points to the right, +Z points into the screen,
+    // and +Y points downward. The viewport height is negative in every pipeline, so +Y actually points upwards.
+    // However, this DOESN'T change the texture coordinate space. This is why we have to do these transformations
+    // here.
+    vec3 N = normalize(vec3(worldPos.x, -worldPos.y, -worldPos.z));
 
     // make the simplifying assumption that V equals R equals the normal
     vec3 R = N;
