@@ -78,9 +78,7 @@ namespace yuubi {
         initCompositePassResources();
         initTextureManager();
 
-        asset_ = GLTFAsset(
-                *device_, textureManager_, materialManager_, "assets/ABeautifulGame/glTF/ABeautifulGame.gltf"
-        );
+        asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/DamagedHelmet/glTF/DamagedHelmet.gltf");
 
         {
             std::vector setLayouts{*iblDescriptorSetLayout_, *textureDescriptorSetLayout_};
@@ -1685,37 +1683,41 @@ namespace yuubi {
                                 vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool
                         );
 
-        iblDescriptorSetLayout_ = layoutBuilder
-                                          .addBinding(
-                                                  vk::DescriptorSetLayoutBinding{
-                                                          .binding = 0,
-                                                          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-                                                          .descriptorCount = 1,
-                                                          .stageFlags = vk::ShaderStageFlagBits::eFragment,
-                                                  }
-                                          )
-                                          .addBinding(
-                                                  vk::DescriptorSetLayoutBinding{
-                                                          .binding = 1,
-                                                          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-                                                          .descriptorCount = 1,
-                                                          .stageFlags = vk::ShaderStageFlagBits::eFragment,
-                                                  }
-                                          )
-                                          .addBinding(
-                                                  vk::DescriptorSetLayoutBinding{
-                                                          .binding = 2,
-                                                          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-                                                          .descriptorCount = 1,
-                                                          .stageFlags = vk::ShaderStageFlagBits::eFragment,
-                                                  }
-                                          )
-                                          .build(
-                                                  vk::DescriptorSetLayoutBindingFlagsCreateInfo{
-                                                          .bindingCount = 0, .pBindingFlags = nullptr
-                                                  },
-                                                  vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool
-                                          );
+        {
+            DescriptorLayoutBuilder layoutBuilder(device_);
+            iblDescriptorSetLayout_ =
+                    layoutBuilder
+                            .addBinding(
+                                    vk::DescriptorSetLayoutBinding{
+                                            .binding = 0,
+                                            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                            .descriptorCount = 1,
+                                            .stageFlags = vk::ShaderStageFlagBits::eFragment,
+                                    }
+                            )
+                            .addBinding(
+                                    vk::DescriptorSetLayoutBinding{
+                                            .binding = 1,
+                                            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                            .descriptorCount = 1,
+                                            .stageFlags = vk::ShaderStageFlagBits::eFragment,
+                                    }
+                            )
+                            .addBinding(
+                                    vk::DescriptorSetLayoutBinding{
+                                            .binding = 2,
+                                            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                            .descriptorCount = 1,
+                                            .stageFlags = vk::ShaderStageFlagBits::eFragment,
+                                    }
+                            )
+                            .build(
+                                    vk::DescriptorSetLayoutBindingFlagsCreateInfo{
+                                            .bindingCount = 0, .pBindingFlags = nullptr
+                                    },
+                                    vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool
+                            );
+        }
 
         // Create pool.
         // TODO: account for other first descriptor set properly
