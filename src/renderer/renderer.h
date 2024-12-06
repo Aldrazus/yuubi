@@ -48,6 +48,7 @@ namespace yuubi {
         void generatePrefilterMap() const;
         void initBRDFLUTPassResources();
         void generateBRDFLUT() const;
+        void initTextureManager();
 
         const Window& window_;
         vk::raii::Context context_;
@@ -87,7 +88,6 @@ namespace yuubi {
         GLTFAsset asset_;
         std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes_;
         std::shared_ptr<Mesh> mesh_;
-        TextureManager textureManager_;
 
         // Global scene data updated once per frame/draw call.
         Buffer sceneDataBuffer_;
@@ -103,7 +103,14 @@ namespace yuubi {
         vk::Format normalFormat_ = vk::Format::eR16G16B16A16Sfloat;
 
         DepthPass depthPass_;
+
+        // Lighting
+        vk::raii::DescriptorSetLayout lightingDescriptorSetLayout_ = nullptr;
+        vk::raii::DescriptorPool lightingDescriptorPool_ = nullptr;
+        // vk::raii::DescriptorSet iblDescriptorSet_ = nullptr;
+        std::shared_ptr<vk::raii::DescriptorSet> textureDescriptorSet_;
         LightingPass lightingPass_;
+        TextureManager textureManager_;
 
         // Cubemap.
         CubemapPass cubemapPass_;

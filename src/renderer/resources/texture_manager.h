@@ -36,10 +36,9 @@ namespace yuubi {
     class TextureManager final : ResourceManager<Texture, maxTextures>, NonCopyable {
     public:
         TextureManager() = default;
-        explicit TextureManager(std::shared_ptr<Device> device);
+        TextureManager(std::shared_ptr<Device> device, std::shared_ptr<vk::raii::DescriptorSet> textureSet);
         TextureManager(TextureManager&& rhs) noexcept :
             ResourceManager(std::move(rhs)), device_(std::exchange(rhs.device_, nullptr)),
-            pool_(std::exchange(rhs.pool_, nullptr)), textureSetLayout_(std::exchange(rhs.textureSetLayout_, nullptr)),
             textureSet_(std::exchange(rhs.textureSet_, nullptr)) {};
 
         TextureManager& operator=(TextureManager&& rhs) noexcept {
@@ -47,27 +46,17 @@ namespace yuubi {
                 ResourceManager::operator=(std::move(rhs));
                 std::swap(device_, rhs.device_);
                 std::swap(textureSet_, rhs.textureSet_);
-                std::swap(textureSetLayout_, rhs.textureSetLayout_);
-                std::swap(pool_, rhs.pool_);
             }
             return *this;
         }
 
         virtual ResourceHandle addResource(const std::shared_ptr<Texture>& texture) override;
 
-        [[nodiscard]] const vk::raii::DescriptorSetLayout& getTextureSetLayout() const { return textureSetLayout_; }
-
-        [[nodiscard]] const vk::raii::DescriptorSet& getTextureSet() const { return textureSet_; }
-
     private:
-        void createDescriptorSet();
         void createErrorTexture();
 
         std::shared_ptr<Device> device_;
-
-        vk::raii::DescriptorPool pool_ = nullptr;
-        vk::raii::DescriptorSetLayout textureSetLayout_ = nullptr;
-        vk::raii::DescriptorSet textureSet_ = nullptr;
+        std::shared_ptr<vk::raii::DescriptorSet> textureSet_;
     };
 
 }

@@ -38,7 +38,7 @@ namespace yuubi {
         surface_ = std::make_shared<vk::raii::SurfaceKHR>(instance_.getInstance(), tmp);
         device_ = std::make_shared<Device>(instance_.getInstance(), *surface_);
         viewport_ = std::make_shared<Viewport>(surface_, device_);
-        textureManager_ = TextureManager(device_);
+        initTextureManager();
         imguiManager_ = ImguiManager{instance_, *device_, window_, *viewport_};
 
         materialManager_ = MaterialManager(device_);
@@ -83,7 +83,7 @@ namespace yuubi {
         initCompositePassResources();
 
         {
-            std::vector setLayouts{*textureManager_.getTextureSetLayout()};
+            std::vector setLayouts{*lightingDescriptorSetLayout_};
             depthPass_ = DepthPass(device_, viewport_, setLayouts);
         }
 
@@ -91,7 +91,7 @@ namespace yuubi {
         createNormalAttachment();
 
         // Create lighting pass.
-        std::vector setLayouts = {*textureManager_.getTextureSetLayout()};
+        std::vector setLayouts = {*lightingDescriptorSetLayout_};
 
         std::vector pushConstantRanges = {
                 vk::PushConstantRange{
@@ -175,9 +175,9 @@ namespace yuubi {
             );
 
             // Depth pre-pass
-            depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_, textureManager_.getTextureSet());
+            depthPass_.render(frame.commandBuffer, drawContext_, sceneDataBuffer_, *textureDescriptorSet_);
 
-            std::vector<vk::DescriptorSet> descriptorSets{textureManager_.getTextureSet()};
+            std::vector<vk::DescriptorSet> descriptorSets{*textureDescriptorSet_};
 
             // Transition draw image.
             {
@@ -1658,5 +1658,66 @@ namespace yuubi {
                 commandBuffer.pipelineBarrier2(dependencyInfo);
             }
         });
+    }
+
+    void Renderer::initTextureManager() {
+        // Create layout.
+        DescriptorLayoutBuilder layoutBuilder(device_);
+
+        constexpr vk::DescriptorBindingFlags bindingFlags = vk::DescriptorBindingFlagBits::eVariableDescriptorCount |
+                                                            vk::DescriptorBindingFlagBits::ePartiallyBound |
+                                                            vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+
+        lightingDescriptorSetLayout_ =
+                layoutBuilder
+                        .addBinding(
+                                vk::DescriptorSetLayoutBinding{
+                                        .binding = 0,
+                                        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                        .descriptorCount = maxTextures,
+                                        .stageFlags = vk::ShaderStageFlagBits::eFragment,
+                                }
+                        )
+                        .build(
+                                vk::DescriptorSetLayoutBindingFlagsCreateInfo{
+                                        .bindingCount = 1, .pBindingFlags = &bindingFlags
+                                },
+                                vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool
+                        );
+
+        // Create pool.
+        std::vector poolSizes{
+                vk::DescriptorPoolSize{.type = vk::DescriptorType::eStorageImage, .descriptorCount = maxTextures                                       },
+                vk::DescriptorPoolSize{       .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = maxTextures},
+                vk::DescriptorPoolSize{             .type = vk::DescriptorType::eSampler, .descriptorCount = maxTextures},
+                vk::DescriptorPoolSize{
+                                       .type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = maxTextures}
+        };
+
+        const vk::DescriptorPoolCreateInfo poolInfo{
+                .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind |
+                         vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+                .maxSets = maxTextures,
+                .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+                .pPoolSizes = poolSizes.data()
+        };
+
+        lightingDescriptorPool_ = device_->getDevice().createDescriptorPool(poolInfo);
+
+        // Create set.
+        vk::StructureChain allocInfo{
+                vk::DescriptorSetAllocateInfo{
+                                              .descriptorPool = *lightingDescriptorPool_,
+                                              .descriptorSetCount = 1,
+                                              .pSetLayouts = &*lightingDescriptorSetLayout_
+                },
+                vk::DescriptorSetVariableDescriptorCountAllocateInfo{
+                                              .descriptorSetCount = 1, .pDescriptorCounts = &maxTextures
+                }
+        };
+
+        vk::raii::DescriptorSets sets(device_->getDevice(), allocInfo.get());
+        textureDescriptorSet_ = std::make_shared<vk::raii::DescriptorSet>(std::move(sets[0]));
+        textureManager_ = TextureManager(device_, textureDescriptorSet_);
     }
 }
