@@ -2,7 +2,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 # Vulkan
 find_package(Vulkan REQUIRED)
-target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)
+target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan)
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE
     VULKAN_HPP_NO_CONSTRUCTORS
@@ -13,47 +13,38 @@ target_compile_definitions(${PROJECT_NAME}
 )
 
 # VulkanMemoryAllocator
-add_subdirectory(VulkanMemoryAllocator)
-target_link_libraries(${PROJECT_NAME} GPUOpen::VulkanMemoryAllocator)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE GPUOpen::VulkanMemoryAllocator)
+
+# VulkanMemoryAllocator-Hpp
+find_package(unofficial-vulkan-memory-allocator-hpp CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp)
 
 # glfw
-add_subdirectory(glfw)
-target_link_libraries(${PROJECT_NAME} glfw)
+find_package(glfw3 CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
 
 # glm
-add_subdirectory(glm)
-target_link_libraries(${PROJECT_NAME} glm)
+find_package(glm CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 
 # Dear ImGui
-add_library(imgui)
-target_sources(imgui
-    PRIVATE
-    "imgui/imgui.h"
-    "imgui/imgui.cpp"
-    
-    "imgui/imgui_demo.cpp"
-    "imgui/imgui_draw.cpp"
-    "imgui/imgui_widgets.cpp"
-    "imgui/imgui_tables.cpp"
-    "imgui/backends/imgui_impl_vulkan.cpp"
-    "imgui/backends/imgui_impl_glfw.cpp"
-    )
-target_include_directories(imgui PUBLIC "imgui" "imgui/backends")
-target_link_libraries(imgui PRIVATE Vulkan::Vulkan glfw)
-target_link_libraries(${PROJECT_NAME} imgui)
+find_package(imgui CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
 
 # stb-image
-add_subdirectory(stb_image)
-target_link_libraries(${PROJECT_NAME} stb_image)
+find_package(Stb REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 
 # spdlog
-add_subdirectory(spdlog)
-target_link_libraries(${PROJECT_NAME} spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+find_package(spdlog CONFIG REQUIRED)
+# TODO: remove last bits
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
 
 # fastgltf
-add_subdirectory(fastgltf)
-target_link_libraries(${PROJECT_NAME} fastgltf)
+find_package(fastgltf)
+target_link_libraries(${PROJECT_NAME} PRIVATE fastgltf::fastgltf)
 
 # MikkTSpace
-add_subdirectory(mikktspace)
-target_link_libraries(${PROJECT_NAME} MikkTSpace)
+find_package(mikktspace)
+target_link_libraries(${PROJECT_NAME} PRIVATE mikktspace::mikktspace)
