@@ -25,13 +25,11 @@ namespace yuubi {
             imageInfo.setFlags(vk::ImageCreateFlagBits::eCubeCompatible);
         }
 
-        VmaAllocationCreateInfo allocInfo{};
+        vma::AllocationCreateInfo allocInfo{};
 
-        VkImage vkImage;
-
-        const VkImageCreateInfo legacyImageInfo = imageInfo;
-        vmaCreateImage(allocator_->getAllocator(), &legacyImageInfo, &allocInfo, &vkImage, &allocation_, nullptr);
-        image_ = vk::raii::Image{allocator_->getDevice(), vkImage};
+        auto [image, allocation] = allocator_->getAllocator().createImage(imageInfo, allocInfo);
+        image_ = vk::raii::Image{allocator_->getDevice(), image};
+        allocation_ = allocation;
     }
 
     Image::Image(Image&& rhs) noexcept :
@@ -54,7 +52,7 @@ namespace yuubi {
 
     void Image::destroy() {
         if (allocator_ != nullptr) {
-            vmaDestroyImage(allocator_->getAllocator(), image_.release(), allocation_);
+            allocator_->getAllocator().destroyImage(image_.release(), allocation_);
         }
     }
 
@@ -68,9 +66,10 @@ namespace yuubi {
                 .usage = vk::BufferUsageFlagBits::eTransferSrc,
         };
 
-        VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
-                .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                .usage = VMA_MEMORY_USAGE_AUTO,
+        vma::AllocationCreateInfo stagingBufferAllocCreateInfo{
+                .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite |
+                         vma::AllocationCreateFlagBits::eMapped,
+                .usage = vma::MemoryUsage::eAuto,
         };
 
         Buffer stagingBuffer = device.createBuffer(stagingBufferCreateInfo, stagingBufferAllocCreateInfo);

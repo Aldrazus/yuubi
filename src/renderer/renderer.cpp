@@ -50,8 +50,8 @@ namespace yuubi {
                              vk::BufferUsageFlagBits::eShaderDeviceAddress
             };
 
-            constexpr VmaAllocationCreateInfo shaderDataBufferAllocInfo{
-                    .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+            constexpr vma::AllocationCreateInfo shaderDataBufferAllocInfo{
+                    .usage = vma::MemoryUsage::eGpuOnly,
             };
 
             sceneDataBuffer_ = device_->createBuffer(bufferCreateInfo, shaderDataBufferAllocInfo);
@@ -698,9 +698,10 @@ namespace yuubi {
                 .size = imageSize, .usage = vk::BufferUsageFlagBits::eTransferSrc
         };
 
-        VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
-                .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                .usage = VMA_MEMORY_USAGE_AUTO,
+        vma::AllocationCreateInfo stagingBufferAllocCreateInfo{
+                .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite |
+                         vma::AllocationCreateFlagBits::eMapped,
+                .usage = vma::MemoryUsage::eAuto,
         };
 
         const Buffer stagingBuffer = device_->createBuffer(stagingBufferCreateInfo, stagingBufferAllocCreateInfo);

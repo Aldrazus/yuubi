@@ -11,8 +11,8 @@ namespace yuubi {
                          vk::BufferUsageFlagBits::eShaderDeviceAddress
         };
 
-        VmaAllocationCreateInfo shaderDataBufferAllocInfo{
-                .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        vma::AllocationCreateInfo shaderDataBufferAllocInfo{
+                .usage = vma::MemoryUsage::eGpuOnly,
         };
 
         materialBuffer_ = device_->createBuffer(bufferCreateInfo, shaderDataBufferAllocInfo);

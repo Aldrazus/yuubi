@@ -36,9 +36,9 @@ namespace yuubi {
         Image& operator=(Image&& rhs) noexcept;
         ~Image();
 
-        [[nodiscard]] inline const vk::raii::Image& getImage() const { return image_; }
-        [[nodiscard]] inline vk::Format getImageFormat() const { return format_; }
-        [[nodiscard]] inline uint32_t getMipLevels() const { return mipLevels_; }
+        [[nodiscard]] const vk::raii::Image& getImage() const { return image_; }
+        [[nodiscard]] vk::Format getImageFormat() const { return format_; }
+        [[nodiscard]] uint32_t getMipLevels() const { return mipLevels_; }
 
     private:
         void destroy();
@@ -53,7 +53,7 @@ namespace yuubi {
         // lifetime of the Allocator/Device that created it, potentially
         // causing a memory leak or crash.
         Allocator* allocator_ = nullptr;
-        VmaAllocation allocation_;
+        vma::Allocation allocation_;
     };
 
     class Device;

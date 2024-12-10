@@ -146,7 +146,7 @@ namespace yuubi {
     Image Device::createImage(const ImageCreateInfo& createInfo) const { return Image{allocator_.get(), createInfo}; }
 
     Buffer Device::createBuffer(
-            const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo
+            const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo
     ) const {
         return Buffer{allocator_.get(), createInfo, allocInfo};
     }

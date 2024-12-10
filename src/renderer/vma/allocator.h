@@ -17,11 +17,11 @@ namespace yuubi {
         Allocator& operator=(Allocator&& rhs) noexcept;
         ~Allocator();
 
-        [[nodiscard]] inline const VmaAllocator& getAllocator() const { return allocator_; }
-        [[nodiscard]] inline const vk::raii::Device& getDevice() const { return *device_; }
+        [[nodiscard]] const vma::Allocator& getAllocator() const { return allocator_; }
+        [[nodiscard]] const vk::raii::Device& getDevice() const { return *device_; }
 
     private:
-        VmaAllocator allocator_;
+        vma::Allocator allocator_;
         // TODO: make shared
         const vk::raii::Device* device_;
     };

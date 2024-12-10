@@ -6,15 +6,15 @@ namespace yuubi {
             const vk::raii::Instance& instance, const vk::raii::PhysicalDevice& physicalDevice,
             const vk::raii::Device& device
     ) : device_(&device) {
-        VmaAllocatorCreateInfo allocatorInfo{
-                .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
-                .physicalDevice = *physicalDevice,
-                .device = *device,
-                .instance = *instance,
-                .vulkanApiVersion = vk::ApiVersion13,
+        vma::AllocatorCreateInfo allocatorInfo{
+                .flags = vma::AllocatorCreateFlagBits::eBufferDeviceAddress,
+                .physicalDevice = physicalDevice,
+                .device = device,
+                .instance = instance,
+                .vulkanApiVersion = vk::ApiVersion13
         };
 
-        vmaCreateAllocator(&allocatorInfo, &allocator_);
+        allocator_ = vma::createAllocator(allocatorInfo);
     }
 
     Allocator::Allocator(Allocator&& rhs) noexcept {
@@ -32,7 +32,7 @@ namespace yuubi {
         return *this;
     }
 
-    Allocator::~Allocator() { vmaDestroyAllocator(allocator_); }
+    Allocator::~Allocator() { allocator_.destroy(); }
 
 
 }

@@ -40,7 +40,7 @@ namespace yuubi {
                         .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
                                  vk::BufferUsageFlagBits::eShaderDeviceAddress
                 },
-                VmaAllocationCreateInfo{.usage = VMA_MEMORY_USAGE_GPU_ONLY}
+                vma::AllocationCreateInfo{.usage = vma::MemoryUsage::eGpuOnly}
         );
 
         const glm::mat4 projectionMatrix = glm::perspective(glm::radians(90.0F), 1.0F, 1000.0F, 0.001F);
