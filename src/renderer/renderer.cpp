@@ -252,14 +252,14 @@ namespace yuubi {
                 skyboxPass_.render(
                         SkyboxPass::RenderInfo{
                                 .commandBuffer = frame.commandBuffer,
+                                .viewportExtent = viewport_->getExtent(),
                                 .descriptorSets = {descriptorSets},
                                 .color = RenderAttachment{.image = drawImage.getImage(), .imageView = drawImageView},
-                                .pushConstants = SkyboxPass::PushConstants{.viewProjection = viewProjection},
-                                .viewportExtent = viewport_->getExtent(),
                                 .depth =
                                         RenderAttachment{
                                                    viewport_->getDepthImage().getImage(), viewport_->getDepthImageView()
-                                        }
+                                        },
+                                .pushConstants = SkyboxPass::PushConstants{.viewProjection = viewProjection},
                 }
                 );
             }
@@ -467,8 +467,9 @@ namespace yuubi {
         skyboxPass_ = SkyboxPass(
                 SkyboxPass::CreateInfo{
                         .device = device_,
-                        .colorAttachmentFormats = formats,
                         .descriptorSetLayouts = descriptorSetLayouts,
+                        .colorAttachmentFormats = formats,
+
                         .depthAttachmentFormat = viewport_->getDepthFormat()
                 }
         );
@@ -756,10 +757,10 @@ namespace yuubi {
             );
 
             vk::ImageMemoryBarrier2 barrier{
-                    .srcAccessMask = vk::AccessFlagBits2::eTransferWrite,
-                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
                     .srcStageMask = vk::PipelineStageFlagBits2::eTransfer,
+                    .srcAccessMask = vk::AccessFlagBits2::eTransferWrite,
                     .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
                     .oldLayout = vk::ImageLayout::eTransferDstOptimal,
                     .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
                     .image = *equirectangularMapImage_.getImage(),
@@ -1259,11 +1260,11 @@ namespace yuubi {
                         CubemapPass::RenderInfo{
                                 .commandBuffer = commandBuffer,
                                 .viewportExtent = vk::Extent2D(512, 512),
+                                .descriptorSets = descriptorSets,
                                 .color =
                                         RenderAttachment{
                                                          .image = cubemapImage_.getImage(), .imageView = cubemapImageView_
                                         },
-                                .descriptorSets = descriptorSets,
                 }
                 );
             }
@@ -1272,8 +1273,8 @@ namespace yuubi {
             {
                 const vk::ImageMemoryBarrier2 imageMemoryBarrier{
                         .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
                         .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
                         .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -1303,12 +1304,12 @@ namespace yuubi {
                         IrradiancePass::RenderInfo{
                                 .commandBuffer = commandBuffer,
                                 .viewportExtent = vk::Extent2D(32, 32),
+                                .descriptorSets = descriptorSets,
                                 .color =
                                         RenderAttachment{
                                                          .image = irradianceMapImage_.getImage(),
                                                          .imageView = irradianceMapImageView_
                                         },
-                                .descriptorSets = descriptorSets,
                 }
                 );
             }
@@ -1317,8 +1318,8 @@ namespace yuubi {
             {
                 const vk::ImageMemoryBarrier2 imageMemoryBarrier{
                         .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
                         .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
                         .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -1515,11 +1516,11 @@ namespace yuubi {
                         PrefilterPass::RenderInfo{
                                 .commandBuffer = commandBuffer,
                                 .viewportExtent = vk::Extent2D(mipSize, mipSize),
+                                .descriptorSets = descriptorSets,
                                 .color =
                                         RenderAttachment{
                                                          .image = prefilterMapImage_.getImage(), .imageView = imageView
                                         },
-                                .descriptorSets = descriptorSets,
                                 .roughness = roughness
                 }
                 );
@@ -1531,8 +1532,8 @@ namespace yuubi {
             {
                 const vk::ImageMemoryBarrier2 imageMemoryBarrier{
                         .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
                         .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
                         .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -1598,8 +1599,8 @@ namespace yuubi {
             {
                 const vk::ImageMemoryBarrier2 imageMemoryBarrier{
                         .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                        .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                         .srcAccessMask = vk::AccessFlagBits2::eNone,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                         .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
                         .oldLayout = vk::ImageLayout::eUndefined,
                         .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
@@ -1636,8 +1637,8 @@ namespace yuubi {
             {
                 const vk::ImageMemoryBarrier2 imageMemoryBarrier{
                         .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
                         .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
                         .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
                         .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
