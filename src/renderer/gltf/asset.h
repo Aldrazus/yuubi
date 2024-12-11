@@ -22,7 +22,7 @@ namespace yuubi {
 
         // TODO: add move constructor/assignment operator
 
-        virtual void draw(const glm::mat4& topMatrix, DrawContext& context) override;
+        void draw(const glm::mat4& topMatrix, DrawContext& context) override;
 
     private:
         // GLTF resources.
