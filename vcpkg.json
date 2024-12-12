@@ -1,0 +1,19 @@
+{
+  "dependencies": [
+    "glfw3",
+    "glm",
+    {
+      "name": "imgui",
+      "features": [
+        "glfw-binding",
+        "vulkan-binding"
+      ]
+    },
+    "mikktspace",
+    "spdlog",
+    "stb",
+    "vulkan-memory-allocator",
+    "vulkan-memory-allocator-hpp",
+    "fastgltf"
+  ]
+}
