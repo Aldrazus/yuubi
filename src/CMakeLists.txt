@@ -5,6 +5,7 @@ target_sources(
         "core/log.cpp"
         "renderer/gltf/asset.cpp"
         "renderer/gltf/mikktspace.cpp"
+        "renderer/gltf/thread.cpp"
         "renderer/resources/material_manager.cpp"
         "renderer/resources/texture_manager.cpp"
         "renderer/camera.cpp"
