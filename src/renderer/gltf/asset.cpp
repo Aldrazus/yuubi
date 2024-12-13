@@ -18,6 +18,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include "renderer/vulkan_usage.h"
 #include "renderer/vulkan/util.h"
+#include "renderer/gltf/thread.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -192,6 +193,8 @@ namespace yuubi {
         // Check sRGB preference.
         auto srgbImageIndices = getSrgbImageIndices(asset.materials);
 
+
+        loadTextures(device, asset, filePath.parent_path());
         // TODO: handle missing images by replacing with error checkerboard
         // PERF: Horrendously slow. MUST FIX.
         UB_INFO("Loading textures...");

@@ -32,7 +32,7 @@ namespace yuubi {
                 uint32_t mipLevels = 1, vk::ImageViewType type = vk::ImageViewType::e2D
         ) const;
 
-        const Queue& getQueue() { return graphicsQueue_; }
+        const Queue& getQueue() const { return graphicsQueue_; }
 
         inline Allocator& allocator() const { return *allocator_; }
 
