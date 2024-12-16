@@ -7,7 +7,7 @@
 
 namespace yuubi {
     class Device;
-    std::vector<Texture> loadTextures(
+    std::vector<std::shared_ptr<Texture>> loadTextures(
             const Device& device, const fastgltf::Asset& asset, const std::filesystem::path& assetDir
     );
 }

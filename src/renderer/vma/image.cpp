@@ -25,7 +25,7 @@ namespace yuubi {
             imageInfo.setFlags(vk::ImageCreateFlagBits::eCubeCompatible);
         }
 
-        vma::AllocationCreateInfo allocInfo{};
+        const vma::AllocationCreateInfo allocInfo{};
 
         auto [image, allocation] = allocator_->getAllocator().createImage(imageInfo, allocInfo);
         image_ = vk::raii::Image{allocator_->getDevice(), image};

@@ -38,6 +38,13 @@ namespace yuubi {
         }
     }
 
+    Buffer::Buffer(Buffer&& rhs) noexcept :
+        allocator_(std::exchange(rhs.allocator_, nullptr)), buffer_(std::exchange(rhs.buffer_, nullptr)),
+        allocation_(std::exchange(rhs.allocation_, nullptr)), allocationInfo_(std::exchange(rhs.allocationInfo_, {})),
+        address_(std::exchange(rhs.address_, {})), stagingBuffer_(std::exchange(rhs.stagingBuffer_, nullptr)),
+        stagingBufferAllocationInfo_(std::exchange(rhs.stagingBufferAllocationInfo_, {})),
+        stagingBufferAllocation_(std::exchange(rhs.stagingBufferAllocation_, nullptr)) {}
+
     Buffer& Buffer::operator=(Buffer&& rhs) noexcept {
         // If rhs is this, no-op.
         if (this != &rhs) {

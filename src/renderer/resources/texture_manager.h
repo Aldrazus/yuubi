@@ -15,7 +15,7 @@ namespace yuubi {
         Texture(Image&& image, vk::raii::ImageView&& imageView, vk::raii::Sampler&& sampler) :
             image(std::move(image)), imageView(std::move(imageView)), sampler(std::move(sampler)) {}
 
-        Texture(Texture&& rhs) = default;
+        Texture(Texture&& rhs) noexcept : image(std::exchange(rhs.image, {})), imageView(std::exchange(rhs.imageView, nullptr)), sampler(std::exchange(rhs.sampler, nullptr)) {};
         Texture& operator=(Texture&& rhs) noexcept {
             if (this != &rhs) {
                 std::swap(image, rhs.image);
