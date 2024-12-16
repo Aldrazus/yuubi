@@ -194,8 +194,50 @@ namespace yuubi {
         auto srgbImageIndices = getSrgbImageIndices(asset.materials);
 
 
-        auto textures = loadTextures(device, asset, filePath.parent_path());
-        for (auto&& texture: textures) {
+        // TODO: handle missing images by replacing with error checkerboard
+        // PERF: Horrendously slow. MUST FIX.
+        UB_INFO("Loading textures...");
+
+        auto imageDatas = loadTextures(asset, filePath.parent_path());
+        for (const auto& [i, fastgltfTexture]: std::views::enumerate(asset.textures)) {
+            // Create image.
+            const auto& imageData = imageDatas[i];
+            auto image = createImageFromData(
+                    device,
+                    ImageData{
+                            .pixels = imageData.data(),
+                            .width = imageData.width(),
+                            .height = imageData.height(),
+                            .numChannels = imageData.numChannels(),
+                            .format = imageData.format()
+                    }
+            );
+
+            // Create image view.
+            auto imageView = device.createImageView(
+                    *image.getImage(), image.getImageFormat(), vk::ImageAspectFlagBits::eColor, image.getMipLevels()
+            );
+
+            // Create sampler.
+            const auto& gltfSampler = asset.samplers.at(fastgltfTexture.samplerIndex.value());
+            auto [minFilter, minMipmapMode] =
+                    getSamplerFilterInfo(gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
+            auto [magFilter, _] = getSamplerFilterInfo(gltfSampler.magFilter.value_or(fastgltf::Filter::Nearest));
+
+            auto sampler = device.getDevice().createSampler(
+                    vk::SamplerCreateInfo{
+                            .magFilter = magFilter,
+                            .minFilter = minFilter,
+                            .mipmapMode = minMipmapMode,
+                            .anisotropyEnable = vk::True,
+                            .maxAnisotropy =
+                                    device.getPhysicalDevice().getProperties2().properties.limits.maxSamplerAnisotropy,
+                            .minLod = 0,
+                            .maxLod = static_cast<float>(image.getMipLevels()),
+                    }
+            );
+
+            auto texture = std::make_shared<Texture>(std::move(image), std::move(imageView), std::move(sampler));
             textureManager.addResource(texture);
         }
         UB_INFO("Done loading textures...");
