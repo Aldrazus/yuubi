@@ -78,8 +78,7 @@ namespace yuubi {
         initCompositePassResources();
         initTextureManager();
 
-        // asset_ = GLTFAsset(*device_, textureManager_, materialManager_,
-        // "assets/DamagedHelmet/glTF/DamagedHelmet.gltf");
+        asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/DamagedHelmet/glTF/DamagedHelmet.gltf");
 
         /*
         asset_ = GLTFAsset(
@@ -87,7 +86,7 @@ namespace yuubi {
         );
         */
 
-        asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/sponza/Sponza.gltf");
+        // asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/sponza/Sponza.gltf");
 
         {
             std::vector setLayouts{*iblDescriptorSetLayout_, *textureDescriptorSetLayout_};
