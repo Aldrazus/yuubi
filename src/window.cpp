@@ -14,7 +14,7 @@ Window::Window(uint32_t width, uint32_t height, std::string_view title) :
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window_ = glfwCreateWindow(width_, height_, title_.data(), nullptr, nullptr);
     glfwSetWindowUserPointer(window_, this);
-    glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     initCallbacks();
 }
 

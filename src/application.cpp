@@ -8,6 +8,7 @@
 #include "event/key_event.h"
 #include "event/mouse_event.h"
 #include "key_codes.h"
+#include "mouse_codes.h"
 #include "pch.h"
 #include "renderer/camera.h"
 #include <GLFW/glfw3.h>
@@ -82,10 +83,6 @@ bool Application::onKeyRelease(KeyReleasedEvent& e) {
     // TODO: fix bug where camera stops when opposite keys are held and one is
     // released
     switch (e.keyCode) {
-        case Key::Escape: {
-            state_.isLocked = false;
-            glfwSetInputMode(window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
         case Key::W: {
             camera_.velocity.z = 0;
             break;
@@ -114,10 +111,11 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
 
     constexpr float sensitivity = 1.0f;
 
-    camera_.yaw += deltaX * sensitivity;
-
-    camera_.pitch -= deltaY * sensitivity;
-    camera_.pitch = std::clamp(camera_.pitch, -89.0f, 89.0f);
+    if (state_.isCameraRotatable_) {
+        camera_.yaw += deltaX * sensitivity;
+        camera_.pitch -= deltaY * sensitivity;
+        camera_.pitch = std::clamp(camera_.pitch, -89.0f, 89.0f);
+    }
 
     oldX = e.xPos;
     oldY = e.yPos;
@@ -126,8 +124,17 @@ bool Application::onMouseMove(MouseMovedEvent& e) {
 }
 
 bool Application::onMouseButtonPressed(MouseButtonPressedEvent& e) {
-    state_.isLocked = true;
-    glfwSetInputMode(window_.getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    if (e.mouseCode == Key::ButtonLeft) {
+        state_.isCameraRotatable_ = true;
+    }
+
+    return true;
+}
+
+bool Application::onMouseButtonReleased(MouseButtonReleasedEvent& e) {
+    if (e.mouseCode == Key::ButtonLeft) {
+        state_.isCameraRotatable_ = false;
+    }
 
     return true;
 }
@@ -140,6 +147,7 @@ void Application::onEvent(Event& e) {
     dispatcher.dispatch<KeyReleasedEvent>(UB_BIND_EVENT_FN(Application::onKeyRelease));
     dispatcher.dispatch<MouseMovedEvent>(UB_BIND_EVENT_FN(Application::onMouseMove));
     dispatcher.dispatch<MouseButtonPressedEvent>(UB_BIND_EVENT_FN(Application::onMouseButtonPressed));
+    dispatcher.dispatch<MouseButtonReleasedEvent>(UB_BIND_EVENT_FN(Application::onMouseButtonReleased));
 }
 
 void Application::run() {

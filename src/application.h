@@ -13,7 +13,7 @@ struct GLFWwindow;
 struct AppState {
     bool isMinimized = false;
     float averageFPS;
-    bool isLocked = true;
+    bool isCameraRotatable_ = false;
 };
 
 class Application {
@@ -35,6 +35,7 @@ private:
     bool onKeyRelease(KeyReleasedEvent& e);
     bool onMouseMove(MouseMovedEvent& e);
     bool onMouseButtonPressed(MouseButtonPressedEvent& e);
+    bool onMouseButtonReleased(MouseButtonReleasedEvent& e);
 
     static Application* instance_;
     AppState state_;
