@@ -78,7 +78,8 @@ namespace yuubi {
         initCompositePassResources();
         initTextureManager();
 
-        asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/DamagedHelmet/glTF/DamagedHelmet.gltf");
+        // asset_ = GLTFAsset(*device_, textureManager_, materialManager_,
+        // "assets/DamagedHelmet/glTF/DamagedHelmet.gltf");
 
         /*
         asset_ = GLTFAsset(
@@ -86,7 +87,7 @@ namespace yuubi {
         );
         */
 
-        // asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/sponza/Sponza.gltf");
+        asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/sponza/Sponza.gltf");
 
         {
             std::vector setLayouts{*iblDescriptorSetLayout_, *textureDescriptorSetLayout_};
@@ -383,6 +384,28 @@ namespace yuubi {
                             .color = RenderAttachment{.image = image.image, .imageView = image.imageView},
             }
             );
+
+            // Imgui pass
+            // TODO: move to dedicated class
+            std::array colorAttachmentInfos{
+                    vk::RenderingAttachmentInfo{
+                                                .imageView = image.imageView,
+                                                .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                                .loadOp = vk::AttachmentLoadOp::eLoad,
+                                                .storeOp = vk::AttachmentStoreOp::eStore,
+                    }
+            };
+
+            vk::RenderingInfo renderingInfo{
+                    .renderArea = {.offset = {0, 0}, .extent = viewport_->getExtent()},
+                    .layerCount = 1,
+                    .colorAttachmentCount = colorAttachmentInfos.size(),
+                    .pColorAttachments = colorAttachmentInfos.data(),
+            };
+
+            frame.commandBuffer.beginRendering(renderingInfo);
+            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *frame.commandBuffer);
+            frame.commandBuffer.endRendering();
 
             frame.commandBuffer.end();
 
