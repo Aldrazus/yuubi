@@ -94,9 +94,6 @@ namespace yuubi {
             depthPass_ = DepthPass(device_, viewport_, setLayouts);
         }
 
-        // Create normal attachment.
-        createNormalAttachment();
-
         // Create lighting pass.
         std::vector setLayouts = {*iblDescriptorSetLayout_, *textureDescriptorSetLayout_};
 
@@ -110,7 +107,7 @@ namespace yuubi {
 
         std::array formats{
                 // TODO: reevaluate normal format, maybe Snorm?
-                viewport_->getDrawImageFormat(), normalFormat_
+                viewport_->getDrawImageFormat(), viewport_->getNormalImageFormat()
         };
 
         lightingPass_ = LightingPass(
@@ -221,7 +218,7 @@ namespace yuubi {
                         .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
                         .oldLayout = vk::ImageLayout::eUndefined,
                         .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                        .image = *normalImage_.getImage(),
+                        .image = *viewport_->getNormalImage().getImage(),
                         .subresourceRange{
                                           .aspectMask = vk::ImageAspectFlagBits::eColor,
                                           .baseMipLevel = 0,
@@ -245,11 +242,14 @@ namespace yuubi {
                             .viewportExtent = viewport_->getExtent(),
                             .descriptorSets = descriptorSets,
                             .sceneDataBuffer = sceneDataBuffer_,
-                            .color = RenderAttachment{.image = drawImage.getImage(),     .imageView = drawImageView                                                      },
-                            .normal = RenderAttachment{     .image = normalImage_.getImage(),  .imageView = normalImageView_},
+                            .color = RenderAttachment{.image = drawImage.getImage(),.imageView = drawImageView                                                                                            },
+                            .normal =
+                                    RenderAttachment{
+                                                      .image = viewport_->getNormalImage().getImage(),
+                                                      .imageView = viewport_->getNormalImageView()                                            },
                             .depth =
                                     RenderAttachment{
-                                                      viewport_->getDepthImage().getImage(), viewport_->getDepthImageView()}
+                                                      viewport_->getDepthImage().getImage(),                    viewport_->getDepthImageView()}
             }
             );
 
@@ -283,7 +283,7 @@ namespace yuubi {
                         .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
                         .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
                         .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-                        .image = normalImage_.getImage(),
+                        .image = viewport_->getNormalImage().getImage(),
                         .subresourceRange{
                                           .aspectMask = vk::ImageAspectFlagBits::eColor,
                                           .baseMipLevel = 0,
@@ -327,6 +327,38 @@ namespace yuubi {
 
             // Screen-space Ambient Occlusion pass.
             {
+                // Update descriptor set in case the viewport is rebuilt
+                // PERF: only do this when swapchain is rebuilt
+                vk::DescriptorImageInfo depthImageInfo{
+                        .sampler = nullptr,
+                        .imageView = *viewport_->getDepthImageView(),
+                        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                };
+                vk::DescriptorImageInfo normalImageInfo{
+                        .sampler = nullptr,
+                        .imageView = *viewport_->getNormalImageView(),
+                        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                };
+
+                device_->getDevice().updateDescriptorSets(
+                        {
+                                vk::WriteDescriptorSet{
+                                                       .dstSet = *aoDescriptorSet_,
+                                                       .dstBinding = 0,
+                                                       .dstArrayElement = 0,
+                                                       .descriptorCount = 1,
+                                                       .descriptorType = vk::DescriptorType::eSampledImage,
+                                                       .pImageInfo = &depthImageInfo },
+                                vk::WriteDescriptorSet{
+                                                       .dstSet = *aoDescriptorSet_,
+                                                       .dstBinding = 1,
+                                                       .dstArrayElement = 0,
+                                                       .descriptorCount = 1,
+                                                       .descriptorType = vk::DescriptorType::eSampledImage,
+                                                       .pImageInfo = &normalImageInfo},
+                },
+                        {}
+                );
                 std::vector<vk::DescriptorSet> descSets{aoDescriptorSet_};
                 aoPass_.render(
                         AOPass::RenderInfo{
@@ -334,12 +366,16 @@ namespace yuubi {
 
                                 .viewportExtent = viewport_->getExtent(),
                                 .descriptorSets = descSets,
-                                .color = RenderAttachment{.image = aoImage_.getImage(), .imageView = aoImageView_},
+                                .color =
+                                        RenderAttachment{
+                                                         .image = viewport_->getAOImage().getImage(),
+                                                         .imageView = viewport_->getAOImageView()
+                                        },
                                 .pushConstants =
                                         AOPass::PushConstants{
-                                                          .projection = camera.getProjectionMatrix(),
-                                                          .nearPlane = camera.near,
-                                                          .farPlane = camera.far
+                                                         .projection = camera.getProjectionMatrix(),
+                                                         .nearPlane = camera.near,
+                                                         .farPlane = camera.far
                                         }
                 }
                 );
@@ -375,6 +411,29 @@ namespace yuubi {
             );
 
             // Composite pass.
+
+            // Update descriptor set in case viewport is rebuilt
+            // PERF: only do this when swapchain is rebuilt
+            vk::DescriptorImageInfo descImageInfo{
+                    .sampler = nullptr,
+                    .imageView = *viewport_->getDrawImageView(),
+                    .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+            };
+
+            device_->getDevice().updateDescriptorSets(
+                    {
+                            vk::WriteDescriptorSet{
+                                                   .dstSet = *compositeDescriptorSet_,
+                                                   .dstBinding = 0,
+                                                   .dstArrayElement = 0,
+                                                   .descriptorCount = 1,
+                                                   .descriptorType = vk::DescriptorType::eSampledImage,
+                                                   .pImageInfo = &descImageInfo
+                            }
+            },
+                    {}
+            );
+
             std::vector<vk::DescriptorSet> descSets{compositeDescriptorSet_};
             compositePass_.render(
                     CompositePass::RenderInfo{
@@ -393,7 +452,7 @@ namespace yuubi {
                                                 .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
                                                 .loadOp = vk::AttachmentLoadOp::eLoad,
                                                 .storeOp = vk::AttachmentStoreOp::eStore,
-                    }
+                                                }
             };
 
             vk::RenderingInfo renderingInfo{
@@ -554,47 +613,6 @@ namespace yuubi {
                 }
         );
 
-        // Create ao attachment resources
-        aoImage_ =
-                Image(&device_->allocator(),
-                      ImageCreateInfo{
-                              .width = viewport_->getExtent().width,
-                              .height = viewport_->getExtent().height,
-                              .format = aoFormat_,
-                              .tiling = vk::ImageTiling::eOptimal,
-                              .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
-                      });
-
-        aoImageView_ = device_->createImageView(
-                // TODO: is this the right aspect flag?
-                *aoImage_.getImage(), aoFormat_, vk::ImageAspectFlagBits::eColor
-        );
-
-        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
-            vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                    .srcAccessMask = vk::AccessFlagBits2::eNone,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .oldLayout = vk::ImageLayout::eUndefined,
-                    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                    .image = *aoImage_.getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    },
-            };
-
-            vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-            };
-            commandBuffer.pipelineBarrier2(dependencyInfo);
-        });
-
         // Create descriptor set/layout.
         DescriptorLayoutBuilder layoutBuilder(device_);
 
@@ -662,7 +680,7 @@ namespace yuubi {
 
         vk::DescriptorImageInfo normalImageInfo{
                 .sampler = nullptr,
-                .imageView = *normalImageView_,
+                .imageView = *viewport_->getNormalImageView(),
                 .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
         };
 
@@ -699,8 +717,8 @@ namespace yuubi {
                 {}
         );
 
-        std::vector<vk::Format> colorAttachmentFormats{aoFormat_};
-        std::vector<vk::PushConstantRange> pushConstantRanges{
+        std::vector colorAttachmentFormats{viewport_->getAOImageFormat()};
+        std::vector pushConstantRanges{
                 vk::PushConstantRange{
                                       .stageFlags = vk::ShaderStageFlagBits::eFragment,
                                       .offset = 0,
@@ -1068,47 +1086,6 @@ namespace yuubi {
         );
     }
 
-    void Renderer::createNormalAttachment() {
-        normalImage_ =
-                Image(&device_->allocator(),
-                      ImageCreateInfo{
-                              .width = viewport_->getExtent().width,
-                              .height = viewport_->getExtent().height,
-                              .format = normalFormat_,
-                              .tiling = vk::ImageTiling::eOptimal,
-                              // TODO: check if this should be a sampled image or an input
-                              // attachment.
-                              .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
-                      });
-
-        normalImageView_ =
-                device_->createImageView(*normalImage_.getImage(), normalFormat_, vk::ImageAspectFlagBits::eColor);
-
-        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
-            vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                    .srcAccessMask = vk::AccessFlagBits2::eNone,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .oldLayout = vk::ImageLayout::eUndefined,
-                    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                    .image = *normalImage_.getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    },
-            };
-
-            const vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-            };
-            commandBuffer.pipelineBarrier2(dependencyInfo);
-        });
-    }
     void Renderer::initIrradianceMapPassResources() {
         // Create descriptor set/layout.
         DescriptorLayoutBuilder layoutBuilder(device_);

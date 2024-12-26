@@ -40,7 +40,6 @@ namespace yuubi {
         void initAOPassResources();
         void initCubemapPassResources();
         void updateScene(const Camera& camera);
-        void createNormalAttachment();
         void initIrradianceMapPassResources();
         void generateEnvironmentMap() const;
         void generateIrradianceMap() const;
@@ -75,9 +74,6 @@ namespace yuubi {
         vk::raii::DescriptorSetLayout aoDescriptorSetLayout_ = nullptr;
         vk::raii::DescriptorPool aoDescriptorPool_ = nullptr;
         vk::raii::DescriptorSet aoDescriptorSet_ = nullptr;
-        Image aoImage_;
-        vk::raii::ImageView aoImageView_ = nullptr;
-        vk::Format aoFormat_ = vk::Format::eR16G16B16A16Sfloat;
         Image aoNoiseImage_;
         vk::raii::ImageView aoNoiseImageView_ = nullptr;
         vk::raii::Sampler aoNoiseSampler_ = nullptr;
@@ -93,14 +89,6 @@ namespace yuubi {
         Buffer sceneDataBuffer_;
 
         MaterialManager materialManager_;
-
-        Image normalImage_;
-        vk::raii::ImageView normalImageView_ = nullptr;
-        // TODO: change format to eR16G16Sfloat eventually
-        // eR16G16B16Sfloat is not well supported with optimal image tiling,
-        // so the alpha component is added.
-        // See: https://vulkan.gpuinfo.org/listoptimaltilingformats.php
-        vk::Format normalFormat_ = vk::Format::eR16G16B16A16Sfloat;
 
         DepthPass depthPass_;
 

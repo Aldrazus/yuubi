@@ -50,7 +50,7 @@ bool Application::onWindowResize(WindowResizeEvent& e) {
     }
     state_.isMinimized = false;
     camera_ = yuubi::Camera(
-            glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f,
+            camera_.getPosition(), glm::vec3(0.0f), camera_.pitch, camera_.yaw,
             static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight())
     );
     // TODO: let renderer resize
