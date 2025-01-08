@@ -2,9 +2,11 @@
 #include "application.h"
 #include "core/log.h"
 
-int main() {
-    std::println("Loading...");
+int main(int argc, const char** argv) {
     Log::Init();
-    Application app;
+    if (argc != 2) {
+        std::println("Usage: {} [filepath].gltf", argv[0]);
+    }
+    Application app(argv[1]);
     app.run();
 }

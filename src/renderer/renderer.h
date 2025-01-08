@@ -29,7 +29,7 @@ struct AppState;
 namespace yuubi {
     class Renderer {
     public:
-        explicit Renderer(const Window& window);
+        explicit Renderer(const Window& window, std::string_view gltfPath);
         ~Renderer();
 
         void draw(const Camera& camera, AppState state);

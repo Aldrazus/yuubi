@@ -18,7 +18,7 @@ struct AppState {
 
 class Application {
 public:
-    Application();
+    explicit Application(std::string_view gltfPath);
 
     ~Application();
 

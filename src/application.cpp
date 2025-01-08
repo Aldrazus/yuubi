@@ -21,8 +21,8 @@
 
 Application* Application::instance_ = nullptr;
 
-Application::Application() :
-    window_(1600, 900, "Yuubi"), renderer_(window_),
+Application::Application(std::string_view gltfPath) :
+    window_(1600, 900, "Yuubi"), renderer_(window_, gltfPath),
     // TODO: initialize camera with aspect ratio calculated using viewport
     camera_(glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f,
             static_cast<float>(1600) / static_cast<float>(900)) {

@@ -65,5 +65,5 @@ cmake --build build --config Release
 ### Running
 
 ```pwsh
-./build/<Debug or Release>/yuubi
+./build/<Debug or Release>/yuubi [filepath].gltf
 ```

@@ -27,7 +27,7 @@
 
 namespace yuubi {
 
-    Renderer::Renderer(const Window& window) : window_(window) {
+    Renderer::Renderer(const Window& window, std::string_view gltfPath) : window_(window) {
         instance_ = Instance{context_};
 
         VkSurfaceKHR tmp;
@@ -87,7 +87,7 @@ namespace yuubi {
         );
         */
 
-        asset_ = GLTFAsset(*device_, textureManager_, materialManager_, "assets/sponza/Sponza.gltf");
+        asset_ = GLTFAsset(*device_, textureManager_, materialManager_, gltfPath);
 
         {
             std::vector setLayouts{*iblDescriptorSetLayout_, *textureDescriptorSetLayout_};
