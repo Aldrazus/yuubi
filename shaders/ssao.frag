@@ -28,36 +28,38 @@ layout (push_constant, scalar) uniform constants {
     float farPlane;
 } PushConstants;
 
-float linearizeDepth(float depth) {
-    float zNear = PushConstants.nearPlane;
-    float zFar = PushConstants.farPlane;
-    //return (2.0 * zNear * zFar) / (zFar + zNear - depth * (zFar - zNear));
-    return (zNear * zFar) / (zFar - depth * (zFar - zNear));
+vec3 reconstructVSPosFromDepth(vec2 uv) {
+    float depth = texture(depthTex, uv).r;
+    float x = uv.x * 2.0f - 1.0f;
+    // y axis is flipped in Vulkan
+    float y = (1.0f - uv.y) * 2.0f - 1.0f;
+    vec4 pos = vec4(x, y, depth, 1.0f);
+    vec4 posVS = inverse(PushConstants.projection) * pos;
+    vec3 posNDC = posVS.xyz / posVS.w;
+    return posNDC;
 }
-
-// Position reconstruction code was obtained from this blog:
-// https://wickedengine.net/2019/09/improved-normal-reconstruction-from-depth/
-vec3 reconstructPosition() {
-    float depth = texture(depthTex, texCoords).r;
-    vec4 upos = inverse(PushConstants.projection) * vec4(texCoords * 2.0 - 1.0, depth, 1.0);
-    return upos.xyz / upos.w;
-}
-
 
 void main() {
-    vec3 position = reconstructPosition();
+    float depth = texture(depthTex, texCoords).r;
+    if (depth == 0.0f) {
+        ambientOcclusion = vec4(1.0f);
+        return;
+    }
 
     // TODO: this is stored as RGBA texture. Maybe try compressing it to R16G16?
     // If so, use octahedron normal encoding: 
     // https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
     // https://jcgt.org/published/0003/02/01/
     // https://johnwhite3d.blogspot.com/2017/10/signed-octahedron-normal-encoding.html
-    vec3 normal = normalize(texture(normalTex, texCoords).xyz * 2.0 - 1.0);
+    vec3 normal = normalize(texture(normalTex, texCoords).xyz * 2.0f - 1.0f);
 
-    ivec2 texDim = textureSize(depthTex, 0);
-    ivec2 noiseDim = textureSize(noiseTex, 0);
-    const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) * texCoords;
-    vec3 randomVec = texture(noiseTex, noiseUV).rgb * 2.0 - 1.0;
+    vec3 posVS = reconstructVSPosFromDepth(texCoords);
+
+
+    ivec2 depthTexSize = textureSize(depthTex, 0);
+    ivec2 noiseTexSize = textureSize(noiseTex, 0);
+    const vec2 noiseUV = vec2(float(depthTexSize.x)/float(noiseTexSize.x), float(depthTexSize.y)/(noiseTexSize.y)) * texCoords;
+    vec3 randomVec = texture(noiseTex, noiseUV).xyz;
 
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
     vec3 bitangent = cross(tangent, normal);
@@ -69,21 +71,24 @@ void main() {
     const float bias = 0.025;
     for (int i = 0; i < kernelSamples.length(); i++) {
         vec3 samplePos = TBN * kernelSamples[i];
-        samplePos = position + samplePos * radius;
+        samplePos = posVS + samplePos * radius;
 
         vec4 offset = vec4(samplePos, 1.0);
         offset = PushConstants.projection * offset;
-        offset.xyz /= offset.w;
-        offset.xyz = offset.xyz * 0.5 + 0.5;
+        offset.xy /= offset.w;
+        offset.xy = offset.xy * 0.5f + 0.5f;
+        offset.y = 1.0f - offset.y;
 
-        float sampleDepth = -texture(depthTex, offset.xy).r;
 
-        float rangeCheck = smoothstep(0.0, 1.0, radius / abs(position.z - sampleDepth));
-        occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;
+        vec3 reconstructedPos = reconstructVSPosFromDepth(offset.xy);
+        vec3 sampledNormal = normalize(texture(normalTex, offset.xy).xyz * 2.0f - 1.0f);
+        if (dot(sampledNormal, normal) <= 0.99) {
+            float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(reconstructedPos.z - samplePos.z - bias));
+            occlusion += (reconstructedPos.z <= samplePos.z - bias ? 1.0f : 0.0f) * rangeCheck;
+        } 
     }
 
     occlusion = 1.0 - (occlusion / kernelSamples.length());
 
-    float depth = linearizeDepth(texture(depthTex, texCoords).r);
     ambientOcclusion = vec4(occlusion, occlusion, occlusion, 1.0);
 }
