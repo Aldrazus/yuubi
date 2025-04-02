@@ -134,13 +134,12 @@ namespace yuubi {
                     .srcStageMask = vk::PipelineStageFlagBits2::eTransfer,
                     .dstStageMask = vk::PipelineStageFlagBits2::eTransfer,
                     .image = *image.getImage(),
-                    .subresourceRange =
-                            vk::ImageSubresourceRange{
-                                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                      .levelCount = 1,
-                                                      .baseArrayLayer = 0,
-                                                      .layerCount = 1,
-                                                      },
+                    .subresourceRange = vk::ImageSubresourceRange{
+                                                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                                  .levelCount = 1,
+                                                                  .baseArrayLayer = 0,
+                                                                  .layerCount = 1,
+                                                                  },
             };
 
             int32_t mipWidth = data.width;

@@ -32,6 +32,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 find_package(imgui CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
 
+find_package(implot CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE implot::implot)
+
 # stb-image
 find_package(Stb REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})

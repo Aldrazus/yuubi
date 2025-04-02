@@ -16,6 +16,9 @@ namespace yuubi {
 
         vk::raii::CommandPool commandPool = nullptr;
         vk::raii::CommandBuffer commandBuffer = nullptr;
+
+        vk::raii::QueryPool timestampQueryPool = nullptr;
+        std::vector<uint64_t> timestamps = {0, 1, 0, 1};
     };
 
     struct SwapchainImage : NonCopyable {
@@ -33,9 +36,7 @@ namespace yuubi {
         Viewport& operator=(Viewport&& rhs);
         ~Viewport() = default;
         void recreateSwapChain();
-        bool doFrame(
-                std::function<void(const Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)> f
-        );
+        bool doFrame(std::function<void(Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)> f);
         [[nodiscard]] const Image& getDepthImage() const { return depthImage_; }
         [[nodiscard]] const vk::raii::ImageView& getDepthImageView() const { return depthImageView_; }
         [[nodiscard]] const vk::Extent2D& getExtent() const { return swapChainExtent_; }
@@ -55,6 +56,7 @@ namespace yuubi {
 
         [[nodiscard]] inline const vk::Format& getDepthFormat() const { return depthImageFormat_; }
         static const uint32_t maxFramesInFlight = 2;
+        [[nodiscard]] std::array<Frame, maxFramesInFlight>& frames() { return frames_; }
 
     private:
         void createSwapChain();
@@ -69,9 +71,9 @@ namespace yuubi {
         vk::Extent2D chooseSwapExtent() const;
         vk::Format findDepthFormat() const;
         vk::Format findSupportedFormat(
-                const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features
+            const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features
         ) const;
-        inline const Frame& currentFrame() const { return frames_[currentFrame_]; }
+        [[nodiscard]] Frame& currentFrame() { return frames_[currentFrame_]; }
 
         std::shared_ptr<vk::raii::SurfaceKHR> surface_;
         std::shared_ptr<Device> device_;

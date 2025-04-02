@@ -9,6 +9,7 @@
         "vulkan-binding"
       ]
     },
+    "implot",
     "mikktspace",
     "spdlog",
     "stb",

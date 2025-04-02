@@ -67,21 +67,21 @@ namespace yuubi {
 
         // Create swap chain
         vk::SwapchainCreateInfoKHR createInfo{
-                .surface = **surface_,
-                .minImageCount = imageCount,
-                .imageFormat = surfaceFormat.format,
-                .imageColorSpace = surfaceFormat.colorSpace,
-                .imageExtent = swapExtent,
-                .imageArrayLayers = 1,
-                .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-                .imageSharingMode = vk::SharingMode::eExclusive,
-                .queueFamilyIndexCount = 0,
-                .pQueueFamilyIndices = nullptr,
-                .preTransform = capabilities.currentTransform,
-                .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-                .presentMode = presentMode,
-                .clipped = vk::True,
-                .oldSwapchain = nullptr,
+            .surface = **surface_,
+            .minImageCount = imageCount,
+            .imageFormat = surfaceFormat.format,
+            .imageColorSpace = surfaceFormat.colorSpace,
+            .imageExtent = swapExtent,
+            .imageArrayLayers = 1,
+            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+            .imageSharingMode = vk::SharingMode::eExclusive,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = nullptr,
+            .preTransform = capabilities.currentTransform,
+            .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+            .presentMode = presentMode,
+            .clipped = vk::True,
+            .oldSwapchain = nullptr,
         };
 
         // Have to delete old swapchain before creating a new one.
@@ -96,19 +96,20 @@ namespace yuubi {
         images_.clear();
         for (const auto image: images) {
             vk::ImageViewCreateInfo imageViewCreateInfo{
-                    .image = image,
-                    .viewType = vk::ImageViewType::e2D,
-                    .format = swapChainImageFormat_,
-                    .subresourceRange =
-                            {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                                               .baseMipLevel = 0,
-                                               .levelCount = 1,
-                                               .baseArrayLayer = 0,
-                                               .layerCount = 1},
+                .image = image,
+                .viewType = vk::ImageViewType::e2D,
+                .format = swapChainImageFormat_,
+                .subresourceRange = {
+                                     .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                     .baseMipLevel = 0,
+                                     .levelCount = 1,
+                                     .baseArrayLayer = 0,
+                                     .layerCount = 1
+                },
             };
 
             SwapchainImage swapchainImage{
-                    .image = image, .imageView = {device_->getDevice(), imageViewCreateInfo}
+                .image = image, .imageView = {device_->getDevice(), imageViewCreateInfo}
             };
 
             images_.push_back(std::move(swapchainImage));
@@ -118,118 +119,122 @@ namespace yuubi {
     void Viewport::createDepthStencil() {
         depthImageFormat_ = findDepthFormat();
 
-        depthImage_ =
-                Image(&device_->allocator(), ImageCreateInfo{
-                                                     .width = swapChainExtent_.width,
-                                                     .height = swapChainExtent_.height,
-                                                     .format = depthImageFormat_,
-                                                     .tiling = vk::ImageTiling::eOptimal,
-                                                     .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment |
-                                                              vk::ImageUsageFlagBits::eSampled,
-                                                     .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
-                                             });
+        depthImage_ = Image(
+            &device_->allocator(),
+            ImageCreateInfo{
+                .width = swapChainExtent_.width,
+                .height = swapChainExtent_.height,
+                .format = depthImageFormat_,
+                .tiling = vk::ImageTiling::eOptimal,
+                .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
+                .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+            }
+        );
 
         depthImageView_ =
-                device_->createImageView(*depthImage_.getImage(), depthImageFormat_, vk::ImageAspectFlagBits::eDepth);
+            device_->createImageView(*depthImage_.getImage(), depthImageFormat_, vk::ImageAspectFlagBits::eDepth);
     }
 
     void Viewport::createDrawImage() {
-        drawImage_ =
-                Image(&device_->allocator(),
-                      ImageCreateInfo{
-                              .width = swapChainExtent_.width,
-                              .height = swapChainExtent_.height,
-                              .format = drawImageFormat_,
-                              .tiling = vk::ImageTiling::eOptimal,
-                              // TODO: check if this should be a sampled image or an input
-                              // attachment.
-                              .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
-                      });
+        drawImage_ = Image(
+            &device_->allocator(),
+            ImageCreateInfo{
+                .width = swapChainExtent_.width,
+                .height = swapChainExtent_.height,
+                .format = drawImageFormat_,
+                .tiling = vk::ImageTiling::eOptimal,
+                // TODO: check if this should be a sampled image or an input
+                // attachment.
+                .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+                .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+            }
+        );
 
         drawImageView_ =
-                device_->createImageView(*drawImage_.getImage(), drawImageFormat_, vk::ImageAspectFlagBits::eColor);
+            device_->createImageView(*drawImage_.getImage(), drawImageFormat_, vk::ImageAspectFlagBits::eColor);
     }
 
     void Viewport::createNormalImage() {
-        normalImage_ =
-                Image(&device_->allocator(),
-                      ImageCreateInfo{
-                              .width = swapChainExtent_.width,
-                              .height = swapChainExtent_.height,
-                              .format = normalImageFormat_,
-                              .tiling = vk::ImageTiling::eOptimal,
-                              // TODO: check if this should be a sampled image or an input
-                              // attachment.
-                              .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
-                      });
+        normalImage_ = Image(
+            &device_->allocator(),
+            ImageCreateInfo{
+                .width = swapChainExtent_.width,
+                .height = swapChainExtent_.height,
+                .format = normalImageFormat_,
+                .tiling = vk::ImageTiling::eOptimal,
+                // TODO: check if this should be a sampled image or an input
+                // attachment.
+                .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+                .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+            }
+        );
 
         normalImageView_ =
-                device_->createImageView(*normalImage_.getImage(), normalImageFormat_, vk::ImageAspectFlagBits::eColor);
+            device_->createImageView(*normalImage_.getImage(), normalImageFormat_, vk::ImageAspectFlagBits::eColor);
 
         device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
             vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                    .srcAccessMask = vk::AccessFlagBits2::eNone,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .oldLayout = vk::ImageLayout::eUndefined,
-                    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                    .image = *normalImage_.getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    },
+                .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                .srcAccessMask = vk::AccessFlagBits2::eNone,
+                .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .oldLayout = vk::ImageLayout::eUndefined,
+                .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .image = *normalImage_.getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers
+                },
             };
 
             const vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
             };
             commandBuffer.pipelineBarrier2(dependencyInfo);
         });
     }
     void Viewport::createAOImage() {
         // Create ao attachment resources
-        aoImage_ =
-                Image(&device_->allocator(),
-                      ImageCreateInfo{
-                              .width = swapChainExtent_.width,
-                              .height = swapChainExtent_.height,
-                              .format = aoImageFormat_,
-                              .tiling = vk::ImageTiling::eOptimal,
-                              .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                              .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
-                      });
+        aoImage_ = Image(
+            &device_->allocator(),
+            ImageCreateInfo{
+                .width = swapChainExtent_.width,
+                .height = swapChainExtent_.height,
+                .format = aoImageFormat_,
+                .tiling = vk::ImageTiling::eOptimal,
+                .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+                .properties = vk::MemoryPropertyFlagBits::eDeviceLocal
+            }
+        );
 
         aoImageView_ = device_->createImageView(
-                // TODO: is this the right aspect flag?
-                *aoImage_.getImage(), aoImageFormat_, vk::ImageAspectFlagBits::eColor
+            // TODO: is this the right aspect flag?
+            *aoImage_.getImage(), aoImageFormat_, vk::ImageAspectFlagBits::eColor
         );
 
         device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
             vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                    .srcAccessMask = vk::AccessFlagBits2::eNone,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .oldLayout = vk::ImageLayout::eUndefined,
-                    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                    .image = *aoImage_.getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    },
+                .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                .srcAccessMask = vk::AccessFlagBits2::eNone,
+                .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                .oldLayout = vk::ImageLayout::eUndefined,
+                .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .image = *aoImage_.getImage(),
+                .subresourceRange{
+                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                  .baseMipLevel = 0,
+                                  .levelCount = vk::RemainingMipLevels,
+                                  .baseArrayLayer = 0,
+                                  .layerCount = vk::RemainingArrayLayers
+                },
             };
 
             vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
+                .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
             };
             commandBuffer.pipelineBarrier2(dependencyInfo);
         });
@@ -237,37 +242,43 @@ namespace yuubi {
 
     void Viewport::createFrames() {
         for (auto& frame: frames_) {
-            frame.inFlight = vk::raii::Fence{
-                    device_->getDevice(), vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}
-            };
+            frame.inFlight =
+                vk::raii::Fence{device_->getDevice(), vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}};
             frame.imageAvailable = vk::raii::Semaphore{device_->getDevice(), vk::SemaphoreCreateInfo()};
             frame.renderFinished = vk::raii::Semaphore{device_->getDevice(), vk::SemaphoreCreateInfo()};
 
             frame.commandPool = vk::raii::CommandPool{
-                    device_->getDevice(),
-                    {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-                                   .queueFamilyIndex = device_->getQueue().familyIndex}
+                device_->getDevice(),
+                {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                               .queueFamilyIndex = device_->getQueue().familyIndex}
             };
 
             // TODO: wtf?
             vk::CommandBufferAllocateInfo allocInfo{
-                    .commandPool = *frame.commandPool,
-                    .level = vk::CommandBufferLevel::ePrimary,
-                    .commandBufferCount = 1
+                .commandPool = *frame.commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = 1
             };
             frame.commandBuffer = std::move(device_->getDevice().allocateCommandBuffers(allocInfo)[0]);
+
+            frame.timestampQueryPool = vk::raii::QueryPool(
+                device_->getDevice(),
+                vk::QueryPoolCreateInfo{
+                    .queryType = vk::QueryType::eTimestamp,
+                    .queryCount = 2,
+                }
+            );
+            frame.timestampQueryPool.reset(0, 2);
         }
     }
 
     vk::Format Viewport::findDepthFormat() const {
         return findSupportedFormat(
-                {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
-                vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment
+            {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+            vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment
         );
     }
 
     vk::Format Viewport::findSupportedFormat(
-            const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features
+        const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features
     ) const {
         for (vk::Format format: candidates) {
             auto props = device_->getPhysicalDevice().getFormatProperties(format);
@@ -314,7 +325,7 @@ namespace yuubi {
     }
 
     bool Viewport::doFrame(
-            std::function<void(const Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)> f
+        std::function<void(Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)> f
     ) {
         // Wait for GPU to finish previous work on this frame.
         device_->getDevice().waitForFences(*currentFrame().inFlight, vk::True, std::numeric_limits<uint32_t>::max());
@@ -327,11 +338,11 @@ namespace yuubi {
             // semaphore is used to synchronize commands that require this image
 
             auto [result, idx] = device_->getDevice().acquireNextImage2KHR(
-                    {.swapchain = *swapChain_,
-                     .timeout = std::numeric_limits<uint64_t>::max(),
-                     .semaphore = *currentFrame().imageAvailable,
-                     // TODO: WTF?
-                     .deviceMask = 1}
+                {.swapchain = *swapChain_,
+                 .timeout = std::numeric_limits<uint64_t>::max(),
+                 .semaphore = *currentFrame().imageAvailable,
+                 // TODO: WTF?
+                 .deviceMask = 1}
             );
             imageIndex = idx;
 
@@ -348,11 +359,11 @@ namespace yuubi {
 
         // Present this frame.
         vk::PresentInfoKHR presentInfo{
-                .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &(*currentFrame().renderFinished),
-                .swapchainCount = 1,
-                .pSwapchains = &(*swapChain_),
-                .pImageIndices = &imageIndex,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &(*currentFrame().renderFinished),
+            .swapchainCount = 1,
+            .pSwapchains = &(*swapChain_),
+            .pImageIndices = &imageIndex,
         };
 
         vk::Result presentResult;

@@ -157,7 +157,7 @@ void Application::run() {
     // Game loop based on Glenn Fiedler's "Fix Your Timestep!" blog post:
     // https://gafferongames.com/post/fix_your_timestep/
 
-    constexpr float simulationFramesPerSecond = 60.0f;
+    constexpr float simulationFramesPerSecond = 120.0f;
     constexpr float fixedTimestep = 1.0f / simulationFramesPerSecond;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> previousFrameTime =
