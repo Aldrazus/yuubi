@@ -24,8 +24,9 @@ Application* Application::instance_ = nullptr;
 Application::Application(std::string_view gltfPath) :
     window_(1600, 900, "Yuubi"), renderer_(window_, gltfPath),
     // TODO: initialize camera with aspect ratio calculated using viewport
-    camera_(glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f,
-            static_cast<float>(1600) / static_cast<float>(900)) {
+    camera_(
+        glm::vec3(2.0f, 0.0f, 2.0f), glm::vec3(0.0f), 0.0f, 0.0f, static_cast<float>(1600) / static_cast<float>(900)
+    ) {
     if (instance_ != nullptr) {
         UB_ERROR("Application already exists");
         exit(1);
@@ -50,8 +51,8 @@ bool Application::onWindowResize(WindowResizeEvent& e) {
     }
     state_.isMinimized = false;
     camera_ = yuubi::Camera(
-            camera_.getPosition(), glm::vec3(0.0f), camera_.pitch, camera_.yaw,
-            static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight())
+        camera_.getPosition(), glm::vec3(0.0f), camera_.pitch, camera_.yaw,
+        static_cast<float>(e.getWidth()) / static_cast<float>(e.getHeight())
     );
     // TODO: let renderer resize
     // renderer_.resize();
@@ -161,14 +162,14 @@ void Application::run() {
     constexpr float fixedTimestep = 1.0f / simulationFramesPerSecond;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> previousFrameTime =
-            std::chrono::high_resolution_clock::now();
+        std::chrono::high_resolution_clock::now();
 
     float accumulator = 0.0f;
 
     while (running_) {
         // 0. Manage time and frame rate.
         std::chrono::time_point<std::chrono::high_resolution_clock> currentFrameTime =
-                std::chrono::high_resolution_clock::now();
+            std::chrono::high_resolution_clock::now();
         std::chrono::duration<float> frameTime = currentFrameTime - previousFrameTime;
         previousFrameTime = currentFrameTime;
         deltaTime_ = frameTime.count();
@@ -202,7 +203,7 @@ void Application::run() {
             const auto frameTime = std::chrono::duration<float>(now - previousFrameTime).count();
             if (fixedTimestep > frameTime) {
                 std::this_thread::sleep_for(
-                        std::chrono::milliseconds(static_cast<int>((fixedTimestep - frameTime) * 1000.0))
+                    std::chrono::milliseconds(static_cast<int>((fixedTimestep - frameTime) * 1000.0))
                 );
             }
         }

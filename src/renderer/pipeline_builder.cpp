@@ -9,24 +9,24 @@ namespace yuubi {
         auto shaderCode = yuubi::readFile(filename);
 
         return vk::raii::ShaderModule(
-                device.getDevice(),
-                {.codeSize = shaderCode.size(), .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())}
+            device.getDevice(),
+            {.codeSize = shaderCode.size(), .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())}
         );
     }
 
     vk::raii::PipelineLayout createPipelineLayout(
-            const Device& device, std::span<vk::DescriptorSetLayout> layouts,
-            std::span<vk::PushConstantRange> pushConstantRanges
+        const Device& device, std::span<vk::DescriptorSetLayout> layouts,
+        std::span<vk::PushConstantRange> pushConstantRanges
     ) {
         // TODO: Use array proxy?
         return vk::raii::PipelineLayout(
-                device.getDevice(),
-                vk::PipelineLayoutCreateInfo{
-                        .setLayoutCount = static_cast<uint32_t>(layouts.size()),
-                        .pSetLayouts = layouts.data(),
-                        .pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size()),
-                        .pPushConstantRanges = pushConstantRanges.data()
-                }
+            device.getDevice(),
+            vk::PipelineLayoutCreateInfo{
+                .setLayoutCount = static_cast<uint32_t>(layouts.size()),
+                .pSetLayouts = layouts.data(),
+                .pushConstantRangeCount = static_cast<uint32_t>(pushConstantRanges.size()),
+                .pPushConstantRanges = pushConstantRanges.data()
+            }
         );
     }
 
@@ -34,36 +34,36 @@ namespace yuubi {
         vk::PipelineViewportStateCreateInfo viewportState{.viewportCount = 1, .scissorCount = 1};
 
         std::array<vk::PipelineColorBlendAttachmentState, 2> blendAttachments{
-                colorBlendAttachment_, colorBlendAttachment_
+            colorBlendAttachment_, colorBlendAttachment_
         };
         vk::PipelineColorBlendStateCreateInfo colorBlending{
-                .logicOpEnable = vk::False,
-                .attachmentCount = blendAttachments.size(),
-                .pAttachments = blendAttachments.data()
+            .logicOpEnable = vk::False,
+            .attachmentCount = blendAttachments.size(),
+            .pAttachments = blendAttachments.data()
         };
 
         std::vector<vk::DynamicState> dynamicStates = {
-                vk::DynamicState::eViewport,
-                vk::DynamicState::eScissor,
+            vk::DynamicState::eViewport,
+            vk::DynamicState::eScissor,
         };
 
         vk::PipelineDynamicStateCreateInfo dynamicState{
-                .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()
+            .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()
         };
 
         const vk::GraphicsPipelineCreateInfo pipelineInfo{
-                .pNext = &renderInfo_,
-                .stageCount = static_cast<uint32_t>(shaderStages_.size()),
-                .pStages = shaderStages_.data(),
-                .pVertexInputState = &vertexInputInfo_,
-                .pInputAssemblyState = &inputAssembly_,
-                .pViewportState = &viewportState,
-                .pRasterizationState = &rasterizer_,
-                .pMultisampleState = &multisampling_,
-                .pDepthStencilState = &depthStencil_,
-                .pColorBlendState = &colorBlending,
-                .pDynamicState = &dynamicState,
-                .layout = *pipelineLayout_,
+            .pNext = &renderInfo_,
+            .stageCount = static_cast<uint32_t>(shaderStages_.size()),
+            .pStages = shaderStages_.data(),
+            .pVertexInputState = &vertexInputInfo_,
+            .pInputAssemblyState = &inputAssembly_,
+            .pViewportState = &viewportState,
+            .pRasterizationState = &rasterizer_,
+            .pMultisampleState = &multisampling_,
+            .pDepthStencilState = &depthStencil_,
+            .pColorBlendState = &colorBlending,
+            .pDynamicState = &dynamicState,
+            .layout = *pipelineLayout_,
         };
 
         return {device.getDevice(), nullptr, pipelineInfo};
@@ -81,20 +81,16 @@ namespace yuubi {
     }
 
     PipelineBuilder& PipelineBuilder::setShaders(
-            const vk::raii::ShaderModule& vertexShader, const vk::raii::ShaderModule& fragmentShader
+        const vk::raii::ShaderModule& vertexShader, const vk::raii::ShaderModule& fragmentShader
     ) {
         shaderStages_.clear();
-        shaderStages_.push_back(
-                vk::PipelineShaderStageCreateInfo{
-                        .stage = vk::ShaderStageFlagBits::eVertex, .module = *vertexShader, .pName = "main"
-                }
-        );
+        shaderStages_.push_back(vk::PipelineShaderStageCreateInfo{
+            .stage = vk::ShaderStageFlagBits::eVertex, .module = *vertexShader, .pName = "main"
+        });
 
-        shaderStages_.push_back(
-                vk::PipelineShaderStageCreateInfo{
-                        .stage = vk::ShaderStageFlagBits::eFragment, .module = *fragmentShader, .pName = "main"
-                }
-        );
+        shaderStages_.push_back(vk::PipelineShaderStageCreateInfo{
+            .stage = vk::ShaderStageFlagBits::eFragment, .module = *fragmentShader, .pName = "main"
+        });
 
         return *this;
     }
@@ -136,15 +132,15 @@ namespace yuubi {
 
     PipelineBuilder& PipelineBuilder::enableBlendingAdditive() {
         colorBlendAttachment_ = {
-                .blendEnable = vk::True,
-                .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-                .dstColorBlendFactor = vk::BlendFactor::eOne,
-                .colorBlendOp = vk::BlendOp::eAdd,
-                .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-                .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-                .alphaBlendOp = vk::BlendOp::eAdd,
-                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-                                  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            .blendEnable = vk::True,
+            .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+            .dstColorBlendFactor = vk::BlendFactor::eOne,
+            .colorBlendOp = vk::BlendOp::eAdd,
+            .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+            .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+            .alphaBlendOp = vk::BlendOp::eAdd,
+            .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                              vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
         };
 
         return *this;
@@ -152,15 +148,15 @@ namespace yuubi {
 
     PipelineBuilder& PipelineBuilder::enableBlendingAlphaBlend() {
         colorBlendAttachment_ = {
-                .blendEnable = vk::True,
-                .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-                .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-                .colorBlendOp = vk::BlendOp::eAdd,
-                .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-                .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-                .alphaBlendOp = vk::BlendOp::eAdd,
-                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-                                  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            .blendEnable = vk::True,
+            .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+            .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+            .colorBlendOp = vk::BlendOp::eAdd,
+            .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+            .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+            .alphaBlendOp = vk::BlendOp::eAdd,
+            .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                              vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
         };
 
         return *this;
@@ -179,15 +175,15 @@ namespace yuubi {
 
     PipelineBuilder& PipelineBuilder::enableDepthTest(bool depthWriteEnable, vk::CompareOp compareOp) {
         depthStencil_ = {
-                .depthTestEnable = vk::True,
-                .depthWriteEnable = depthWriteEnable ? vk::True : vk::False,
-                .depthCompareOp = compareOp,
-                .depthBoundsTestEnable = vk::False,
-                .stencilTestEnable = vk::False,
-                .front = {},
-                .back = {},
-                .minDepthBounds = 0.f,
-                .maxDepthBounds = 1.f
+            .depthTestEnable = vk::True,
+            .depthWriteEnable = depthWriteEnable ? vk::True : vk::False,
+            .depthCompareOp = compareOp,
+            .depthBoundsTestEnable = vk::False,
+            .stencilTestEnable = vk::False,
+            .front = {},
+            .back = {},
+            .minDepthBounds = 0.f,
+            .maxDepthBounds = 1.f
         };
 
         return *this;
@@ -195,15 +191,15 @@ namespace yuubi {
 
     PipelineBuilder& PipelineBuilder::disableDepthTest() {
         depthStencil_ = {
-                .depthTestEnable = vk::False,
-                .depthWriteEnable = vk::False,
-                .depthCompareOp = vk::CompareOp::eNever,
-                .depthBoundsTestEnable = vk::False,
-                .stencilTestEnable = vk::False,
-                .front = {},
-                .back = {},
-                .minDepthBounds = 0.f,
-                .maxDepthBounds = 1.f,
+            .depthTestEnable = vk::False,
+            .depthWriteEnable = vk::False,
+            .depthCompareOp = vk::CompareOp::eNever,
+            .depthBoundsTestEnable = vk::False,
+            .stencilTestEnable = vk::False,
+            .front = {},
+            .back = {},
+            .minDepthBounds = 0.f,
+            .maxDepthBounds = 1.f,
         };
 
         return *this;
@@ -231,8 +227,8 @@ namespace yuubi {
     }
 
     PipelineBuilder& PipelineBuilder::setVertexInputInfo(
-            std::span<vk::VertexInputBindingDescription> bindingDescriptions,
-            const std::span<vk::VertexInputAttributeDescription> attributeDescriptions
+        std::span<vk::VertexInputBindingDescription> bindingDescriptions,
+        const std::span<vk::VertexInputAttributeDescription> attributeDescriptions
     ) {
         vertexInputInfo_.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
         vertexInputInfo_.pVertexBindingDescriptions = bindingDescriptions.data();

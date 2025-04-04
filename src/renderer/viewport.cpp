@@ -99,13 +99,12 @@ namespace yuubi {
                 .image = image,
                 .viewType = vk::ImageViewType::e2D,
                 .format = swapChainImageFormat_,
-                .subresourceRange = {
-                                     .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                     .baseMipLevel = 0,
-                                     .levelCount = 1,
-                                     .baseArrayLayer = 0,
-                                     .layerCount = 1
-                },
+                .subresourceRange =
+                    {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                                       .baseMipLevel = 0,
+                                       .levelCount = 1,
+                                       .baseArrayLayer = 0,
+                                       .layerCount = 1},
             };
 
             SwapchainImage swapchainImage{

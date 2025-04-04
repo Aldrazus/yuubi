@@ -12,8 +12,10 @@ namespace yuubi {
     class Buffer : NonCopyable {
     public:
         Buffer() = default;
-        Buffer(Allocator* allocator, const vk::BufferCreateInfo& createInfo,
-               const vma::AllocationCreateInfo& allocCreateInfo);
+        Buffer(
+            Allocator* allocator, const vk::BufferCreateInfo& createInfo,
+            const vma::AllocationCreateInfo& allocCreateInfo
+        );
         Buffer(Buffer&& rhs) noexcept;
         Buffer& operator=(Buffer&& rhs) noexcept;
         ~Buffer();

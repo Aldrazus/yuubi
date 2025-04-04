@@ -16,8 +16,8 @@ namespace yuubi {
         explicit Instance(const vk::raii::Context& context);
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-                VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
-                const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData
         ) {
             std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 

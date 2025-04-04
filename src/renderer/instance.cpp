@@ -6,11 +6,11 @@ namespace yuubi {
 
     Instance::Instance(const vk::raii::Context& context) {
         constexpr vk::ApplicationInfo appInfo{
-                .pApplicationName = "Yuubi",
-                .applicationVersion = vk::makeApiVersion(0, 1, 0, 0),
-                .pEngineName = "No Engine",
-                .engineVersion = vk::makeApiVersion(0, 1, 0, 0),
-                .apiVersion = vk::ApiVersion13
+            .pApplicationName = "Yuubi",
+            .applicationVersion = vk::makeApiVersion(0, 1, 0, 0),
+            .pEngineName = "No Engine",
+            .engineVersion = vk::makeApiVersion(0, 1, 0, 0),
+            .apiVersion = vk::ApiVersion13
         };
 
         uint32_t glfwExtensionCount = 0;
@@ -32,23 +32,21 @@ namespace yuubi {
         }
 
         createInfo.get<vk::DebugUtilsMessengerCreateInfoEXT>()
-                .setMessageSeverity(
-                        vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-                        vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
-                        vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-                )
-                .setMessageType(
-                        vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-                        vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-                        vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
-                )
-                .setPfnUserCallback(debugCallback);
+            .setMessageSeverity(
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError |
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+            )
+            .setMessageType(
+                vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+                vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
+            )
+            .setPfnUserCallback(debugCallback);
 
         instance_ = vk::raii::Instance{context, createInfo.get()};
 
         if (enableValidationLayers_) {
             debugMessenger_ =
-                    instance_.createDebugUtilsMessengerEXT(createInfo.get<vk::DebugUtilsMessengerCreateInfoEXT>());
+                instance_.createDebugUtilsMessengerEXT(createInfo.get<vk::DebugUtilsMessengerCreateInfoEXT>());
         }
     }
 

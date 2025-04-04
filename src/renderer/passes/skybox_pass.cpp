@@ -12,26 +12,26 @@ namespace yuubi {
         const auto fragShader = loadShader("shaders/skybox.frag.spv", *device);
 
         std::vector pushConstantRanges{
-                vk::PushConstantRange{
-                                      .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
-                                      .offset = 0,
-                                      .size = sizeof(PushConstants)
-                }
+            vk::PushConstantRange{
+                                  .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+                                  .offset = 0,
+                                  .size = sizeof(PushConstants)
+            }
         };
         pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, pushConstantRanges);
 
         PipelineBuilder builder(pipelineLayout_);
 
         pipeline_ = builder.setShaders(vertShader, fragShader)
-                            .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-                            .setPolygonMode(vk::PolygonMode::eFill)
-                            .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
-                            .setMultisamplingNone()
-                            .disableBlending()
-                            .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
-                            .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
-                            .setDepthFormat(createInfo.depthAttachmentFormat)
-                            .build(*device);
+                        .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+                        .setPolygonMode(vk::PolygonMode::eFill)
+                        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+                        .setMultisamplingNone()
+                        .disableBlending()
+                        .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
+                        .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
+                        .setDepthFormat(createInfo.depthAttachmentFormat)
+                        .build(*device);
     }
 
     SkyboxPass &SkyboxPass::operator=(SkyboxPass &&rhs) noexcept {
@@ -44,27 +44,27 @@ namespace yuubi {
     }
     void SkyboxPass::render(const RenderInfo &renderInfo) const {
         const std::array colorAttachmentInfos{
-                vk::RenderingAttachmentInfo{
-                                            .imageView = renderInfo.color.imageView,
-                                            .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                            .loadOp = vk::AttachmentLoadOp::eLoad,
-                                            .storeOp = vk::AttachmentStoreOp::eStore,
-                                            }
+            vk::RenderingAttachmentInfo{
+                                        .imageView = renderInfo.color.imageView,
+                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .loadOp = vk::AttachmentLoadOp::eLoad,
+                                        .storeOp = vk::AttachmentStoreOp::eStore,
+                                        }
         };
 
         const vk::RenderingAttachmentInfo depthAttachmentInfo{
-                .imageView = renderInfo.depth.imageView,
-                .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-                .loadOp = vk::AttachmentLoadOp::eLoad,
-                .storeOp = vk::AttachmentStoreOp::eNone,
+            .imageView = renderInfo.depth.imageView,
+            .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .loadOp = vk::AttachmentLoadOp::eLoad,
+            .storeOp = vk::AttachmentStoreOp::eNone,
         };
 
         const vk::RenderingInfo renderingInfo{
-                .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
-                .layerCount = 1,
-                .colorAttachmentCount = colorAttachmentInfos.size(),
-                .pColorAttachments = colorAttachmentInfos.data(),
-                .pDepthAttachment = &depthAttachmentInfo
+            .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
+            .layerCount = 1,
+            .colorAttachmentCount = colorAttachmentInfos.size(),
+            .pColorAttachments = colorAttachmentInfos.data(),
+            .pDepthAttachment = &depthAttachmentInfo
         };
 
         const auto &commandBuffer = renderInfo.commandBuffer;
@@ -77,30 +77,30 @@ namespace yuubi {
         // clip coordinate system where the origin is at the bottom left
         // and the y-axis points upwards.
         const vk::Viewport viewport{
-                .x = 0.0f,
-                .y = static_cast<float>(renderInfo.viewportExtent.height),
-                .width = static_cast<float>(renderInfo.viewportExtent.width),
-                .height = -static_cast<float>(renderInfo.viewportExtent.height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f
+            .x = 0.0f,
+            .y = static_cast<float>(renderInfo.viewportExtent.height),
+            .width = static_cast<float>(renderInfo.viewportExtent.width),
+            .height = -static_cast<float>(renderInfo.viewportExtent.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
         };
 
         commandBuffer.setViewport(0, {viewport});
 
         const vk::Rect2D scissor{
-                .offset = {0, 0},
-                  .extent = renderInfo.viewportExtent
+            .offset = {0, 0},
+              .extent = renderInfo.viewportExtent
         };
 
         commandBuffer.setScissor(0, {scissor});
 
         commandBuffer.bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {renderInfo.descriptorSets}, {}
+            vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {renderInfo.descriptorSets}, {}
         );
 
         commandBuffer.pushConstants<PushConstants>(
-                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
-                renderInfo.pushConstants
+            *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+            renderInfo.pushConstants
         );
 
         commandBuffer.draw(36, 1, 0, 0);

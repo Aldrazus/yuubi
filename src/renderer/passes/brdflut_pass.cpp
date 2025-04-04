@@ -15,14 +15,14 @@ namespace yuubi {
 
         std::vector colorAttachmentFormats{createInfo.colorAttachmentFormat};
         pipeline_ = builder.setShaders(vertShader, fragShader)
-                            .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-                            .setPolygonMode(vk::PolygonMode::eFill)
-                            .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
-                            .setMultisamplingNone()
-                            .disableBlending()
-                            .disableDepthTest()
-                            .setColorAttachmentFormats(colorAttachmentFormats)
-                            .build(*device);
+                        .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+                        .setPolygonMode(vk::PolygonMode::eFill)
+                        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+                        .setMultisamplingNone()
+                        .disableBlending()
+                        .disableDepthTest()
+                        .setColorAttachmentFormats(colorAttachmentFormats)
+                        .build(*device);
     }
 
     BRDFLUTPass &BRDFLUTPass::operator=(BRDFLUTPass &&rhs) noexcept {
@@ -34,19 +34,19 @@ namespace yuubi {
     }
     void BRDFLUTPass::render(const RenderInfo &renderInfo) const {
         const std::array colorAttachmentInfos{
-                vk::RenderingAttachmentInfo{
-                                            .imageView = renderInfo.color.imageView,
-                                            .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                            .loadOp = vk::AttachmentLoadOp::eClear,
-                                            .storeOp = vk::AttachmentStoreOp::eStore,
-                                            .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}
-                }
+            vk::RenderingAttachmentInfo{
+                                        .imageView = renderInfo.color.imageView,
+                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .loadOp = vk::AttachmentLoadOp::eClear,
+                                        .storeOp = vk::AttachmentStoreOp::eStore,
+                                        .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}
+            }
         };
         const vk::RenderingInfo renderingInfo{
-                .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
-                .layerCount = 1,
-                .colorAttachmentCount = colorAttachmentInfos.size(),
-                .pColorAttachments = colorAttachmentInfos.data(),
+            .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
+            .layerCount = 1,
+            .colorAttachmentCount = colorAttachmentInfos.size(),
+            .pColorAttachments = colorAttachmentInfos.data(),
         };
 
         const auto &commandBuffer = renderInfo.commandBuffer;
@@ -55,18 +55,18 @@ namespace yuubi {
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline_);
 
         const vk::Viewport viewport{
-                .x = 0.0f,
-                .y = static_cast<float>(renderInfo.viewportExtent.height),
-                .width = static_cast<float>(renderInfo.viewportExtent.width),
-                .height = -static_cast<float>(renderInfo.viewportExtent.height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f
+            .x = 0.0f,
+            .y = static_cast<float>(renderInfo.viewportExtent.height),
+            .width = static_cast<float>(renderInfo.viewportExtent.width),
+            .height = -static_cast<float>(renderInfo.viewportExtent.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
         };
         commandBuffer.setViewport(0, {viewport});
 
         const vk::Rect2D scissor{
-                .offset = {0, 0},
-                  .extent = renderInfo.viewportExtent
+            .offset = {0, 0},
+              .extent = renderInfo.viewportExtent
         };
 
         commandBuffer.setScissor(0, {scissor});

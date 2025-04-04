@@ -16,8 +16,8 @@ namespace yuubi {
     public:
         GLTFAsset() = default;
         GLTFAsset(
-                Device& device, TextureManager& textureManager, MaterialManager& materialManager,
-                const std::filesystem::path& filePath
+            Device& device, TextureManager& textureManager, MaterialManager& materialManager,
+            const std::filesystem::path& filePath
         );
 
         // TODO: add move constructor/assignment operator

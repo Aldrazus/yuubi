@@ -11,8 +11,8 @@ namespace yuubi {
         explicit DescriptorLayoutBuilder(const std::shared_ptr<Device>& device);
         DescriptorLayoutBuilder& addBinding(const vk::DescriptorSetLayoutBinding& binding);
         [[nodiscard]] vk::raii::DescriptorSetLayout build(
-                const vk::DescriptorSetLayoutBindingFlagsCreateInfo& bindingFlags,
-                const vk::DescriptorSetLayoutCreateFlags& layoutFlags
+            const vk::DescriptorSetLayoutBindingFlagsCreateInfo& bindingFlags,
+            const vk::DescriptorSetLayoutCreateFlags& layoutFlags
         ) const;
 
     private:

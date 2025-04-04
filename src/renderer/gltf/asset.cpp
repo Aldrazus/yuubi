@@ -56,8 +56,8 @@ namespace {
 
     // PERF: Load images in parallel with stb_image.
     std::optional<yuubi::Image> loadImage(
-            yuubi::Device& device, const fastgltf::Asset& asset, const fastgltf::Image& image,
-            const std::filesystem::path& assetDir, bool srgb
+        yuubi::Device& device, const fastgltf::Asset& asset, const fastgltf::Image& image,
+        const std::filesystem::path& assetDir, bool srgb
     ) {
         std::optional<yuubi::Image> newImage;
 
@@ -66,77 +66,74 @@ namespace {
         // Mostly taken from
         // https://github.com/spnda/fastgltf/blob/main/examples/gl_viewer/gl_viewer.cpp
         std::visit(
-                fastgltf::visitor{
-                        [](auto&) {},
-                        [&](const fastgltf::sources::URI& filePath) {
-                            assert(filePath.fileByteOffset == 0); // Byte offsets are unsupported.
-                            assert(filePath.uri.isLocalPath()); // Only local files are supported.
+            fastgltf::visitor{
+                [](auto&) {},
+                [&](const fastgltf::sources::URI& filePath) {
+                    assert(filePath.fileByteOffset == 0); // Byte offsets are unsupported.
+                    assert(filePath.uri.isLocalPath()); // Only local files are supported.
 
-                            const std::string pathString = (assetDir / filePath.uri.fspath()).string();
-                            unsigned char* data = stbi_load(pathString.c_str(), &width, &height, &numChannels, 0);
-                            if (data != nullptr) {
-                                newImage = createImageFromData(
-                                        device, {.pixels = data,
-                                                 .width = static_cast<uint32_t>(width),
-                                                 .height = static_cast<uint32_t>(height),
-                                                 .numChannels = static_cast<uint32_t>(numChannels),
-                                                 .format = getImageFormat(numChannels, srgb)}
+                    const std::string pathString = (assetDir / filePath.uri.fspath()).string();
+                    unsigned char* data = stbi_load(pathString.c_str(), &width, &height, &numChannels, 0);
+                    if (data != nullptr) {
+                        newImage = createImageFromData(
+                            device, {.pixels = data,
+                                     .width = static_cast<uint32_t>(width),
+                                     .height = static_cast<uint32_t>(height),
+                                     .numChannels = static_cast<uint32_t>(numChannels),
+                                     .format = getImageFormat(numChannels, srgb)}
+                        );
+
+                        stbi_image_free(data);
+                    }
+                },
+                [&](const fastgltf::sources::Array& vector) {
+                    unsigned char* data = stbi_load_from_memory(
+                        reinterpret_cast<const unsigned char*>(vector.bytes.data()),
+                        static_cast<int>(vector.bytes.size()), &width, &height, &numChannels, 0
+                    );
+
+                    if (data != nullptr) {
+                        newImage = createImageFromData(
+                            device, {.pixels = data,
+                                     .width = static_cast<uint32_t>(width),
+                                     .height = static_cast<uint32_t>(height),
+                                     .numChannels = 4,
+                                     .format = getImageFormat(numChannels, srgb)}
+                        );
+
+                        stbi_image_free(data);
+                    }
+                },
+                [&](const fastgltf::sources::BufferView& view) {
+                    auto& bufferView = asset.bufferViews[view.bufferViewIndex];
+                    auto& buffer = asset.buffers[bufferView.bufferIndex];
+
+                    std::visit(
+                        fastgltf::visitor{
+                            [](auto& arg) {},
+                            [&](const fastgltf::sources::Array& vector) {
+                                unsigned char* data = stbi_load_from_memory(
+                                    reinterpret_cast<const unsigned char*>(vector.bytes.data() + bufferView.byteOffset),
+                                    static_cast<int>(bufferView.byteLength), &width, &height, &numChannels, 4
                                 );
-
-                                stbi_image_free(data);
-                            }
-                        },
-                        [&](const fastgltf::sources::Array& vector) {
-                            unsigned char* data = stbi_load_from_memory(
-                                    reinterpret_cast<const unsigned char*>(vector.bytes.data()),
-                                    static_cast<int>(vector.bytes.size()), &width, &height, &numChannels, 0
-                            );
-
-                            if (data != nullptr) {
-                                newImage = createImageFromData(
+                                if (data != nullptr) {
+                                    newImage = createImageFromData(
                                         device, {.pixels = data,
                                                  .width = static_cast<uint32_t>(width),
                                                  .height = static_cast<uint32_t>(height),
                                                  .numChannels = 4,
                                                  .format = getImageFormat(numChannels, srgb)}
-                                );
+                                    );
 
-                                stbi_image_free(data);
+                                    stbi_image_free(data);
+                                }
                             }
                         },
-                        [&](const fastgltf::sources::BufferView& view) {
-                            auto& bufferView = asset.bufferViews[view.bufferViewIndex];
-                            auto& buffer = asset.buffers[bufferView.bufferIndex];
-
-                            std::visit(
-                                    fastgltf::visitor{
-                                            [](auto& arg) {},
-                                            [&](const fastgltf::sources::Array& vector) {
-                                                unsigned char* data = stbi_load_from_memory(
-                                                        reinterpret_cast<const unsigned char*>(
-                                                                vector.bytes.data() + bufferView.byteOffset
-                                                        ),
-                                                        static_cast<int>(bufferView.byteLength), &width, &height,
-                                                        &numChannels, 4
-                                                );
-                                                if (data != nullptr) {
-                                                    newImage = createImageFromData(
-                                                            device, {.pixels = data,
-                                                                     .width = static_cast<uint32_t>(width),
-                                                                     .height = static_cast<uint32_t>(height),
-                                                                     .numChannels = 4,
-                                                                     .format = getImageFormat(numChannels, srgb)}
-                                                    );
-
-                                                    stbi_image_free(data);
-                                                }
-                                            }
-                                    },
-                                    buffer.data
-                            );
-                        },
+                        buffer.data
+                    );
                 },
-                image.data
+            },
+            image.data
         );
 
         return newImage;
@@ -168,8 +165,8 @@ namespace {
 namespace yuubi {
 
     GLTFAsset::GLTFAsset(
-            Device& device, TextureManager& textureManager, MaterialManager& materialManager,
-            const std::filesystem::path& filePath
+        Device& device, TextureManager& textureManager, MaterialManager& materialManager,
+        const std::filesystem::path& filePath
     ) {
         UB_INFO("Loading GLTF file: {}", filePath.string());
 
@@ -203,39 +200,36 @@ namespace yuubi {
             // Create image.
             const auto& imageData = imageDatas[i];
             auto image = createImageFromData(
-                    device,
-                    ImageData{
-                            .pixels = imageData.data(),
-                            .width = imageData.width(),
-                            .height = imageData.height(),
-                            .numChannels = imageData.numChannels(),
-                            .format = imageData.format()
-                    }
+                device,
+                ImageData{
+                    .pixels = imageData.data(),
+                    .width = imageData.width(),
+                    .height = imageData.height(),
+                    .numChannels = imageData.numChannels(),
+                    .format = imageData.format()
+                }
             );
 
             // Create image view.
             auto imageView = device.createImageView(
-                    *image.getImage(), image.getImageFormat(), vk::ImageAspectFlagBits::eColor, image.getMipLevels()
+                *image.getImage(), image.getImageFormat(), vk::ImageAspectFlagBits::eColor, image.getMipLevels()
             );
 
             // Create sampler.
             const auto& gltfSampler = asset.samplers.at(fastgltfTexture.samplerIndex.value());
             auto [minFilter, minMipmapMode] =
-                    getSamplerFilterInfo(gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
+                getSamplerFilterInfo(gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
             auto [magFilter, _] = getSamplerFilterInfo(gltfSampler.magFilter.value_or(fastgltf::Filter::Nearest));
 
-            auto sampler = device.getDevice().createSampler(
-                    vk::SamplerCreateInfo{
-                            .magFilter = magFilter,
-                            .minFilter = minFilter,
-                            .mipmapMode = minMipmapMode,
-                            .anisotropyEnable = vk::True,
-                            .maxAnisotropy =
-                                    device.getPhysicalDevice().getProperties2().properties.limits.maxSamplerAnisotropy,
-                            .minLod = 0,
-                            .maxLod = static_cast<float>(image.getMipLevels()),
-                    }
-            );
+            auto sampler = device.getDevice().createSampler(vk::SamplerCreateInfo{
+                .magFilter = magFilter,
+                .minFilter = minFilter,
+                .mipmapMode = minMipmapMode,
+                .anisotropyEnable = vk::True,
+                .maxAnisotropy = device.getPhysicalDevice().getProperties2().properties.limits.maxSamplerAnisotropy,
+                .minLod = 0,
+                .maxLod = static_cast<float>(image.getMipLevels()),
+            });
 
             auto texture = std::make_shared<Texture>(std::move(image), std::move(imageView), std::move(sampler));
             textureManager.addResource(texture);
@@ -244,48 +238,43 @@ namespace yuubi {
 
         UB_INFO("Loading materials...");
         auto materials =
-                asset.materials | std::views::transform([](const fastgltf::Material& fastgltfMaterial) {
-                    // TODO: get more texture data
+            asset.materials | std::views::transform([](const fastgltf::Material& fastgltfMaterial) {
+                // TODO: get more texture data
 
-                    auto getTextureIndex = [](const std::optional<fastgltf::TextureInfo>& textureInfo) -> uint32_t {
-                        if (!textureInfo.has_value()) {
-                            return 0;
-                        }
+                auto getTextureIndex = [](const std::optional<fastgltf::TextureInfo>& textureInfo) -> uint32_t {
+                    if (!textureInfo.has_value()) {
+                        return 0;
+                    }
 
-                        return textureInfo->textureIndex + 1;
-                    };
+                    return textureInfo->textureIndex + 1;
+                };
 
-                    auto normalTextureIndex =
-                            fastgltfMaterial.normalTexture
-                                    .transform([](const auto& texture) { return texture.textureIndex; })
-                                    .value_or(-1) +
-                            1;
+                auto normalTextureIndex =
+                    fastgltfMaterial.normalTexture.transform([](const auto& texture) { return texture.textureIndex; }
+                    ).value_or(-1) +
+                    1;
 
-                    auto normalScale =
-                            fastgltfMaterial.normalTexture.transform([](const auto& texture) { return texture.scale; }
-                            ).value_or(1);
+                auto normalScale =
+                    fastgltfMaterial.normalTexture.transform([](const auto& texture) { return texture.scale; }
+                    ).value_or(1);
 
-                    // PERF: Ignore alphaCutoff in other modes.
-                    auto alphaCutoff = fastgltfMaterial.alphaMode == fastgltf::AlphaMode::Mask
-                                               ? fastgltfMaterial.alphaCutoff
-                                               : 1.0;
+                // PERF: Ignore alphaCutoff in other modes.
+                auto alphaCutoff =
+                    fastgltfMaterial.alphaMode == fastgltf::AlphaMode::Mask ? fastgltfMaterial.alphaCutoff : 1.0;
 
-                    return std::make_shared<yuubi::MaterialData>(
-                            normalTextureIndex, normalScale,
+                return std::make_shared<yuubi::MaterialData>(
+                    normalTextureIndex, normalScale,
 
-                            getTextureIndex(fastgltfMaterial.pbrData.baseColorTexture), 0,
-                            glm::vec4{
-                                    fastgltfMaterial.pbrData.baseColorFactor.x(),
-                                    fastgltfMaterial.pbrData.baseColorFactor.y(),
-                                    fastgltfMaterial.pbrData.baseColorFactor.z(),
-                                    fastgltfMaterial.pbrData.baseColorFactor.w()
-                            },
+                    getTextureIndex(fastgltfMaterial.pbrData.baseColorTexture), 0,
+                    glm::vec4{
+                        fastgltfMaterial.pbrData.baseColorFactor.x(), fastgltfMaterial.pbrData.baseColorFactor.y(),
+                        fastgltfMaterial.pbrData.baseColorFactor.z(), fastgltfMaterial.pbrData.baseColorFactor.w()
+                    },
 
-                            getTextureIndex(fastgltfMaterial.pbrData.metallicRoughnessTexture),
-                            fastgltfMaterial.pbrData.metallicFactor, fastgltfMaterial.pbrData.roughnessFactor,
-                            alphaCutoff
-                    );
-                });
+                    getTextureIndex(fastgltfMaterial.pbrData.metallicRoughnessTexture),
+                    fastgltfMaterial.pbrData.metallicFactor, fastgltfMaterial.pbrData.roughnessFactor, alphaCutoff
+                );
+            });
 
         for (auto&& material: materials) {
             materialManager.addResource(material);
@@ -317,8 +306,8 @@ namespace yuubi {
 
             for (auto&& primitive: mesh.primitives) {
                 yuubi::GeoSurface newPrimitive{
-                        .startIndex = static_cast<uint32_t>(indices.size()),
-                        .count = static_cast<uint32_t>(asset.accessors[primitive.indicesAccessor.value()].count)
+                    .startIndex = static_cast<uint32_t>(indices.size()),
+                    .count = static_cast<uint32_t>(asset.accessors[primitive.indicesAccessor.value()].count)
                 };
 
                 size_t initial_vertex = vertices.size();
@@ -341,16 +330,16 @@ namespace yuubi {
                     vertices.resize(vertices.size() + positionAccessor.count);
 
                     fastgltf::iterateAccessorWithIndex<glm::vec3>(
-                            asset, positionAccessor,
-                            [&](glm::vec3 vertex, size_t index) {
-                                vertices[initial_vertex + index] = yuubi::Vertex{
-                                        .position = vertex,
-                                        .uv_x = 0,
-                                        .normal = {1.0f, 0.0f, 0.0f},
-                                        .uv_y = 0,
-                                        .color = glm::vec4{1.0f},
-                                };
-                            }
+                        asset, positionAccessor,
+                        [&](glm::vec3 vertex, size_t index) {
+                            vertices[initial_vertex + index] = yuubi::Vertex{
+                                .position = vertex,
+                                .uv_x = 0,
+                                .normal = {1.0f, 0.0f, 0.0f},
+                                .uv_y = 0,
+                                .color = glm::vec4{1.0f},
+                            };
+                        }
                     );
                 }
 
@@ -359,10 +348,8 @@ namespace yuubi {
                     const auto* normalIter = primitive.findAttribute("NORMAL");
                     if (normalIter != primitive.attributes.end()) {
                         fastgltf::iterateAccessorWithIndex<glm::vec3>(
-                                asset, asset.accessors[(*normalIter).accessorIndex],
-                                [&](glm::vec3 normal, size_t index) {
-                                    vertices[initial_vertex + index].normal = normal;
-                                }
+                            asset, asset.accessors[(*normalIter).accessorIndex],
+                            [&](glm::vec3 normal, size_t index) { vertices[initial_vertex + index].normal = normal; }
                         );
                     }
                 }
@@ -373,11 +360,11 @@ namespace yuubi {
                     const auto* texCoordIter = primitive.findAttribute("TEXCOORD_0");
                     if (texCoordIter != primitive.attributes.end()) {
                         fastgltf::iterateAccessorWithIndex<glm::vec2>(
-                                asset, asset.accessors[(*texCoordIter).accessorIndex],
-                                [&](glm::vec2 uv, size_t index) {
-                                    vertices[initial_vertex + index].uv_x = uv.x;
-                                    vertices[initial_vertex + index].uv_y = uv.y;
-                                }
+                            asset, asset.accessors[(*texCoordIter).accessorIndex],
+                            [&](glm::vec2 uv, size_t index) {
+                                vertices[initial_vertex + index].uv_x = uv.x;
+                                vertices[initial_vertex + index].uv_y = uv.y;
+                            }
                         );
                     }
                 }
@@ -387,8 +374,8 @@ namespace yuubi {
                     const auto* colorIter = primitive.findAttribute("COLOR_0");
                     if (colorIter != primitive.attributes.end()) {
                         fastgltf::iterateAccessorWithIndex<glm::vec4>(
-                                asset, asset.accessors[(*colorIter).accessorIndex],
-                                [&](glm::vec4 color, size_t index) { vertices[initial_vertex + index].color = color; }
+                            asset, asset.accessors[(*colorIter).accessorIndex],
+                            [&](glm::vec4 color, size_t index) { vertices[initial_vertex + index].color = color; }
                         );
                     }
                 }
@@ -398,10 +385,8 @@ namespace yuubi {
                     const auto* tangentIter = primitive.findAttribute("TANGENT");
                     if (tangentIter != primitive.attributes.end()) {
                         fastgltf::iterateAccessorWithIndex<glm::vec4>(
-                                asset, asset.accessors[(*tangentIter).accessorIndex],
-                                [&](glm::vec4 tangent, size_t index) {
-                                    vertices[initial_vertex + index].tangent = tangent;
-                                }
+                            asset, asset.accessors[(*tangentIter).accessorIndex],
+                            [&](glm::vec4 tangent, size_t index) { vertices[initial_vertex + index].tangent = tangent; }
                         );
                         hasTangents = true;
                     }
@@ -410,8 +395,8 @@ namespace yuubi {
                 // Load material index
                 newPrimitive.materialIndex = primitive.materialIndex.value_or(0);
                 newPrimitive.passType = transparentMaterialIndices.contains(newPrimitive.materialIndex)
-                                                ? MaterialPass::Transparent
-                                                : MaterialPass::Opaque;
+                                            ? MaterialPass::Transparent
+                                            : MaterialPass::Opaque;
 
                 primitives.push_back(newPrimitive);
             }
@@ -441,28 +426,27 @@ namespace yuubi {
             nodes_[node.name.c_str()] = newNode;
 
             std::visit(
-                    fastgltf::visitor{
-                            [&](fastgltf::math::fmat4x4 matrix) {
-                                std::memcpy(&newNode->localTransform, matrix.data(), sizeof(matrix));
-                            },
-                            [&](fastgltf::TRS transform) {
-                                glm::vec3 translation{
-                                        transform.translation[0], transform.translation[1], transform.translation[2]
-                                };
-                                glm::quat rotation{
-                                        transform.rotation[3], transform.rotation[0], transform.rotation[1],
-                                        transform.rotation[2]
-                                };
-                                glm::vec3 scale{transform.scale[0], transform.scale[1], transform.scale[2]};
-
-                                glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), translation);
-                                glm::mat4 rotationMatrix = glm::toMat4(rotation);
-                                glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
-
-                                newNode->localTransform = translationMatrix * rotationMatrix * scaleMatrix;
-                            }
+                fastgltf::visitor{
+                    [&](fastgltf::math::fmat4x4 matrix) {
+                        std::memcpy(&newNode->localTransform, matrix.data(), sizeof(matrix));
                     },
-                    node.transform
+                    [&](fastgltf::TRS transform) {
+                        glm::vec3 translation{
+                            transform.translation[0], transform.translation[1], transform.translation[2]
+                        };
+                        glm::quat rotation{
+                            transform.rotation[3], transform.rotation[0], transform.rotation[1], transform.rotation[2]
+                        };
+                        glm::vec3 scale{transform.scale[0], transform.scale[1], transform.scale[2]};
+
+                        glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), translation);
+                        glm::mat4 rotationMatrix = glm::toMat4(rotation);
+                        glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
+
+                        newNode->localTransform = translationMatrix * rotationMatrix * scaleMatrix;
+                    }
+                },
+                node.transform
             );
         }
 

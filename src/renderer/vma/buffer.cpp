@@ -5,29 +5,27 @@
 namespace yuubi {
 
     Buffer::Buffer(
-            Allocator* allocator, const vk::BufferCreateInfo& createInfo,
-            const vma::AllocationCreateInfo& allocCreateInfo
+        Allocator* allocator, const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocCreateInfo
     ) : allocator_(allocator) {
         // Create GPU buffer.
         auto [buffer, allocation] =
-                allocator_->getAllocator().createBuffer(createInfo, allocCreateInfo, allocationInfo_);
+            allocator_->getAllocator().createBuffer(createInfo, allocCreateInfo, allocationInfo_);
 
         buffer_ = vk::raii::Buffer(allocator_->getDevice(), buffer);
         allocation_ = allocation;
 
         // Create staging buffer.
         vk::BufferCreateInfo stagingBufferCreateInfo{
-                .pNext = nullptr, .size = createInfo.size, .usage = vk::BufferUsageFlagBits::eTransferSrc
+            .pNext = nullptr, .size = createInfo.size, .usage = vk::BufferUsageFlagBits::eTransferSrc
         };
 
         vma::AllocationCreateInfo stagingBufferAllocCreateInfo{
-                .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite |
-                         vma::AllocationCreateFlagBits::eMapped,
-                .usage = vma::MemoryUsage::eAuto
+            .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped,
+            .usage = vma::MemoryUsage::eAuto
         };
 
         auto [stagingBuffer, stagingAllocation] = allocator_->getAllocator().createBuffer(
-                stagingBufferCreateInfo, stagingBufferAllocCreateInfo, stagingBufferAllocationInfo_
+            stagingBufferCreateInfo, stagingBufferAllocCreateInfo, stagingBufferAllocationInfo_
         );
 
         stagingBuffer_ = vk::raii::Buffer(allocator_->getDevice(), stagingBuffer);

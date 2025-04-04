@@ -4,9 +4,9 @@
 
 namespace yuubi {
 
-struct RenderAttachment {
-    vk::Image image;
-    vk::ImageView imageView;
-};
+    struct RenderAttachment {
+        vk::Image image;
+        vk::ImageView imageView;
+    };
 
 }

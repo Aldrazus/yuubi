@@ -7,97 +7,90 @@
 
 namespace yuubi {
 
-AOPass::AOPass(const CreateInfo& createInfo) {
-    auto device = createInfo.device;
+    AOPass::AOPass(const CreateInfo& createInfo) {
+        auto device = createInfo.device;
 
-    auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device);
-    auto fragShader = loadShader("shaders/ssao.frag.spv", *device);
+        auto vertShader = loadShader("shaders/screen_quad.vert.spv", *device);
+        auto fragShader = loadShader("shaders/ssao.frag.spv", *device);
 
-    pipelineLayout_ = createPipelineLayout(
-        *device, createInfo.descriptorSetLayouts, createInfo.pushConstantRanges
-    );
+        pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, createInfo.pushConstantRanges);
 
-    PipelineBuilder builder(pipelineLayout_);
-    pipeline_ =
-        builder.setShaders(vertShader, fragShader)
-            .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-            .setPolygonMode(vk::PolygonMode::eFill)
-            .setCullMode(
-                vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise
-            )
-            .setMultisamplingNone()
-            .disableBlending()
-            .disableDepthTest()
-            .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
-            .build(*device);
-}
-
-AOPass& AOPass::operator=(AOPass&& rhs) noexcept {
-    if (this != &rhs) {
-        std::swap(pipeline_, rhs.pipeline_);
-        std::swap(pipelineLayout_, rhs.pipelineLayout_);
+        PipelineBuilder builder(pipelineLayout_);
+        pipeline_ = builder.setShaders(vertShader, fragShader)
+                        .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+                        .setPolygonMode(vk::PolygonMode::eFill)
+                        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+                        .setMultisamplingNone()
+                        .disableBlending()
+                        .disableDepthTest()
+                        .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
+                        .build(*device);
     }
-    return *this;
-}
 
-void AOPass::render(const RenderInfo& renderInfo) {
-    std::array<vk::RenderingAttachmentInfo, 1> colorAttachmentInfos{
-        vk::RenderingAttachmentInfo{
-                                    .imageView = renderInfo.color.imageView,
-                                    .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                    .loadOp = vk::AttachmentLoadOp::eClear,
-                                    .storeOp = vk::AttachmentStoreOp::eStore,
-                                    .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}},
-    };
+    AOPass& AOPass::operator=(AOPass&& rhs) noexcept {
+        if (this != &rhs) {
+            std::swap(pipeline_, rhs.pipeline_);
+            std::swap(pipelineLayout_, rhs.pipelineLayout_);
+        }
+        return *this;
+    }
 
-    vk::RenderingInfo renderingInfo{
-        .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
-        .layerCount = 1,
-        .colorAttachmentCount = colorAttachmentInfos.size(),
-        .pColorAttachments = colorAttachmentInfos.data(),
-    };
+    void AOPass::render(const RenderInfo& renderInfo) {
+        std::array<vk::RenderingAttachmentInfo, 1> colorAttachmentInfos{
+            vk::RenderingAttachmentInfo{
+                                        .imageView = renderInfo.color.imageView,
+                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .loadOp = vk::AttachmentLoadOp::eClear,
+                                        .storeOp = vk::AttachmentStoreOp::eStore,
+                                        .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}
+            },
+        };
 
-    const auto& commandBuffer = renderInfo.commandBuffer;
+        vk::RenderingInfo renderingInfo{
+            .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
+            .layerCount = 1,
+            .colorAttachmentCount = colorAttachmentInfos.size(),
+            .pColorAttachments = colorAttachmentInfos.data(),
+        };
 
-    commandBuffer.beginRendering(renderingInfo);
+        const auto& commandBuffer = renderInfo.commandBuffer;
 
-    commandBuffer.bindPipeline(
-        vk::PipelineBindPoint::eGraphics, *pipeline_
-    );
+        commandBuffer.beginRendering(renderingInfo);
 
-    // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
-    // clip coordinate system where the origin is at the bottom left
-    // and the y-axis points upwards.
-    vk::Viewport viewport{
-        .x = 0.0f,
-        .y = static_cast<float>(renderInfo.viewportExtent.height),
-        .width = static_cast<float>(renderInfo.viewportExtent.width),
-        .height = -static_cast<float>(renderInfo.viewportExtent.height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f
-    };
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline_);
 
-    commandBuffer.setViewport(0, {viewport});
+        // NOTE: Viewport is flipped vertically to match OpenGL/GLM's
+        // clip coordinate system where the origin is at the bottom left
+        // and the y-axis points upwards.
+        vk::Viewport viewport{
+            .x = 0.0f,
+            .y = static_cast<float>(renderInfo.viewportExtent.height),
+            .width = static_cast<float>(renderInfo.viewportExtent.width),
+            .height = -static_cast<float>(renderInfo.viewportExtent.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
+        };
 
-    vk::Rect2D scissor{
-        .offset = {0, 0},
-          .extent = renderInfo.viewportExtent
-    };
+        commandBuffer.setViewport(0, {viewport});
 
-    commandBuffer.setScissor(0, {scissor});
+        vk::Rect2D scissor{
+            .offset = {0, 0},
+              .extent = renderInfo.viewportExtent
+        };
 
-    commandBuffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0,
-        {renderInfo.descriptorSets}, {}
-    );
+        commandBuffer.setScissor(0, {scissor});
 
-    commandBuffer.pushConstants<PushConstants>(*pipelineLayout_, vk::ShaderStageFlagBits::eFragment, 0, {
-        renderInfo.pushConstants
-    });
+        commandBuffer.bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {renderInfo.descriptorSets}, {}
+        );
 
-    commandBuffer.draw(3, 1, 0, 0);
+        commandBuffer.pushConstants<PushConstants>(
+            *pipelineLayout_, vk::ShaderStageFlagBits::eFragment, 0, {renderInfo.pushConstants}
+        );
 
-    commandBuffer.endRendering();
-}
+        commandBuffer.draw(3, 1, 0, 0);
+
+        commandBuffer.endRendering();
+    }
 
 }

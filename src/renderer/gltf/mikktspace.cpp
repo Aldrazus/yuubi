@@ -44,8 +44,7 @@ namespace {
     }
 
     void setTSSpaceBasic(
-            const SMikkTSpaceContext* context, const float fvTangent[], const float fSign, const int iFace,
-            const int iVert
+        const SMikkTSpaceContext* context, const float fvTangent[], const float fSign, const int iFace, const int iVert
     ) {
         yuubi::MeshData* mesh = static_cast<yuubi::MeshData*>(context->m_pUserData);
         const auto index = mesh->indices[iFace * 3 + iVert];
@@ -54,12 +53,12 @@ namespace {
     }
 
     SMikkTSpaceInterface interface{
-            .m_getNumFaces = getNumFaces,
-            .m_getNumVerticesOfFace = getNumVerticesOfFace,
-            .m_getPosition = getPosition,
-            .m_getNormal = getNormal,
-            .m_getTexCoord = getTexCoord,
-            .m_setTSpaceBasic = setTSSpaceBasic
+        .m_getNumFaces = getNumFaces,
+        .m_getNumVerticesOfFace = getNumVerticesOfFace,
+        .m_getPosition = getPosition,
+        .m_getNormal = getNormal,
+        .m_getTexCoord = getTexCoord,
+        .m_setTSpaceBasic = setTSSpaceBasic
     };
 
 }

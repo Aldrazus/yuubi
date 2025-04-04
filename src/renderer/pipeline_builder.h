@@ -12,8 +12,8 @@ namespace yuubi {
 
     // Consider moving to device.h
     vk::raii::PipelineLayout createPipelineLayout(
-            const Device& device, std::span<vk::DescriptorSetLayout> layouts,
-            std::span<vk::PushConstantRange> pushConstantRanges
+        const Device& device, std::span<vk::DescriptorSetLayout> layouts,
+        std::span<vk::PushConstantRange> pushConstantRanges
     );
 
     class PipelineBuilder {
@@ -24,7 +24,7 @@ namespace yuubi {
         vk::raii::Pipeline build(const Device& device);
         void clear();
         PipelineBuilder& setShaders(
-                const vk::raii::ShaderModule& vertexShader, const vk::raii::ShaderModule& fragmentShader
+            const vk::raii::ShaderModule& vertexShader, const vk::raii::ShaderModule& fragmentShader
         );
         PipelineBuilder& setInputTopology(vk::PrimitiveTopology topology);
         PipelineBuilder& setPolygonMode(vk::PolygonMode mode);
@@ -39,8 +39,8 @@ namespace yuubi {
         PipelineBuilder& disableDepthTest();
         PipelineBuilder& setDepthTest(bool enable);
         PipelineBuilder& setVertexInputInfo(
-                std::span<vk::VertexInputBindingDescription> bindingDescriptions,
-                std::span<vk::VertexInputAttributeDescription> attributeDescriptions
+            std::span<vk::VertexInputBindingDescription> bindingDescriptions,
+            std::span<vk::VertexInputAttributeDescription> attributeDescriptions
         );
         PipelineBuilder& setViewMask(uint32_t viewMask);
 

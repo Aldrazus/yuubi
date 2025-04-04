@@ -28,54 +28,51 @@ namespace {
     }
 
     yuubi::StbImageData loadImageData(
-            const fastgltf::Asset& asset, const fastgltf::Image& image, const std::filesystem::path& assetDir, bool srgb
+        const fastgltf::Asset& asset, const fastgltf::Image& image, const std::filesystem::path& assetDir, bool srgb
     ) {
         yuubi::StbImageData data;
         // Mostly taken from
         // https://github.com/spnda/fastgltf/blob/main/examples/gl_viewer/gl_viewer.cpp
         std::visit(
-                fastgltf::visitor{
-                        [](auto&) {},
-                        [&assetDir, srgb, &data](const fastgltf::sources::URI& filePath) {
-                            assert(filePath.fileByteOffset == 0); // Byte offsets are unsupported.
-                            assert(filePath.uri.isLocalPath());
-                            const std::string pathString = (assetDir / filePath.uri.fspath()).string();
-                            data = yuubi::StbImageData(pathString, srgb);
-                        },
-                        [srgb, &data](fastgltf::sources::Array& vector) {
-                            const std::span bytes{
-                                    reinterpret_cast<unsigned char*>(vector.bytes.data()), vector.bytes.size()
-                            };
-                            data = yuubi::StbImageData(bytes, srgb);
-                        },
-                        [&asset, srgb, &data](const fastgltf::sources::BufferView& view) {
-                            auto& bufferView = asset.bufferViews[view.bufferViewIndex];
-                            auto& buffer = asset.buffers[bufferView.bufferIndex];
-
-                            std::visit(
-                                    fastgltf::visitor{
-                                            [](auto& arg) {},
-                                            [srgb, &data](fastgltf::sources::Array& vector) {
-                                                const std::span bytes{
-                                                        reinterpret_cast<unsigned char*>(vector.bytes.data()),
-                                                        vector.bytes.size()
-                                                };
-                                                data = yuubi::StbImageData(bytes, srgb);
-                                            }
-                                    },
-                                    buffer.data
-                            );
-                        }
+            fastgltf::visitor{
+                [](auto&) {},
+                [&assetDir, srgb, &data](const fastgltf::sources::URI& filePath) {
+                    assert(filePath.fileByteOffset == 0); // Byte offsets are unsupported.
+                    assert(filePath.uri.isLocalPath());
+                    const std::string pathString = (assetDir / filePath.uri.fspath()).string();
+                    data = yuubi::StbImageData(pathString, srgb);
                 },
-                image.data
+                [srgb, &data](fastgltf::sources::Array& vector) {
+                    const std::span bytes{reinterpret_cast<unsigned char*>(vector.bytes.data()), vector.bytes.size()};
+                    data = yuubi::StbImageData(bytes, srgb);
+                },
+                [&asset, srgb, &data](const fastgltf::sources::BufferView& view) {
+                    auto& bufferView = asset.bufferViews[view.bufferViewIndex];
+                    auto& buffer = asset.buffers[bufferView.bufferIndex];
+
+                    std::visit(
+                        fastgltf::visitor{
+                            [](auto& arg) {},
+                            [srgb, &data](fastgltf::sources::Array& vector) {
+                                const std::span bytes{
+                                    reinterpret_cast<unsigned char*>(vector.bytes.data()), vector.bytes.size()
+                                };
+                                data = yuubi::StbImageData(bytes, srgb);
+                            }
+                        },
+                        buffer.data
+                    );
+                }
+            },
+            image.data
         );
 
         return data;
     }
 
     std::vector<yuubi::StbImageData> loadImageDataChunk(
-            const fastgltf::Asset& asset, std::span<std::pair<fastgltf::Texture, bool>> images,
-            const std::filesystem::path& assetDir
+        const fastgltf::Asset& asset, std::span<std::pair<fastgltf::Texture, bool>> images,
+        const std::filesystem::path& assetDir
     ) {
         return images | std::views::transform([&asset, assetDir](auto&& imageSrgbPair) {
                    const auto [texture, srgb] = imageSrgbPair;
@@ -86,18 +83,18 @@ namespace {
     }
 
     std::vector<yuubi::StbImageData> loadAllImageData(
-            const fastgltf::Asset& asset, const std::filesystem::path& assetDir
+        const fastgltf::Asset& asset, const std::filesystem::path& assetDir
     ) {
         auto srgbImageIndices = getSrgbImageIndices(asset.materials);
 
         auto imageSrgbPair =
-                std::views::enumerate(asset.textures) |
-                std::views::transform([&asset, &srgbImageIndices](auto&& indexTexturePair) {
-                    const auto& [i, fastgltfTexture] = indexTexturePair;
-                    const auto& fastgltfImage = asset.images.at(fastgltfTexture.imageIndex.value());
-                    return std::pair<fastgltf::Texture, bool>{fastgltfTexture, srgbImageIndices.contains(i)};
-                }) |
-                std::ranges::to<std::vector<std::pair<fastgltf::Texture, bool>>>();
+            std::views::enumerate(asset.textures) |
+            std::views::transform([&asset, &srgbImageIndices](auto&& indexTexturePair) {
+                const auto& [i, fastgltfTexture] = indexTexturePair;
+                const auto& fastgltfImage = asset.images.at(fastgltfTexture.imageIndex.value());
+                return std::pair<fastgltf::Texture, bool>{fastgltfTexture, srgbImageIndices.contains(i)};
+            }) |
+            std::ranges::to<std::vector<std::pair<fastgltf::Texture, bool>>>();
 
         const int numThreads = std::thread::hardware_concurrency();
         const int chunkSize = imageSrgbPair.size() / numThreads;

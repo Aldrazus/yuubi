@@ -14,8 +14,8 @@ namespace yuubi {
         DepthPass() = default;
 
         DepthPass(
-                std::shared_ptr<Device> device, std::shared_ptr<Viewport> viewport,
-                std::span<vk::DescriptorSetLayout> setLayouts
+            std::shared_ptr<Device> device, std::shared_ptr<Viewport> viewport,
+            std::span<vk::DescriptorSetLayout> setLayouts
         );
 
         DepthPass(DepthPass&&) = default;
@@ -23,8 +23,8 @@ namespace yuubi {
         DepthPass& operator=(DepthPass&& rhs) noexcept;
 
         void render(
-                const vk::raii::CommandBuffer&, const DrawContext& context, const Buffer& sceneDataBuffer,
-                std::span<vk::DescriptorSet> descriptorSets
+            const vk::raii::CommandBuffer&, const DrawContext& context, const Buffer& sceneDataBuffer,
+            std::span<vk::DescriptorSet> descriptorSets
         ) const;
 
     private:

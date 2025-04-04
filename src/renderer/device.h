@@ -28,8 +28,8 @@ namespace yuubi {
         const vk::raii::PhysicalDevice& getPhysicalDevice() const { return physicalDevice_; }
 
         vk::raii::ImageView createImageView(
-                const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags,
-                uint32_t mipLevels = 1, vk::ImageViewType type = vk::ImageViewType::e2D
+            const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels = 1,
+            vk::ImageViewType type = vk::ImageViewType::e2D
         ) const;
 
         const Queue& getQueue() const { return graphicsQueue_; }
@@ -38,8 +38,7 @@ namespace yuubi {
 
         Image createImage(const ImageCreateInfo& createInfo) const;
         Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo) const;
-        void submitImmediateCommands(
-                const std::function<void(const vk::raii::CommandBuffer& commandBuffer)>& function
+        void submitImmediateCommands(const std::function<void(const vk::raii::CommandBuffer& commandBuffer)>& function
         ) const;
 
     private:
@@ -60,9 +59,9 @@ namespace yuubi {
         vk::raii::Fence immediateCommandFence_ = nullptr;
 
         static const vk::StructureChain<
-                vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan12Features,
-                vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR>
-                requiredFeatures_;
+            vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan12Features,
+            vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR>
+            requiredFeatures_;
 
         static const std::vector<const char*> requiredExtensions_;
     };

@@ -12,36 +12,39 @@
 
 namespace yuubi {
 
-enum class MaterialPass {
-    Opaque,
-    Transparent,
-    Other,
-};
+    enum class MaterialPass {
+        Opaque,
+        Transparent,
+        Other,
+    };
 
-struct GeoSurface {
-    uint32_t startIndex;
-    uint32_t count;
-    uint32_t materialIndex = 0;
-    MaterialPass passType;
-};
+    struct GeoSurface {
+        uint32_t startIndex;
+        uint32_t count;
+        uint32_t materialIndex = 0;
+        MaterialPass passType;
+    };
 
-class Device;
-class Mesh : NonCopyable {
-public:
-    Mesh() = default;
-    Mesh(std::string name, Device& device, std::span<Vertex> vertices, std::span<uint32_t> indices, std::vector<GeoSurface>&& surfaces);
-    Mesh(Mesh&& rhs) = default;
-    Mesh& operator=(Mesh&& rhs) noexcept;
+    class Device;
+    class Mesh : NonCopyable {
+    public:
+        Mesh() = default;
+        Mesh(
+            std::string name, Device& device, std::span<Vertex> vertices, std::span<uint32_t> indices,
+            std::vector<GeoSurface>&& surfaces
+        );
+        Mesh(Mesh&& rhs) = default;
+        Mesh& operator=(Mesh&& rhs) noexcept;
 
-    [[nodiscard]] std::shared_ptr<Buffer> vertexBuffer() const { return vertexBuffer_; }
-    [[nodiscard]] std::shared_ptr<Buffer> indexBuffer() const { return indexBuffer_; }
-    [[nodiscard]] const std::vector<GeoSurface>& surfaces() const { return surfaces_; }
+        [[nodiscard]] std::shared_ptr<Buffer> vertexBuffer() const { return vertexBuffer_; }
+        [[nodiscard]] std::shared_ptr<Buffer> indexBuffer() const { return indexBuffer_; }
+        [[nodiscard]] const std::vector<GeoSurface>& surfaces() const { return surfaces_; }
 
-private:
-    std::string name_;
-    std::vector<GeoSurface> surfaces_;
-    std::shared_ptr<Buffer> vertexBuffer_;
-    std::shared_ptr<Buffer> indexBuffer_;
-};
+    private:
+        std::string name_;
+        std::vector<GeoSurface> surfaces_;
+        std::shared_ptr<Buffer> vertexBuffer_;
+        std::shared_ptr<Buffer> indexBuffer_;
+    };
 
 }

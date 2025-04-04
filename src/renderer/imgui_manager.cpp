@@ -12,28 +12,28 @@
 namespace yuubi {
 
     ImguiManager::ImguiManager(
-            const Instance& instance, Device& device, const Window& window, const Viewport& viewport
+        const Instance& instance, Device& device, const Window& window, const Viewport& viewport
     ) {
         std::array<vk::DescriptorPoolSize, 11> poolSizes = {
-                vk::DescriptorPoolSize{             vk::DescriptorType::eSampler, 1000},
-                vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, 1000},
-                vk::DescriptorPoolSize{        vk::DescriptorType::eSampledImage, 1000},
-                vk::DescriptorPoolSize{        vk::DescriptorType::eStorageImage, 1000},
-                vk::DescriptorPoolSize{  vk::DescriptorType::eUniformTexelBuffer, 1000},
-                vk::DescriptorPoolSize{  vk::DescriptorType::eStorageTexelBuffer, 1000},
-                vk::DescriptorPoolSize{       vk::DescriptorType::eUniformBuffer, 1000},
-                vk::DescriptorPoolSize{       vk::DescriptorType::eStorageBuffer, 1000},
-                vk::DescriptorPoolSize{vk::DescriptorType::eUniformBufferDynamic, 1000},
-                vk::DescriptorPoolSize{vk::DescriptorType::eStorageBufferDynamic, 1000},
-                vk::DescriptorPoolSize{     vk::DescriptorType::eInputAttachment, 1000}
+            vk::DescriptorPoolSize{             vk::DescriptorType::eSampler, 1000},
+            vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, 1000},
+            vk::DescriptorPoolSize{        vk::DescriptorType::eSampledImage, 1000},
+            vk::DescriptorPoolSize{        vk::DescriptorType::eStorageImage, 1000},
+            vk::DescriptorPoolSize{  vk::DescriptorType::eUniformTexelBuffer, 1000},
+            vk::DescriptorPoolSize{  vk::DescriptorType::eStorageTexelBuffer, 1000},
+            vk::DescriptorPoolSize{       vk::DescriptorType::eUniformBuffer, 1000},
+            vk::DescriptorPoolSize{       vk::DescriptorType::eStorageBuffer, 1000},
+            vk::DescriptorPoolSize{vk::DescriptorType::eUniformBufferDynamic, 1000},
+            vk::DescriptorPoolSize{vk::DescriptorType::eStorageBufferDynamic, 1000},
+            vk::DescriptorPoolSize{     vk::DescriptorType::eInputAttachment, 1000}
         };
 
         // Create descriptor pool.
         vk::DescriptorPoolCreateInfo poolInfo{
-                .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-                .maxSets = 1000,
-                .poolSizeCount = poolSizes.size(),
-                .pPoolSizes = poolSizes.data()
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .maxSets = 1000,
+            .poolSizeCount = poolSizes.size(),
+            .pPoolSizes = poolSizes.data()
         };
 
         imguiDescriptorPool_ = device.getDevice().createDescriptorPool(poolInfo);
@@ -48,20 +48,21 @@ namespace yuubi {
         vk::Format colorFormat = viewport.getSwapChainImageFormat();
         vk::Format depthFormat = viewport.getDepthFormat();
         ImGui_ImplVulkan_InitInfo initInfo{
-                .Instance = *instance.getInstance(),
-                .PhysicalDevice = *device.getPhysicalDevice(),
-                .Device = *device.getDevice(),
-                .QueueFamily = device.getQueue().familyIndex,
-                .Queue = *device.getQueue().queue,
-                .DescriptorPool = *imguiDescriptorPool_,
-                .MinImageCount = 2,
-                .ImageCount = 2,
-                .UseDynamicRendering = true,
-                .PipelineRenderingCreateInfo = vk::PipelineRenderingCreateInfo{
-                                                                               .colorAttachmentCount = 1,
-                                                                               .pColorAttachmentFormats = &colorFormat,
-                                                                               .depthAttachmentFormat = depthFormat,
-                                                                               }
+            .Instance = *instance.getInstance(),
+            .PhysicalDevice = *device.getPhysicalDevice(),
+            .Device = *device.getDevice(),
+            .QueueFamily = device.getQueue().familyIndex,
+            .Queue = *device.getQueue().queue,
+            .DescriptorPool = *imguiDescriptorPool_,
+            .MinImageCount = 2,
+            .ImageCount = 2,
+            .UseDynamicRendering = true,
+            .PipelineRenderingCreateInfo =
+                vk::PipelineRenderingCreateInfo{
+                                                .colorAttachmentCount = 1,
+                                                .pColorAttachmentFormats = &colorFormat,
+                                                .depthAttachmentFormat = depthFormat,
+                                                }
         };
         ImGui_ImplVulkan_Init(&initInfo);
 

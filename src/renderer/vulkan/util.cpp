@@ -4,22 +4,21 @@ namespace yuubi {
 
     // PERF: Image transition barriers should be handled via rendergraph
     void transitionImage(
-            const vk::raii::CommandBuffer& commandBuffer, const vk::Image& image, const vk::ImageLayout& currentLayout,
-            const vk::ImageLayout& newLayout
+        const vk::raii::CommandBuffer& commandBuffer, const vk::Image& image, const vk::ImageLayout& currentLayout,
+        const vk::ImageLayout& newLayout
     ) {
         vk::ImageMemoryBarrier2 imageBarrier{
-                .oldLayout = currentLayout,
-                .newLayout = newLayout,
-                .image = image,
-                .subresourceRange{
-                                  .aspectMask = newLayout == vk::ImageLayout::eDepthAttachmentOptimal
-                                              ? vk::ImageAspectFlagBits::eDepth
-                                              : vk::ImageAspectFlagBits::eColor,
-                                  .baseMipLevel = 0,
-                                  .levelCount = vk::RemainingMipLevels,
-                                  .baseArrayLayer = 0,
-                                  .layerCount = vk::RemainingArrayLayers
-                },
+            .oldLayout = currentLayout,
+            .newLayout = newLayout,
+            .image = image,
+            .subresourceRange{
+                              .aspectMask = newLayout == vk::ImageLayout::eDepthAttachmentOptimal ? vk::ImageAspectFlagBits::eDepth
+                                                                                    : vk::ImageAspectFlagBits::eColor,
+                              .baseMipLevel = 0,
+                              .levelCount = vk::RemainingMipLevels,
+                              .baseArrayLayer = 0,
+                              .layerCount = vk::RemainingArrayLayers
+            },
         };
 
         if (currentLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
@@ -39,7 +38,7 @@ namespace yuubi {
                    newLayout == vk::ImageLayout::eDepthAttachmentOptimal) {
             imageBarrier.setSrcAccessMask(vk::AccessFlagBits2::eNone);
             imageBarrier.setDstAccessMask(
-                    vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite
+                vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite
             );
 
             imageBarrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe);

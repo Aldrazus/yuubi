@@ -5,8 +5,8 @@
 namespace yuubi {
 
     Mesh::Mesh(
-            std::string name, Device& device, std::span<Vertex> vertices, std::span<uint32_t> indices,
-            std::vector<GeoSurface>&& surfaces
+        std::string name, Device& device, std::span<Vertex> vertices, std::span<uint32_t> indices,
+        std::vector<GeoSurface>&& surfaces
     ) : name_(std::move(name)), surfaces_(std::move(surfaces)) {
         auto& allocator = device.allocator();
         // Vertex buffer.
@@ -15,13 +15,13 @@ namespace yuubi {
 
             // Create vertex buffer.
             vk::BufferCreateInfo vertexBufferCreateInfo{
-                    .size = bufferSize,
-                    .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
-                             vk::BufferUsageFlagBits::eShaderDeviceAddress
+                .size = bufferSize,
+                .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
+                         vk::BufferUsageFlagBits::eShaderDeviceAddress
             };
 
             vma::AllocationCreateInfo vertexBufferAllocCreateInfo{
-                    .usage = vma::MemoryUsage::eGpuOnly,
+                .usage = vma::MemoryUsage::eGpuOnly,
             };
 
             vertexBuffer_ = std::make_shared<Buffer>(&allocator, vertexBufferCreateInfo, vertexBufferAllocCreateInfo);
@@ -36,8 +36,8 @@ namespace yuubi {
 
             // Create index buffer.
             vk::BufferCreateInfo indexBufferCreateInfo{
-                    .size = bufferSize,
-                    .usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst
+                .size = bufferSize,
+                .usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst
             };
 
             vma::AllocationCreateInfo indexBufferAllocCreateInfo{.usage = vma::MemoryUsage::eGpuOnly};

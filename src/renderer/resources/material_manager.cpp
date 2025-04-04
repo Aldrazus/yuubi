@@ -6,13 +6,13 @@ namespace yuubi {
     MaterialManager::MaterialManager(std::shared_ptr<Device> device) : device_(std::move(device)) {
         constexpr vk::DeviceSize bufferSize = maxMaterials * sizeof(MaterialData);
         vk::BufferCreateInfo bufferCreateInfo{
-                .size = bufferSize,
-                .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
-                         vk::BufferUsageFlagBits::eShaderDeviceAddress
+            .size = bufferSize,
+            .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
+                     vk::BufferUsageFlagBits::eShaderDeviceAddress
         };
 
         vma::AllocationCreateInfo shaderDataBufferAllocInfo{
-                .usage = vma::MemoryUsage::eGpuOnly,
+            .usage = vma::MemoryUsage::eGpuOnly,
         };
 
         materialBuffer_ = device_->createBuffer(bufferCreateInfo, shaderDataBufferAllocInfo);

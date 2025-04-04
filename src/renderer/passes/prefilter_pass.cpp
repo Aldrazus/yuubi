@@ -14,11 +14,11 @@ namespace yuubi {
         const auto fragShader = loadShader("shaders/prefilter.frag.spv", *device);
 
         std::vector pushConstantRanges{
-                vk::PushConstantRange{
-                                      .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
-                                      .offset = 0,
-                                      .size = sizeof(PushConstants)
-                }
+            vk::PushConstantRange{
+                                  .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+                                  .offset = 0,
+                                  .size = sizeof(PushConstants)
+            }
         };
 
         pipelineLayout_ = createPipelineLayout(*device, createInfo.descriptorSetLayouts, pushConstantRanges);
@@ -27,52 +27,40 @@ namespace yuubi {
 
         std::vector colorAttachmentFormats{createInfo.colorAttachmentFormat};
         pipeline_ = builder.setShaders(vertShader, fragShader)
-                            .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-                            .setPolygonMode(vk::PolygonMode::eFill)
-                            .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
-                            .setMultisamplingNone()
-                            .disableBlending()
-                            .disableDepthTest()
-                            .setColorAttachmentFormats(colorAttachmentFormats)
-                            .setViewMask(0b00111111)
-                            .build(*device);
+                        .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+                        .setPolygonMode(vk::PolygonMode::eFill)
+                        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+                        .setMultisamplingNone()
+                        .disableBlending()
+                        .disableDepthTest()
+                        .setColorAttachmentFormats(colorAttachmentFormats)
+                        .setViewMask(0b00111111)
+                        .build(*device);
 
         viewProjectionMatricesBuffer_ = device->createBuffer(
-                vk::BufferCreateInfo{
-                        .size = sizeof(glm::mat4) * 6,
-                        .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
-                                 vk::BufferUsageFlagBits::eShaderDeviceAddress
-                },
-                vma::AllocationCreateInfo{.usage = vma::MemoryUsage::eGpuOnly}
+            vk::BufferCreateInfo{
+                .size = sizeof(glm::mat4) * 6,
+                .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
+                         vk::BufferUsageFlagBits::eShaderDeviceAddress
+            },
+            vma::AllocationCreateInfo{.usage = vma::MemoryUsage::eGpuOnly}
         );
 
         const glm::mat4 projectionMatrix = glm::perspective(glm::radians(90.0F), 1.0F, 1000.0F, 0.001F);
         const std::array projectionViewMatrices{
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)
-                        ),
-                // TODO: Are the Y textures flipped on the cubemap because Y is flipped in the viewport?
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)
-                        ),
-                projectionMatrix *
-                        glm::lookAt(
-                                glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)
-                        )
+            projectionMatrix *
+                glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            projectionMatrix *
+                glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            // TODO: Are the Y textures flipped on the cubemap because Y is flipped in the viewport?
+            projectionMatrix *
+                glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+            projectionMatrix *
+                glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+            projectionMatrix *
+                glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            projectionMatrix *
+                glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))
         };
         viewProjectionMatricesBuffer_.upload(*device, projectionViewMatrices.data(), sizeof(projectionViewMatrices), 0);
     }
@@ -88,20 +76,20 @@ namespace yuubi {
     }
     void PrefilterPass::render(const RenderInfo &renderInfo) const {
         const std::array colorAttachmentInfos{
-                vk::RenderingAttachmentInfo{
-                                            .imageView = renderInfo.color.imageView,
-                                            .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                            .loadOp = vk::AttachmentLoadOp::eClear,
-                                            .storeOp = vk::AttachmentStoreOp::eStore,
-                                            .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}
-                }
+            vk::RenderingAttachmentInfo{
+                                        .imageView = renderInfo.color.imageView,
+                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .loadOp = vk::AttachmentLoadOp::eClear,
+                                        .storeOp = vk::AttachmentStoreOp::eStore,
+                                        .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}
+            }
         };
         const vk::RenderingInfo renderingInfo{
-                .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
-                .layerCount = 6,
-                .viewMask = 0b00111111,
-                .colorAttachmentCount = colorAttachmentInfos.size(),
-                .pColorAttachments = colorAttachmentInfos.data(),
+            .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
+            .layerCount = 6,
+            .viewMask = 0b00111111,
+            .colorAttachmentCount = colorAttachmentInfos.size(),
+            .pColorAttachments = colorAttachmentInfos.data(),
         };
 
         const auto &commandBuffer = renderInfo.commandBuffer;
@@ -110,32 +98,31 @@ namespace yuubi {
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline_);
 
         const vk::Viewport viewport{
-                .x = 0.0f,
-                .y = static_cast<float>(renderInfo.viewportExtent.height),
-                .width = static_cast<float>(renderInfo.viewportExtent.width),
-                .height = -static_cast<float>(renderInfo.viewportExtent.height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f
+            .x = 0.0f,
+            .y = static_cast<float>(renderInfo.viewportExtent.height),
+            .width = static_cast<float>(renderInfo.viewportExtent.width),
+            .height = -static_cast<float>(renderInfo.viewportExtent.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
         };
         commandBuffer.setViewport(0, {viewport});
 
         const vk::Rect2D scissor{
-                .offset = {0, 0},
-                  .extent = renderInfo.viewportExtent
+            .offset = {0, 0},
+              .extent = renderInfo.viewportExtent
         };
 
         commandBuffer.setScissor(0, {scissor});
 
         commandBuffer.bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, pipelineLayout_, 0, {renderInfo.descriptorSets}, {}
+            vk::PipelineBindPoint::eGraphics, pipelineLayout_, 0, {renderInfo.descriptorSets}, {}
         );
 
         commandBuffer.pushConstants<PushConstants>(
-                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
-                PushConstants{
-                        .viewProjectionMatrices = viewProjectionMatricesBuffer_.getAddress(),
-                        .roughness = renderInfo.roughness
-                }
+            *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+            PushConstants{
+                .viewProjectionMatrices = viewProjectionMatricesBuffer_.getAddress(), .roughness = renderInfo.roughness
+            }
         );
 
         commandBuffer.draw(36, 1, 0, 0);

@@ -7,7 +7,7 @@
 namespace yuubi {
 
     TextureManager::TextureManager(
-            std::shared_ptr<Device> device, std::shared_ptr<vk::raii::DescriptorSet> textureSet
+        std::shared_ptr<Device> device, std::shared_ptr<vk::raii::DescriptorSet> textureSet
     ) : device_(std::move(device)), textureSet_(std::move(textureSet)) {
         createErrorTexture();
     }
@@ -16,23 +16,23 @@ namespace yuubi {
         const auto handle = ResourceManager::addResource(texture);
 
         const vk::DescriptorImageInfo imageInfo{
-                .sampler = *texture->sampler,
-                .imageView = *texture->imageView,
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+            .sampler = *texture->sampler,
+            .imageView = *texture->imageView,
+            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
         };
 
         device_->getDevice().updateDescriptorSets(
-                {
-                        vk::WriteDescriptorSet{
-                                               .dstSet = *textureSet_,
-                                               .dstBinding = 0,
-                                               .dstArrayElement = handle,
-                                               .descriptorCount = 1,
-                                               .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-                                               .pImageInfo = &imageInfo
-                        }
+            {
+                vk::WriteDescriptorSet{
+                                       .dstSet = *textureSet_,
+                                       .dstBinding = 0,
+                                       .dstArrayElement = handle,
+                                       .descriptorCount = 1,
+                                       .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                       .pImageInfo = &imageInfo
+                }
         },
-                {}
+            {}
         );
 
         return handle;
@@ -50,11 +50,11 @@ namespace yuubi {
         pixels.reserve(textureWidth * textureWidth * numChannels);
 
         const ImageData imageData{
-                .pixels = pixels.data(),
-                .width = textureWidth,
-                .height = textureWidth,
-                .numChannels = numChannels,
-                .format = vk::Format::eR8G8B8A8Srgb
+            .pixels = pixels.data(),
+            .width = textureWidth,
+            .height = textureWidth,
+            .numChannels = numChannels,
+            .format = vk::Format::eR8G8B8A8Srgb
         };
 
         for (size_t rowIdx = 0; rowIdx < textureWidth; rowIdx++) {
@@ -70,32 +70,30 @@ namespace yuubi {
 
         auto errorCheckerboardImage = createImageFromData(*device_, imageData);
         auto errorCheckerboardView = device_->createImageView(
-                *errorCheckerboardImage.getImage(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor
+            *errorCheckerboardImage.getImage(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor
         );
 
         // TODO: write createSampler() member function on Device
-        auto errorCheckerboardSampler = device_->getDevice().createSampler(
-                vk::SamplerCreateInfo{
-                        .magFilter = vk::Filter::eLinear,
-                        .minFilter = vk::Filter::eLinear,
-                        .mipmapMode = vk::SamplerMipmapMode::eLinear,
-                        .addressModeU = vk::SamplerAddressMode::eRepeat,
-                        .addressModeV = vk::SamplerAddressMode::eRepeat,
-                        .addressModeW = vk::SamplerAddressMode::eRepeat,
-                        .mipLodBias = 0.0f,
-                        .anisotropyEnable = vk::True,
-                        .maxAnisotropy = device_->getPhysicalDevice().getProperties().limits.maxSamplerAnisotropy,
-                        .compareEnable = vk::False,
-                        .compareOp = vk::CompareOp::eAlways,
-                        .minLod = 0.0f,
-                        .maxLod = 0.0f,
-                        .borderColor = vk::BorderColor::eIntOpaqueBlack,
-                        .unnormalizedCoordinates = vk::False,
-                }
-        );
+        auto errorCheckerboardSampler = device_->getDevice().createSampler(vk::SamplerCreateInfo{
+            .magFilter = vk::Filter::eLinear,
+            .minFilter = vk::Filter::eLinear,
+            .mipmapMode = vk::SamplerMipmapMode::eLinear,
+            .addressModeU = vk::SamplerAddressMode::eRepeat,
+            .addressModeV = vk::SamplerAddressMode::eRepeat,
+            .addressModeW = vk::SamplerAddressMode::eRepeat,
+            .mipLodBias = 0.0f,
+            .anisotropyEnable = vk::True,
+            .maxAnisotropy = device_->getPhysicalDevice().getProperties().limits.maxSamplerAnisotropy,
+            .compareEnable = vk::False,
+            .compareOp = vk::CompareOp::eAlways,
+            .minLod = 0.0f,
+            .maxLod = 0.0f,
+            .borderColor = vk::BorderColor::eIntOpaqueBlack,
+            .unnormalizedCoordinates = vk::False,
+        });
 
         const auto errorCheckerboardTexture = std::make_shared<Texture>(
-                std::move(errorCheckerboardImage), std::move(errorCheckerboardView), std::move(errorCheckerboardSampler)
+            std::move(errorCheckerboardImage), std::move(errorCheckerboardView), std::move(errorCheckerboardSampler)
         );
         addResource(errorCheckerboardTexture);
     }

@@ -9,8 +9,8 @@ namespace yuubi {
     class Allocator : NonCopyable {
     public:
         Allocator(
-                const vk::raii::Instance& instance, const vk::raii::PhysicalDevice& physicalDevice,
-                const vk::raii::Device& device
+            const vk::raii::Instance& instance, const vk::raii::PhysicalDevice& physicalDevice,
+            const vk::raii::Device& device
         );
         Allocator(std::nullptr_t) {};
         Allocator(Allocator&& rhs) noexcept;

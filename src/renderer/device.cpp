@@ -130,13 +130,14 @@ namespace yuubi {
             .image = image,
             .viewType = type,
             .format = format,
-            .subresourceRange = {
-                                 .aspectMask = aspectFlags,
-                                 .baseMipLevel = 0,
-                                 .levelCount = mipLevels,
-                                 .baseArrayLayer = 0,
-                                 .layerCount = numLayers,
-                                 },
+            .subresourceRange =
+                {
+                                   .aspectMask = aspectFlags,
+                                   .baseMipLevel = 0,
+                                   .levelCount = mipLevels,
+                                   .baseArrayLayer = 0,
+                                   .layerCount = numLayers,
+                                   },
         };
 
         return device_.createImageView(viewInfo);
@@ -144,17 +145,16 @@ namespace yuubi {
 
     Image Device::createImage(const ImageCreateInfo& createInfo) const { return Image{allocator_.get(), createInfo}; }
 
-    Buffer Device::createBuffer(
-        const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo
-    ) const {
+    Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo)
+        const {
         return Buffer{allocator_.get(), createInfo, allocInfo};
     }
 
     void Device::createImmediateCommandResources() {
         immediateCommandPool_ = vk::raii::CommandPool{
             device_,
-            {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-              .queueFamilyIndex = graphicsQueue_.familyIndex}
+            {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, .queueFamilyIndex = graphicsQueue_.familyIndex
+            }
         };
 
         // TODO: wtf?

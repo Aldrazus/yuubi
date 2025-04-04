@@ -11,17 +11,17 @@ namespace yuubi {
         return *this;
     }
     vk::raii::DescriptorSetLayout DescriptorLayoutBuilder::build(
-            const vk::DescriptorSetLayoutBindingFlagsCreateInfo& bindingFlags,
-            const vk::DescriptorSetLayoutCreateFlags& layoutFlags
+        const vk::DescriptorSetLayoutBindingFlagsCreateInfo& bindingFlags,
+        const vk::DescriptorSetLayoutCreateFlags& layoutFlags
     ) const {
         const vk::StructureChain createInfo{
-                vk::DescriptorSetLayoutCreateInfo{
-                                                  .pNext = &bindingFlags,
-                                                  .flags = layoutFlags,
-                                                  .bindingCount = static_cast<uint32_t>(bindings_.size()),
-                                                  .pBindings = bindings_.data()
-                },
-                bindingFlags
+            vk::DescriptorSetLayoutCreateInfo{
+                                              .pNext = &bindingFlags,
+                                              .flags = layoutFlags,
+                                              .bindingCount = static_cast<uint32_t>(bindings_.size()),
+                                              .pBindings = bindings_.data()
+            },
+            bindingFlags
         };
 
         return device_->getDevice().createDescriptorSetLayout(createInfo.get());

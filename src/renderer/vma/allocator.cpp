@@ -3,15 +3,15 @@
 namespace yuubi {
 
     Allocator::Allocator(
-            const vk::raii::Instance& instance, const vk::raii::PhysicalDevice& physicalDevice,
-            const vk::raii::Device& device
+        const vk::raii::Instance& instance, const vk::raii::PhysicalDevice& physicalDevice,
+        const vk::raii::Device& device
     ) : device_(&device) {
         vma::AllocatorCreateInfo allocatorInfo{
-                .flags = vma::AllocatorCreateFlagBits::eBufferDeviceAddress,
-                .physicalDevice = physicalDevice,
-                .device = device,
-                .instance = instance,
-                .vulkanApiVersion = vk::ApiVersion13
+            .flags = vma::AllocatorCreateFlagBits::eBufferDeviceAddress,
+            .physicalDevice = physicalDevice,
+            .device = device,
+            .instance = instance,
+            .vulkanApiVersion = vk::ApiVersion13
         };
 
         allocator_ = vma::createAllocator(allocatorInfo);

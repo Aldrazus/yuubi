@@ -18,19 +18,18 @@ namespace yuubi {
 
         PipelineBuilder builder(pipelineLayout_);
         opaquePipeline_ = builder.setShaders(vertShader, fragShader)
-                                  .setInputTopology(vk::PrimitiveTopology::eTriangleList)
-                                  .setPolygonMode(vk::PolygonMode::eFill)
-                                  .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
-                                  .setMultisamplingNone()
-                                  .disableBlending()
-                                  .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
-                                  .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
-                                  .setDepthFormat(createInfo.depthFormat)
-                                  .build(*device);
+                              .setInputTopology(vk::PrimitiveTopology::eTriangleList)
+                              .setPolygonMode(vk::PolygonMode::eFill)
+                              .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+                              .setMultisamplingNone()
+                              .disableBlending()
+                              .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
+                              .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
+                              .setDepthFormat(createInfo.depthFormat)
+                              .build(*device);
 
-        transparentPipeline_ = builder.enableBlendingAlphaBlend()
-                                       .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
-                                       .build(*device);
+        transparentPipeline_ =
+            builder.enableBlendingAlphaBlend().enableDepthTest(false, vk::CompareOp::eGreaterOrEqual).build(*device);
     }
 
     LightingPass& LightingPass::operator=(LightingPass&& rhs) noexcept {
@@ -44,32 +43,32 @@ namespace yuubi {
 
     void LightingPass::render(const RenderInfo& renderInfo) {
         std::array<vk::RenderingAttachmentInfo, 2> colorAttachmentInfos{
-                vk::RenderingAttachmentInfo{
-                                            .imageView = renderInfo.color.imageView,
-                                            .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                            .loadOp = vk::AttachmentLoadOp::eClear,
-                                            .storeOp = vk::AttachmentStoreOp::eStore,
-                                            .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}},
-                vk::RenderingAttachmentInfo{
-                                            .imageView = renderInfo.normal.imageView,
-                                            .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                                            .loadOp = vk::AttachmentLoadOp::eClear,
-                                            .storeOp = vk::AttachmentStoreOp::eStore,
-                                            .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}}
+            vk::RenderingAttachmentInfo{
+                                        .imageView = renderInfo.color.imageView,
+                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .loadOp = vk::AttachmentLoadOp::eClear,
+                                        .storeOp = vk::AttachmentStoreOp::eStore,
+                                        .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}},
+            vk::RenderingAttachmentInfo{
+                                        .imageView = renderInfo.normal.imageView,
+                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .loadOp = vk::AttachmentLoadOp::eClear,
+                                        .storeOp = vk::AttachmentStoreOp::eStore,
+                                        .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}}
         };
 
         vk::RenderingAttachmentInfo depthAttachmentInfo{
-                .imageView = renderInfo.depth.imageView,
-                .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-                .loadOp = vk::AttachmentLoadOp::eLoad
+            .imageView = renderInfo.depth.imageView,
+            .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .loadOp = vk::AttachmentLoadOp::eLoad
         };
 
         vk::RenderingInfo renderingInfo{
-                .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
-                .layerCount = 1,
-                .colorAttachmentCount = colorAttachmentInfos.size(),
-                .pColorAttachments = colorAttachmentInfos.data(),
-                .pDepthAttachment = &depthAttachmentInfo
+            .renderArea = {.offset = {0, 0}, .extent = renderInfo.viewportExtent},
+            .layerCount = 1,
+            .colorAttachmentCount = colorAttachmentInfos.size(),
+            .pColorAttachments = colorAttachmentInfos.data(),
+            .pDepthAttachment = &depthAttachmentInfo
         };
 
         const auto& commandBuffer = renderInfo.commandBuffer;
@@ -82,37 +81,37 @@ namespace yuubi {
         // clip coordinate system where the origin is at the bottom left
         // and the y-axis points upwards.
         vk::Viewport viewport{
-                .x = 0.0f,
-                .y = static_cast<float>(renderInfo.viewportExtent.height),
-                .width = static_cast<float>(renderInfo.viewportExtent.width),
-                .height = -static_cast<float>(renderInfo.viewportExtent.height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f
+            .x = 0.0f,
+            .y = static_cast<float>(renderInfo.viewportExtent.height),
+            .width = static_cast<float>(renderInfo.viewportExtent.width),
+            .height = -static_cast<float>(renderInfo.viewportExtent.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
         };
 
         commandBuffer.setViewport(0, {viewport});
 
         vk::Rect2D scissor{
-                .offset = {0, 0},
-                  .extent = renderInfo.viewportExtent
+            .offset = {0, 0},
+              .extent = renderInfo.viewportExtent
         };
 
         commandBuffer.setScissor(0, {scissor});
 
         commandBuffer.bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {renderInfo.descriptorSets}, {}
+            vk::PipelineBindPoint::eGraphics, *pipelineLayout_, 0, {renderInfo.descriptorSets}, {}
         );
 
         for (const auto& renderObject: renderInfo.context.opaqueSurfaces) {
             commandBuffer.bindIndexBuffer(*renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
             commandBuffer.pushConstants<PushConstants>(
-                    *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
-                    {
-                            PushConstants{
-                                          renderObject.transform, renderInfo.sceneDataBuffer.getAddress(),
-                                          renderObject.vertexBuffer->getAddress(), renderObject.materialId
-                            }
+                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+                {
+                    PushConstants{
+                                  renderObject.transform, renderInfo.sceneDataBuffer.getAddress(),
+                                  renderObject.vertexBuffer->getAddress(), renderObject.materialId
+                    }
             }
             );
 
@@ -126,12 +125,12 @@ namespace yuubi {
             commandBuffer.bindIndexBuffer(*renderObject.indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
             commandBuffer.pushConstants<PushConstants>(
-                    *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
-                    {
-                            PushConstants{
-                                          renderObject.transform, renderInfo.sceneDataBuffer.getAddress(),
-                                          renderObject.vertexBuffer->getAddress(), renderObject.materialId
-                            }
+                *pipelineLayout_, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+                {
+                    PushConstants{
+                                  renderObject.transform, renderInfo.sceneDataBuffer.getAddress(),
+                                  renderObject.vertexBuffer->getAddress(), renderObject.materialId
+                    }
             }
             );
 

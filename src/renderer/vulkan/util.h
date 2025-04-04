@@ -4,10 +4,8 @@
 
 namespace yuubi {
 
-void transitionImage(
-    const vk::raii::CommandBuffer& commandBuffer,
-    const vk::Image& image,
-    const vk::ImageLayout& currentLayout,
-    const vk::ImageLayout& newLayout
-);
+    void transitionImage(
+        const vk::raii::CommandBuffer& commandBuffer, const vk::Image& image, const vk::ImageLayout& currentLayout,
+        const vk::ImageLayout& newLayout
+    );
 }
