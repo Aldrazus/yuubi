@@ -165,5 +165,7 @@ void main() {
     vec3 color = ambient + Lo;
 
     outColor = vec4(color, 1.0);
-    outNormal = vec4(N, 1.0);
+
+    vec3 viewNormal = transpose(inverse(mat3(PushConstants.sceneData.view))) * N;
+    outNormal = vec4(viewNormal * 0.5f + 0.5f, 1.0);
 }

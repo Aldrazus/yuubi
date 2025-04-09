@@ -29,6 +29,7 @@ layout (push_constant, scalar) uniform constants {
 } PushConstants;
 
 vec3 reconstructVSPosFromDepth(vec2 uv) {
+    // NOTE: This depth value might need to be negated when switching to reverse-z depth buffer.
     float depth = texture(depthTex, uv).r;
     float x = uv.x * 2.0f - 1.0f;
     // y axis is flipped in Vulkan
@@ -41,7 +42,7 @@ vec3 reconstructVSPosFromDepth(vec2 uv) {
 
 void main() {
     float depth = texture(depthTex, texCoords).r;
-    if (depth == 0.0f) {
+    if (depth == 1.0f) {
         ambientOcclusion = vec4(1.0f);
         return;
     }
@@ -65,11 +66,11 @@ void main() {
     vec3 bitangent = cross(tangent, normal);
     mat3 TBN = mat3(tangent, bitangent, normal);
 
-    float occlusion = 0.0;
+    float occlusion = 0.0f;
 
-    const float radius = 0.5;
-    const float bias = 0.025;
-    for (int i = 0; i < kernelSamples.length(); i++) {
+    const float radius = 0.5f;
+    const float bias = 0.01f;
+    for (int i = 0; i < 16; i++) {
         vec3 samplePos = TBN * kernelSamples[i];
         samplePos = posVS + samplePos * radius;
 
@@ -79,16 +80,14 @@ void main() {
         offset.xy = offset.xy * 0.5f + 0.5f;
         offset.y = 1.0f - offset.y;
 
-
         vec3 reconstructedPos = reconstructVSPosFromDepth(offset.xy);
-        vec3 sampledNormal = normalize(texture(normalTex, offset.xy).xyz * 2.0f - 1.0f);
-        if (dot(sampledNormal, normal) <= 0.99) {
-            float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(reconstructedPos.z - samplePos.z - bias));
-            occlusion += (reconstructedPos.z <= samplePos.z - bias ? 1.0f : 0.0f) * rangeCheck;
-        } 
+        float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(reconstructedPos.z - samplePos.z - bias));
+
+        // NOTE: This inequality might have to be reversed when switching to reverse-z depth buffer
+        occlusion += (reconstructedPos.z >= samplePos.z + bias ? 1.0f : 0.0f) * rangeCheck;
     }
 
-    occlusion = 1.0 - (occlusion / kernelSamples.length());
+    occlusion = 1.0f - (occlusion / 16.0f);
 
     ambientOcclusion = vec4(occlusion, occlusion, occlusion, 1.0);
 }
