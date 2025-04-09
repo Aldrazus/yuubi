@@ -25,10 +25,10 @@ namespace yuubi {
         pipeline_ = builder.setShaders(vertShader, fragShader)
                         .setInputTopology(vk::PrimitiveTopology::eTriangleList)
                         .setPolygonMode(vk::PolygonMode::eFill)
-                        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+                        .setCullMode(vk::CullModeFlagBits::eFront, vk::FrontFace::eClockwise)
                         .setMultisamplingNone()
                         .disableBlending()
-                        .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
+                        .enableDepthTest(true, vk::CompareOp::eLessOrEqual)
                         .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
                         .setDepthFormat(createInfo.depthAttachmentFormat)
                         .build(*device);

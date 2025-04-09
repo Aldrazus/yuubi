@@ -55,5 +55,5 @@ const vec3 positions[] = {
 void main() {
     outPos = positions[gl_VertexIndex];
     gl_Position = PushConstants.viewProjection * vec4(outPos, 1.0f);
-    gl_Position.z = 0.0;
+    gl_Position.z = gl_Position.w;
 }

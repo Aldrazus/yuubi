@@ -21,8 +21,8 @@ namespace yuubi {
         float pitch = 0.0f;
         float yaw = 0.0f;
         // TODO: look into why this is more precise
-        float near = 10000.f;
-        float far = .1f;
+        float near = .1f;
+        float far = 10000.0f;
 
     private:
         glm::vec3 position_;

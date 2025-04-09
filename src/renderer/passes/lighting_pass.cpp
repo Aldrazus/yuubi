@@ -20,10 +20,10 @@ namespace yuubi {
         opaquePipeline_ = builder.setShaders(vertShader, fragShader)
                               .setInputTopology(vk::PrimitiveTopology::eTriangleList)
                               .setPolygonMode(vk::PolygonMode::eFill)
-                              .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+                              .setCullMode(vk::CullModeFlagBits::eFront, vk::FrontFace::eClockwise)
                               .setMultisamplingNone()
                               .disableBlending()
-                              .enableDepthTest(false, vk::CompareOp::eGreaterOrEqual)
+                              .enableDepthTest(false, vk::CompareOp::eEqual)
                               .setColorAttachmentFormats(createInfo.colorAttachmentFormats)
                               .setDepthFormat(createInfo.depthFormat)
                               .build(*device);

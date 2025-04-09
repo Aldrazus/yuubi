@@ -29,10 +29,10 @@ namespace yuubi {
         pipeline_ = builder.setShaders(vertShader, fragShader)
                         .setInputTopology(vk::PrimitiveTopology::eTriangleList)
                         .setPolygonMode(vk::PolygonMode::eFill)
-                        .setCullMode(vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
+                        .setCullMode(vk::CullModeFlagBits::eFront, vk::FrontFace::eClockwise)
                         .setMultisamplingNone()
                         .disableBlending()
-                        .enableDepthTest(true, vk::CompareOp::eGreaterOrEqual)
+                        .enableDepthTest(true, vk::CompareOp::eLessOrEqual)
                         .setDepthFormat(viewport_->getDepthFormat())
                         .build(*device_);
     }
@@ -80,7 +80,7 @@ namespace yuubi {
             .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
             .loadOp = vk::AttachmentLoadOp::eClear,
             .storeOp = vk::AttachmentStoreOp::eStore,
-            .clearValue = {.depthStencil = {0, 0}}
+            .clearValue = {.depthStencil = {.depth = 1, .stencil = 0}}
         };
 
         vk::RenderingInfo renderInfo{
