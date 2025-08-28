@@ -11,9 +11,7 @@
       "description": "Default build using Ninja Multi-Config generator",
       "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build",
-      "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-      },
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "enableMicrosoftCodeAnalysis": true,
@@ -33,6 +31,35 @@
           "enableClangTidyCodeAnalysis": true
         }
       }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "targets": ["all"],
+      "jobs": 8
+    },
+    {
+      "name": "debug",
+      "inherits": "default",
+      "configuration": "Debug",
+      "displayName": "Debug",
+      "description": "Debug build"
+    },
+    {
+      "name": "release",
+      "inherits": "default",
+      "configuration": "Release",
+      "displayName": "Release",
+      "description": "Release build"
+    },
+    {
+      "name": "relWithDebInfo",
+      "inherits": "default",
+      "configuration": "RelWithDebInfo",
+      "displayName": "RelWithDebInfo",
+      "description": "Release build with debug info"
     }
   ]
 }
