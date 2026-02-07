@@ -337,6 +337,31 @@ namespace yuubi {
                 frame.commandBuffer.pipelineBarrier2(dependencyInfo);
             }
 
+            // Transition AO image.
+            {
+                vk::ImageMemoryBarrier2 aoImageBarrier{
+                    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+                    .srcAccessMask = vk::AccessFlagBits2::eNone,
+                    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+                    .oldLayout = vk::ImageLayout::eUndefined,
+                    .newLayout = vk::ImageLayout::eGeneral,
+                    .image = viewport_->getAOImage().getImage(),
+                    .subresourceRange{
+                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                      .baseMipLevel = 0,
+                                      .levelCount = vk::RemainingMipLevels,
+                                      .baseArrayLayer = 0,
+                                      .layerCount = vk::RemainingArrayLayers
+                    },
+                };
+
+                vk::DependencyInfo dependencyInfo{
+                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &aoImageBarrier
+                };
+                frame.commandBuffer.pipelineBarrier2(dependencyInfo);
+            }
+
             // Screen-space Ambient Occlusion pass.
             {
                 // Update descriptor set in case the viewport is rebuilt
@@ -410,12 +435,6 @@ namespace yuubi {
             vk::DependencyInfo dependencyInfo{.imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &drawImageBarrier};
             frame.commandBuffer.pipelineBarrier2(dependencyInfo);
 
-            // Transition swapchain image layout to PRESENT_SRC before
-            // presenting
-            transitionImage(
-                frame.commandBuffer, image.image, vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR
-            );
-
             // Composite pass.
 
             // Update descriptor set in case viewport is rebuilt
@@ -474,6 +493,11 @@ namespace yuubi {
             frame.commandBuffer.beginRendering(renderingInfo);
             ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *frame.commandBuffer);
             frame.commandBuffer.endRendering();
+
+            // Transition swapchain image layout to PRESENT_SRC before presenting
+            transitionImage(
+                frame.commandBuffer, image.image, vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR
+            );
 
             if (frame.timestamps[3] != 0) {
                 frame.commandBuffer.writeTimestamp2(
