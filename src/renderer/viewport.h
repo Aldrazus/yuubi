@@ -29,11 +29,11 @@ namespace yuubi {
 
     class Viewport : NonCopyable {
     public:
-        Viewport() {};
+        Viewport() = default;
         Viewport(std::shared_ptr<vk::raii::SurfaceKHR> surface, std::shared_ptr<Device> device);
 
         Viewport(Viewport&&) = default;
-        Viewport& operator=(Viewport&& rhs);
+        Viewport& operator=(Viewport&& rhs) noexcept;
         ~Viewport() = default;
         void recreateSwapChain();
         bool doFrame(std::function<void(Frame&, const SwapchainImage&, const Image&, const vk::raii::ImageView&)> f);
@@ -54,7 +54,7 @@ namespace yuubi {
         [[nodiscard]] const vk::raii::ImageView& getAOImageView() const { return aoImageView_; }
         [[nodiscard]] const vk::Format& getAOImageFormat() const { return aoImageFormat_; }
 
-        [[nodiscard]] inline const vk::Format& getDepthFormat() const { return depthImageFormat_; }
+        [[nodiscard]] const vk::Format& getDepthFormat() const { return depthImageFormat_; }
         static const uint32_t maxFramesInFlight = 2;
         [[nodiscard]] std::array<Frame, maxFramesInFlight>& frames() { return frames_; }
 

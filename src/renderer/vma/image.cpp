@@ -92,25 +92,22 @@ namespace yuubi {
         uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(data.width, data.height)))) + 1;
 
         Image image(
-            &device.allocator(),
-            ImageCreateInfo{
-                .width = data.width,
-                .height = data.height,
-                .format = data.format,
-                .tiling = vk::ImageTiling::eOptimal,
-                .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc |
-                         vk::ImageUsageFlagBits::eTransferDst,
-                .properties = vk::MemoryPropertyFlagBits::eDeviceLocal,
-                .mipLevels = mipLevels
-            }
+            &device.allocator(), ImageCreateInfo{
+                                     .width = data.width,
+                                     .height = data.height,
+                                     .format = data.format,
+                                     .tiling = vk::ImageTiling::eOptimal,
+                                     .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc |
+                                              vk::ImageUsageFlagBits::eTransferDst,
+                                     .properties = vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                     .mipLevels = mipLevels
+                                 }
         );
 
         // Upload data to image.
         device.submitImmediateCommands([&stagingBuffer, &image, &data,
                                         mipLevels](const vk::raii::CommandBuffer& commandBuffer) {
-            transitionImage(
-                commandBuffer, *image.getImage(), vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral
-            );
+            transitionImage(commandBuffer, *image.getImage(), vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
             vk::BufferImageCopy copyRegion{
                 .bufferOffset = 0,
@@ -131,40 +128,16 @@ namespace yuubi {
             );
 
             // Generate mipmaps.
-            vk::ImageMemoryBarrier2 barrier{
-                .srcStageMask = vk::PipelineStageFlagBits2::eTransfer,
-                .dstStageMask = vk::PipelineStageFlagBits2::eTransfer,
-                .image = *image.getImage(),
-                .subresourceRange =
-                    vk::ImageSubresourceRange{
-                                              .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                              .levelCount = 1,
-                                              .baseArrayLayer = 0,
-                                              .layerCount = 1,
-                                              },
-            };
-
             int32_t mipWidth = data.width;
             int32_t mipHeight = data.height;
 
             for (uint32_t i = 1; i < mipLevels; i++) {
-                barrier.subresourceRange.baseMipLevel = i - 1;
-                barrier.oldLayout = vk::ImageLayout::eGeneral;
-                barrier.newLayout = vk::ImageLayout::eGeneral;
-                barrier.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
-                barrier.dstAccessMask = vk::AccessFlagBits2::eTransferRead;
-                barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
-                barrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
-
-                vk::DependencyInfo dependencyInfo{.imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier};
-
-                commandBuffer.pipelineBarrier2(dependencyInfo);
-
                 std::array<vk::Offset3D, 2> srcOffsets{
-                    {{0, 0, 0}, {mipWidth, mipHeight, 1}}
+                    {{.x = 0, .y = 0, .z = 0}, {.x = mipWidth, .y = mipHeight, .z = 1}}
                 };
                 std::array<vk::Offset3D, 2> dstOffsets{
-                    {{0, 0, 0}, {mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1}}
+                    {{.x = 0, .y = 0, .z = 0},
+                     {.x = mipWidth > 1 ? mipWidth / 2 : 1, .y = mipHeight > 1 ? mipHeight / 2 : 1, .z = 1}}
                 };
 
                 vk::ImageBlit2 blit{
@@ -186,42 +159,21 @@ namespace yuubi {
                     .dstOffsets = dstOffsets,
                 };
 
-                commandBuffer.blitImage2(vk::BlitImageInfo2{
-                    .srcImage = *image.getImage(),
-                    .srcImageLayout = vk::ImageLayout::eGeneral,
-                    .dstImage = *image.getImage(),
-                    .dstImageLayout = vk::ImageLayout::eGeneral,
-                    .regionCount = 1,
-                    .pRegions = &blit,
-                    .filter = vk::Filter::eLinear, // TODO: fix!!
-                });
-
-                barrier.oldLayout = vk::ImageLayout::eGeneral;
-                barrier.newLayout = vk::ImageLayout::eGeneral;
-                barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead,
-                barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
-                barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
-                barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-
-                commandBuffer.pipelineBarrier2(
-                    vk::DependencyInfo{.imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier}
+                commandBuffer.blitImage2(
+                    vk::BlitImageInfo2{
+                        .srcImage = *image.getImage(),
+                        .srcImageLayout = vk::ImageLayout::eGeneral,
+                        .dstImage = *image.getImage(),
+                        .dstImageLayout = vk::ImageLayout::eGeneral,
+                        .regionCount = 1,
+                        .pRegions = &blit,
+                        .filter = vk::Filter::eLinear, // TODO: fix!!
+                    }
                 );
 
                 if (mipWidth > 1) mipWidth /= 2;
                 if (mipHeight > 1) mipHeight /= 2;
             }
-
-            barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-            barrier.oldLayout = vk::ImageLayout::eGeneral;
-            barrier.newLayout = vk::ImageLayout::eGeneral;
-            barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead,
-            barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
-            barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
-            barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-
-            commandBuffer.pipelineBarrier2(
-                vk::DependencyInfo{.imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier}
-            );
         });
 
         return image;

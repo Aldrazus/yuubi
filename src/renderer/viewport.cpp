@@ -19,7 +19,7 @@ namespace yuubi {
         createFrames();
     }
 
-    Viewport& Viewport::operator=(Viewport&& rhs) {
+    Viewport& Viewport::operator=(Viewport&& rhs) noexcept {
         if (this != &rhs) {
             std::swap(surface_, rhs.surface_);
             std::swap(device_, rhs.device_);

@@ -287,55 +287,6 @@ namespace yuubi {
                 );
             }
 
-            // Transition normal image.
-            {
-                vk::ImageMemoryBarrier2 normalImageBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                    .oldLayout = vk::ImageLayout::eGeneral,
-                    .newLayout = vk::ImageLayout::eGeneral,
-                    .image = viewport_->getNormalImage().getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    }
-                };
-
-                vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &normalImageBarrier
-                };
-                frame.commandBuffer.pipelineBarrier2(dependencyInfo);
-            }
-
-            // Transition depth image.
-            {
-                vk::ImageMemoryBarrier2 depthImageBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eAllGraphics,
-                    .srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentRead,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                    .oldLayout = vk::ImageLayout::eGeneral,
-                    .newLayout = vk::ImageLayout::eGeneral,
-                    .image = viewport_->getDepthImage().getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eDepth,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    }
-                };
-
-                vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &depthImageBarrier
-                };
-                frame.commandBuffer.pipelineBarrier2(dependencyInfo);
-            }
 
             // Transition AO image.
             {
@@ -413,27 +364,6 @@ namespace yuubi {
                 }
                 );
             }
-
-            // Transition draw image
-            vk::ImageMemoryBarrier2 drawImageBarrier{
-                .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                .oldLayout = vk::ImageLayout::eGeneral,
-                .newLayout = vk::ImageLayout::eGeneral,
-                .image = drawImage.getImage(),
-                .subresourceRange{
-                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                  .baseMipLevel = 0,
-                                  .levelCount = vk::RemainingMipLevels,
-                                  .baseArrayLayer = 0,
-                                  .layerCount = vk::RemainingArrayLayers
-                }
-            };
-
-            vk::DependencyInfo dependencyInfo{.imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &drawImageBarrier};
-            frame.commandBuffer.pipelineBarrier2(dependencyInfo);
 
             // Composite pass.
 
@@ -844,27 +774,6 @@ namespace yuubi {
             commandBuffer.copyBufferToImage(
                 *stagingBuffer.getBuffer(), *equirectangularMapImage_.getImage(), vk::ImageLayout::eGeneral,
                 {copyRegion}
-            );
-
-            vk::ImageMemoryBarrier2 barrier{
-                .srcStageMask = vk::PipelineStageFlagBits2::eTransfer,
-                .srcAccessMask = vk::AccessFlagBits2::eTransferWrite,
-                .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                .oldLayout = vk::ImageLayout::eGeneral,
-                .newLayout = vk::ImageLayout::eGeneral,
-                .image = *equirectangularMapImage_.getImage(),
-                .subresourceRange = vk::ImageSubresourceRange{
-                                                              .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                              .baseMipLevel = 0,
-                                                              .levelCount = 1,
-                                                              .baseArrayLayer = 0,
-                                                              .layerCount = 1,
-                                                              },
-            };
-
-            commandBuffer.pipelineBarrier2(
-                vk::DependencyInfo{.imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &barrier}
             );
         });
 
@@ -1315,31 +1224,6 @@ namespace yuubi {
                 }
                 );
             }
-
-            // Transition cubemap image.
-            {
-                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                    .oldLayout = vk::ImageLayout::eGeneral,
-                    .newLayout = vk::ImageLayout::eGeneral,
-                    .image = cubemapImage_.getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    },
-                };
-
-                const vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-                };
-                commandBuffer.pipelineBarrier2(dependencyInfo);
-            }
         });
     }
     void Renderer::generateIrradianceMap() const {
@@ -1357,31 +1241,6 @@ namespace yuubi {
                         },
                 }
                 );
-            }
-
-            // Transition irradiance map image.
-            {
-                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                    .oldLayout = vk::ImageLayout::eGeneral,
-                    .newLayout = vk::ImageLayout::eGeneral,
-                    .image = irradianceMapImage_.getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    },
-                };
-
-                const vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-                };
-                commandBuffer.pipelineBarrier2(dependencyInfo);
             }
         });
     }
@@ -1570,33 +1429,6 @@ namespace yuubi {
                 );
             });
         }
-
-        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
-            // Transition prefilter map image.
-            {
-                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                    .oldLayout = vk::ImageLayout::eGeneral,
-                    .newLayout = vk::ImageLayout::eGeneral,
-                    .image = prefilterMapImage_.getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    },
-                };
-
-                const vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-                };
-                commandBuffer.pipelineBarrier2(dependencyInfo);
-            }
-        });
     }
     void Renderer::initBRDFLUTPassResources() {
         brdfLutMapImage_ = Image(
@@ -1673,31 +1505,6 @@ namespace yuubi {
                             RenderAttachment{.image = brdfLutMapImage_.getImage(), .imageView = brdfLutMapImageView_},
                 }
                 );
-            }
-
-            // Transition BRDFLUT map image.
-            {
-                const vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                    .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                    .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                    .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
-                    .dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead,
-                    .oldLayout = vk::ImageLayout::eGeneral,
-                    .newLayout = vk::ImageLayout::eGeneral,
-                    .image = brdfLutMapImage_.getImage(),
-                    .subresourceRange{
-                                      .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                      .baseMipLevel = 0,
-                                      .levelCount = vk::RemainingMipLevels,
-                                      .baseArrayLayer = 0,
-                                      .layerCount = vk::RemainingArrayLayers
-                    },
-                };
-
-                const vk::DependencyInfo dependencyInfo{
-                    .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-                };
-                commandBuffer.pipelineBarrier2(dependencyInfo);
             }
         });
     }

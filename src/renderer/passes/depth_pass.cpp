@@ -131,28 +131,6 @@ namespace yuubi {
             commandBuffer.drawIndexed(static_cast<uint32_t>(renderObject.indexCount), 1, renderObject.firstIndex, 0, 0);
         }
         commandBuffer.endRendering();
-
-        // Sync depth image for subsequent reads
-        depthImageBarrier = {
-            .srcStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests,
-            .srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
-            .dstStageMask = vk::PipelineStageFlagBits2::eLateFragmentTests,
-            .dstAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentRead,
-            .oldLayout = vk::ImageLayout::eGeneral,
-            .newLayout = vk::ImageLayout::eGeneral,
-            .image = viewport_->getDepthImage().getImage(),
-            .subresourceRange{
-                              .aspectMask = vk::ImageAspectFlagBits::eDepth,
-                              .baseMipLevel = 0,
-                              .levelCount = vk::RemainingMipLevels,
-                              .baseArrayLayer = 0,
-                              .layerCount = vk::RemainingArrayLayers
-            },
-        };
-
-        dependencyInfo = {.imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &depthImageBarrier};
-
-        commandBuffer.pipelineBarrier2(dependencyInfo);
     }
 
 }
