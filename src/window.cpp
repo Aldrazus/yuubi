@@ -27,7 +27,7 @@ void Window::initCallbacks() const {
     });
 
     glfwSetWindowSizeCallback(window_, [](GLFWwindow* window, int width, int height) {
-        const auto w = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        auto* const w = static_cast<Window*>(glfwGetWindowUserPointer(window));
 
         WindowResizeEvent e{width, height};
         w->eventCallback_(e);
@@ -38,7 +38,7 @@ void Window::initCallbacks() const {
             return;
         }
 
-        const auto w = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        auto* const w = static_cast<Window*>(glfwGetWindowUserPointer(window));
 
         switch (action) {
             case GLFW_PRESS: {
@@ -65,7 +65,7 @@ void Window::initCallbacks() const {
             return;
         }
 
-        Window* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+        auto* w = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
         KeyTypedEvent event(codepoint);
         w->eventCallback_(event);
     });
@@ -75,7 +75,7 @@ void Window::initCallbacks() const {
             return;
         }
 
-        auto w = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        auto* w = static_cast<Window*>(glfwGetWindowUserPointer(window));
         MouseMovedEvent event(xpos, ypos);
         w->eventCallback_(event);
     });
