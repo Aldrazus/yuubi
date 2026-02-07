@@ -13,8 +13,7 @@ namespace yuubi {
     public:
         Buffer() = default;
         Buffer(
-            Allocator* allocator, const vk::BufferCreateInfo& createInfo,
-            const vma::AllocationCreateInfo& allocCreateInfo
+            Allocator* allocator, const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocCreateInfo
         );
         Buffer(Buffer&& rhs) noexcept;
         Buffer& operator=(Buffer&& rhs) noexcept;
@@ -29,13 +28,13 @@ namespace yuubi {
     private:
         Allocator* allocator_ = nullptr;
         vk::raii::Buffer buffer_ = nullptr;
-        vma::Allocation allocation_ = nullptr;
-        vma::AllocationInfo allocationInfo_;
+        VmaAllocation allocation_ = nullptr;
+        VmaAllocationInfo allocationInfo_;
         vk::DeviceAddress address_;
 
         vk::raii::Buffer stagingBuffer_ = nullptr;
-        vma::AllocationInfo stagingBufferAllocationInfo_;
-        vma::Allocation stagingBufferAllocation_;
+        VmaAllocationInfo stagingBufferAllocationInfo_;
+        VmaAllocation stagingBufferAllocation_;
     };
 
 }

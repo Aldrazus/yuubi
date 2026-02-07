@@ -45,13 +45,13 @@ namespace yuubi {
         std::array<vk::RenderingAttachmentInfo, 2> colorAttachmentInfos{
             vk::RenderingAttachmentInfo{
                                         .imageView = renderInfo.color.imageView,
-                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .imageLayout = vk::ImageLayout::eGeneral,
                                         .loadOp = vk::AttachmentLoadOp::eClear,
                                         .storeOp = vk::AttachmentStoreOp::eStore,
                                         .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}},
             vk::RenderingAttachmentInfo{
                                         .imageView = renderInfo.normal.imageView,
-                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .imageLayout = vk::ImageLayout::eGeneral,
                                         .loadOp = vk::AttachmentLoadOp::eClear,
                                         .storeOp = vk::AttachmentStoreOp::eStore,
                                         .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}}
@@ -59,7 +59,7 @@ namespace yuubi {
 
         vk::RenderingAttachmentInfo depthAttachmentInfo{
             .imageView = renderInfo.depth.imageView,
-            .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .imageLayout = vk::ImageLayout::eGeneral,
             .loadOp = vk::AttachmentLoadOp::eLoad
         };
 

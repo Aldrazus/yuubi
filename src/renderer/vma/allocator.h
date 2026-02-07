@@ -5,7 +5,7 @@
 
 namespace yuubi {
 
-    // RAII wrapper over vma::Allocator
+    // RAII wrapper over VmaAllocator
     class Allocator : NonCopyable {
     public:
         Allocator(
@@ -17,11 +17,11 @@ namespace yuubi {
         Allocator& operator=(Allocator&& rhs) noexcept;
         ~Allocator();
 
-        [[nodiscard]] const vma::Allocator& getAllocator() const { return allocator_; }
+        [[nodiscard]] const VmaAllocator& getAllocator() const { return allocator_; }
         [[nodiscard]] const vk::raii::Device& getDevice() const { return *device_; }
 
     private:
-        vma::Allocator allocator_;
+        VmaAllocator allocator_;
         // TODO: make shared
         const vk::raii::Device* device_;
     };

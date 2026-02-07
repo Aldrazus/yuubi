@@ -46,7 +46,7 @@ namespace yuubi {
         const std::array colorAttachmentInfos{
             vk::RenderingAttachmentInfo{
                                         .imageView = renderInfo.color.imageView,
-                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .imageLayout = vk::ImageLayout::eGeneral,
                                         .loadOp = vk::AttachmentLoadOp::eLoad,
                                         .storeOp = vk::AttachmentStoreOp::eStore,
                                         }
@@ -54,7 +54,7 @@ namespace yuubi {
 
         const vk::RenderingAttachmentInfo depthAttachmentInfo{
             .imageView = renderInfo.depth.imageView,
-            .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .imageLayout = vk::ImageLayout::eGeneral,
             .loadOp = vk::AttachmentLoadOp::eLoad,
             .storeOp = vk::AttachmentStoreOp::eNone,
         };

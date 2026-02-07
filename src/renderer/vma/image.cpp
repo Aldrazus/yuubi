@@ -25,11 +25,14 @@ namespace yuubi {
             imageInfo.setFlags(vk::ImageCreateFlagBits::eCubeCompatible);
         }
 
-        const vma::AllocationCreateInfo allocInfo{};
+        const VmaAllocationCreateInfo allocInfo{};
 
-        auto [image, allocation] = allocator_->getAllocator().createImage(imageInfo, allocInfo);
+        VkImage image;
+        vmaCreateImage(
+            allocator_->getAllocator(), reinterpret_cast<const VkImageCreateInfo*>(&imageInfo), &allocInfo, &image,
+            &allocation_, nullptr
+        );
         image_ = vk::raii::Image{allocator_->getDevice(), image};
-        allocation_ = allocation;
     }
 
     Image::Image(Image&& rhs) noexcept :
@@ -52,7 +55,7 @@ namespace yuubi {
 
     void Image::destroy() {
         if (allocator_ != nullptr) {
-            allocator_->getAllocator().destroyImage(image_.release(), allocation_);
+            vmaDestroyImage(allocator_->getAllocator(), image_.release(), allocation_);
         }
     }
 
@@ -66,9 +69,9 @@ namespace yuubi {
             .usage = vk::BufferUsageFlagBits::eTransferSrc,
         };
 
-        vma::AllocationCreateInfo stagingBufferAllocCreateInfo{
-            .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped,
-            .usage = vma::MemoryUsage::eAuto,
+        VmaAllocationCreateInfo stagingBufferAllocCreateInfo{
+            .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+            .usage = VMA_MEMORY_USAGE_AUTO,
         };
 
         Buffer stagingBuffer = device.createBuffer(stagingBufferCreateInfo, stagingBufferAllocCreateInfo);
@@ -106,7 +109,7 @@ namespace yuubi {
         device.submitImmediateCommands([&stagingBuffer, &image, &data,
                                         mipLevels](const vk::raii::CommandBuffer& commandBuffer) {
             transitionImage(
-                commandBuffer, *image.getImage(), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal
+                commandBuffer, *image.getImage(), vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral
             );
 
             vk::BufferImageCopy copyRegion{
@@ -124,7 +127,7 @@ namespace yuubi {
                 .imageExtent = vk::Extent3D{.width = data.width, .height = data.height, .depth = 1}
             };
             commandBuffer.copyBufferToImage(
-                *stagingBuffer.getBuffer(), *image.getImage(), vk::ImageLayout::eTransferDstOptimal, {copyRegion}
+                *stagingBuffer.getBuffer(), *image.getImage(), vk::ImageLayout::eGeneral, {copyRegion}
             );
 
             // Generate mipmaps.
@@ -146,8 +149,8 @@ namespace yuubi {
 
             for (uint32_t i = 1; i < mipLevels; i++) {
                 barrier.subresourceRange.baseMipLevel = i - 1;
-                barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
-                barrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
+                barrier.oldLayout = vk::ImageLayout::eGeneral;
+                barrier.newLayout = vk::ImageLayout::eGeneral;
                 barrier.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
                 barrier.dstAccessMask = vk::AccessFlagBits2::eTransferRead;
                 barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
@@ -185,16 +188,16 @@ namespace yuubi {
 
                 commandBuffer.blitImage2(vk::BlitImageInfo2{
                     .srcImage = *image.getImage(),
-                    .srcImageLayout = vk::ImageLayout::eTransferSrcOptimal,
+                    .srcImageLayout = vk::ImageLayout::eGeneral,
                     .dstImage = *image.getImage(),
-                    .dstImageLayout = vk::ImageLayout::eTransferDstOptimal,
+                    .dstImageLayout = vk::ImageLayout::eGeneral,
                     .regionCount = 1,
                     .pRegions = &blit,
                     .filter = vk::Filter::eLinear, // TODO: fix!!
                 });
 
-                barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
-                barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+                barrier.oldLayout = vk::ImageLayout::eGeneral;
+                barrier.newLayout = vk::ImageLayout::eGeneral;
                 barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead,
                 barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
                 barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
@@ -209,8 +212,8 @@ namespace yuubi {
             }
 
             barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-            barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
-            barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+            barrier.oldLayout = vk::ImageLayout::eGeneral;
+            barrier.newLayout = vk::ImageLayout::eGeneral;
             barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead,
             barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
             barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;

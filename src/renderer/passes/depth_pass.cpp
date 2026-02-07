@@ -52,7 +52,7 @@ namespace yuubi {
         const vk::raii::CommandBuffer& commandBuffer, const DrawContext& context, const Buffer& sceneDataBuffer,
         std::span<vk::DescriptorSet> descriptorSets
     ) const {
-        // Transition depth image to DepthAttachmentOptimal
+        // Transition depth image
         vk::ImageMemoryBarrier2 depthImageBarrier{
             .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
             .srcAccessMask = vk::AccessFlagBits2::eNone,
@@ -60,7 +60,7 @@ namespace yuubi {
             .dstAccessMask =
                 vk::AccessFlagBits2::eDepthStencilAttachmentWrite | vk::AccessFlagBits2::eDepthStencilAttachmentRead,
             .oldLayout = vk::ImageLayout::eUndefined,
-            .newLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+            .newLayout = vk::ImageLayout::eGeneral,
             .image = viewport_->getDepthImage().getImage(),
             .subresourceRange{
                               .aspectMask = vk::ImageAspectFlagBits::eDepth,
@@ -77,7 +77,7 @@ namespace yuubi {
 
         vk::RenderingAttachmentInfo depthAttachmentInfo{
             .imageView = *viewport_->getDepthImageView(),
-            .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .imageLayout = vk::ImageLayout::eGeneral,
             .loadOp = vk::AttachmentLoadOp::eClear,
             .storeOp = vk::AttachmentStoreOp::eStore,
             .clearValue = {.depthStencil = {.depth = 1, .stencil = 0}}
@@ -132,14 +132,14 @@ namespace yuubi {
         }
         commandBuffer.endRendering();
 
-        // Transition depth image to DepthReadOnlyOptimal
+        // Sync depth image for subsequent reads
         depthImageBarrier = {
             .srcStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests,
             .srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
             .dstStageMask = vk::PipelineStageFlagBits2::eLateFragmentTests,
             .dstAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentRead,
-            .oldLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-            .newLayout = vk::ImageLayout::eDepthReadOnlyOptimal,
+            .oldLayout = vk::ImageLayout::eGeneral,
+            .newLayout = vk::ImageLayout::eGeneral,
             .image = viewport_->getDepthImage().getImage(),
             .subresourceRange{
                               .aspectMask = vk::ImageAspectFlagBits::eDepth,

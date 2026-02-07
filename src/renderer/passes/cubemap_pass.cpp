@@ -46,7 +46,7 @@ namespace yuubi {
                 .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
                          vk::BufferUsageFlagBits::eShaderDeviceAddress
             },
-            vma::AllocationCreateInfo{.usage = vma::MemoryUsage::eGpuOnly}
+            VmaAllocationCreateInfo{.usage = VMA_MEMORY_USAGE_GPU_ONLY}
         );
         const glm::mat4 projectionMatrix = glm::perspective(glm::radians(90.0F), 1.0F, 1000.0F, 0.001F);
         const std::array projectionViewMatrices{
@@ -80,7 +80,7 @@ namespace yuubi {
         const std::array colorAttachmentInfos{
             vk::RenderingAttachmentInfo{
                                         .imageView = renderInfo.color.imageView,
-                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .imageLayout = vk::ImageLayout::eGeneral,
                                         .loadOp = vk::AttachmentLoadOp::eClear,
                                         .storeOp = vk::AttachmentStoreOp::eStore,
                                         .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}

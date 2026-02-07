@@ -53,7 +53,7 @@ namespace yuubi {
         // lifetime of the Allocator/Device that created it, potentially
         // causing a memory leak or crash.
         Allocator* allocator_ = nullptr;
-        vma::Allocation allocation_;
+        VmaAllocation allocation_ = nullptr;
     };
 
     class Device;

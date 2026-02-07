@@ -43,6 +43,7 @@ namespace yuubi {
             std::span<vk::VertexInputAttributeDescription> attributeDescriptions
         );
         PipelineBuilder& setViewMask(uint32_t viewMask);
+        PipelineBuilder& setSpecializationConstants(const vk::SpecializationInfo& specializationInfo);
 
     private:
         const vk::raii::PipelineLayout& pipelineLayout_;
@@ -56,6 +57,7 @@ namespace yuubi {
         vk::Format colorAttachmentFormat_;
         vk::PipelineVertexInputStateCreateInfo vertexInputInfo_;
         vk::PushConstantRange pushConstantRange_;
+        vk::SpecializationInfo specializationInfo_;
     };
 
 }

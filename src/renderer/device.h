@@ -24,21 +24,24 @@ namespace yuubi {
         Device& operator=(Device&&) = default;
         Device(const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface);
 
-        const vk::raii::Device& getDevice() const { return device_; }
-        const vk::raii::PhysicalDevice& getPhysicalDevice() const { return physicalDevice_; }
+        [[nodiscard]] const vk::raii::Device& getDevice() const { return device_; }
+        [[nodiscard]] const vk::raii::PhysicalDevice& getPhysicalDevice() const { return physicalDevice_; }
 
-        vk::raii::ImageView createImageView(
+        [[nodiscard]] vk::raii::ImageView createImageView(
             const vk::Image& image, const vk::Format& format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels = 1,
             vk::ImageViewType type = vk::ImageViewType::e2D
         ) const;
 
-        const Queue& getQueue() const { return graphicsQueue_; }
+        [[nodiscard]] const Queue& getQueue() const { return graphicsQueue_; }
 
-        inline Allocator& allocator() const { return *allocator_; }
+        [[nodiscard]] Allocator& allocator() const { return *allocator_; }
 
-        Image createImage(const ImageCreateInfo& createInfo) const;
-        Buffer createBuffer(const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo) const;
-        void submitImmediateCommands(const std::function<void(const vk::raii::CommandBuffer& commandBuffer)>& function
+        [[nodiscard]] Image createImage(const ImageCreateInfo& createInfo) const;
+        [[nodiscard]] Buffer createBuffer(
+            const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo
+        ) const;
+        void submitImmediateCommands(
+            const std::function<void(const vk::raii::CommandBuffer& commandBuffer)>& function
         ) const;
 
     private:
@@ -60,7 +63,8 @@ namespace yuubi {
 
         static const vk::StructureChain<
             vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan12Features,
-            vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR>
+            vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR,
+            vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR>
             requiredFeatures_;
 
         static const std::vector<const char*> requiredExtensions_;

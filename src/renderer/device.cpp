@@ -104,7 +104,6 @@ namespace yuubi {
             .pNext = &requiredFeatures_.get(),
             .queueCreateInfoCount = 1,
             .pQueueCreateInfos = &queueCreateInfo,
-            .enabledLayerCount = 0,
             .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions_.size()),
             .ppEnabledExtensionNames = requiredExtensions_.data()
         };
@@ -130,14 +129,13 @@ namespace yuubi {
             .image = image,
             .viewType = type,
             .format = format,
-            .subresourceRange =
-                {
-                                   .aspectMask = aspectFlags,
-                                   .baseMipLevel = 0,
-                                   .levelCount = mipLevels,
-                                   .baseArrayLayer = 0,
-                                   .layerCount = numLayers,
-                                   },
+            .subresourceRange = {
+                                 .aspectMask = aspectFlags,
+                                 .baseMipLevel = 0,
+                                 .levelCount = mipLevels,
+                                 .baseArrayLayer = 0,
+                                 .layerCount = numLayers,
+                                 },
         };
 
         return device_.createImageView(viewInfo);
@@ -145,16 +143,17 @@ namespace yuubi {
 
     Image Device::createImage(const ImageCreateInfo& createInfo) const { return Image{allocator_.get(), createInfo}; }
 
-    Buffer Device::createBuffer(const vk::BufferCreateInfo& createInfo, const vma::AllocationCreateInfo& allocInfo)
-        const {
+    Buffer Device::createBuffer(
+        const vk::BufferCreateInfo& createInfo, const VmaAllocationCreateInfo& allocInfo
+    ) const {
         return Buffer{allocator_.get(), createInfo, allocInfo};
     }
 
     void Device::createImmediateCommandResources() {
         immediateCommandPool_ = vk::raii::CommandPool{
             device_,
-            {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, .queueFamilyIndex = graphicsQueue_.familyIndex
-            }
+            {.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+              .queueFamilyIndex = graphicsQueue_.familyIndex}
         };
 
         // TODO: wtf?
@@ -202,7 +201,8 @@ namespace yuubi {
 
     const vk::StructureChain<
         vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan12Features,
-        vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR>
+        vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR,
+        vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR>
         Device::requiredFeatures_{
             vk::PhysicalDeviceFeatures2{.features = {.multiViewport = vk::True, .samplerAnisotropy = vk::True}},
             vk::PhysicalDeviceVulkan11Features{.multiview = vk::True},
@@ -219,7 +219,8 @@ namespace yuubi {
                                         .bufferDeviceAddress = vk::True,
                                         },
             vk::PhysicalDeviceVulkan13Features{.synchronization2 = vk::True, .dynamicRendering = vk::True},
-            vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR{.dynamicRenderingLocalRead = vk::True}
+            vk::PhysicalDeviceDynamicRenderingLocalReadFeaturesKHR{.dynamicRenderingLocalRead = vk::True},
+            vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR{.unifiedImageLayouts = vk::True}
     };
 
     const std::vector<const char*> Device::requiredExtensions_{

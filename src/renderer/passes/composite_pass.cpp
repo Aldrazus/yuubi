@@ -39,7 +39,7 @@ namespace yuubi {
         std::array<vk::RenderingAttachmentInfo, 1> colorAttachmentInfos{
             vk::RenderingAttachmentInfo{
                                         .imageView = renderInfo.color.imageView,
-                                        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                        .imageLayout = vk::ImageLayout::eGeneral,
                                         .loadOp = vk::AttachmentLoadOp::eClear,
                                         .storeOp = vk::AttachmentStoreOp::eStore,
                                         .clearValue = {{std::array<float, 4>{0, 0, 0, 0}}}

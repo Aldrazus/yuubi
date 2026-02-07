@@ -14,11 +14,7 @@ target_compile_definitions(${PROJECT_NAME}
 
 # VulkanMemoryAllocator
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE GPUOpen::VulkanMemoryAllocator)
-
-# VulkanMemoryAllocator-Hpp
-find_package(unofficial-vulkan-memory-allocator-hpp CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Headers GPUOpen::VulkanMemoryAllocator)
 
 # glfw
 find_package(glfw3 CONFIG REQUIRED)

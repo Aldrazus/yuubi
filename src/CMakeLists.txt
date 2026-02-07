@@ -56,6 +56,7 @@ if (MSVC)
             # debug
             "$<$<CONFIG:Debug>:/W4>"
             "$<$<CONFIG:Debug>:/Zi>"
+            #"-H"
 
             # rel w/ debug info (for profiling)
             "$<$<CONFIG:RelWithDebInfo>:/Zi>"

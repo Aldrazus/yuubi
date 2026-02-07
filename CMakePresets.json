@@ -24,7 +24,7 @@
       "inherits": "default",
       "displayName": "Visual Studio Config",
       "description": "Default build using Visual Studio",
-      "generator": "Visual Studio 17 2022",
+      "generator": "Visual Studio 18 2026",
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "enableMicrosoftCodeAnalysis": true,
@@ -37,8 +37,13 @@
     {
       "name": "default",
       "configurePreset": "default",
-      "targets": ["all"],
+      "targets": [ "all" ],
       "jobs": 8
+    },
+    {
+      "name": "defaultVS",
+      "inherits": "default",
+      "configurePreset": "vs"
     },
     {
       "name": "debug",
@@ -60,6 +65,27 @@
       "configuration": "RelWithDebInfo",
       "displayName": "RelWithDebInfo",
       "description": "Release build with debug info"
+    },
+    {
+      "name": "debugVS",
+      "inherits": "defaultVS",
+      "configuration": "Debug",
+      "displayName": "Debug VS",
+      "description": "Debug build using MSVC"
+    },
+    {
+      "name": "releaseVS",
+      "inherits": "defaultVS",
+      "configuration": "Release",
+      "displayName": "Release VS",
+      "description": "Release build using MSVC"
+    },
+    {
+      "name": "relWithDebInfoVS",
+      "inherits": "defaultVS",
+      "configuration": "RelWithDebInfo",
+      "displayName": "RelWithDebInfoVS",
+      "description": "Release build with debug info using MSVC"
     }
   ]
 }

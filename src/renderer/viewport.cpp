@@ -99,12 +99,13 @@ namespace yuubi {
                 .image = image,
                 .viewType = vk::ImageViewType::e2D,
                 .format = swapChainImageFormat_,
-                .subresourceRange =
-                    {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                                       .baseMipLevel = 0,
-                                       .levelCount = 1,
-                                       .baseArrayLayer = 0,
-                                       .layerCount = 1},
+                .subresourceRange = {
+                                     .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                     .baseMipLevel = 0,
+                                     .levelCount = 1,
+                                     .baseArrayLayer = 0,
+                                     .layerCount = 1
+                },
             };
 
             SwapchainImage swapchainImage{
@@ -170,30 +171,6 @@ namespace yuubi {
 
         normalImageView_ =
             device_->createImageView(*normalImage_.getImage(), normalImageFormat_, vk::ImageAspectFlagBits::eColor);
-
-        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
-            vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                .srcAccessMask = vk::AccessFlagBits2::eNone,
-                .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                .oldLayout = vk::ImageLayout::eUndefined,
-                .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                .image = *normalImage_.getImage(),
-                .subresourceRange{
-                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                  .baseMipLevel = 0,
-                                  .levelCount = vk::RemainingMipLevels,
-                                  .baseArrayLayer = 0,
-                                  .layerCount = vk::RemainingArrayLayers
-                },
-            };
-
-            const vk::DependencyInfo dependencyInfo{
-                .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-            };
-            commandBuffer.pipelineBarrier2(dependencyInfo);
-        });
     }
     void Viewport::createAOImage() {
         // Create ao attachment resources
@@ -213,30 +190,6 @@ namespace yuubi {
             // TODO: is this the right aspect flag?
             *aoImage_.getImage(), aoImageFormat_, vk::ImageAspectFlagBits::eColor
         );
-
-        device_->submitImmediateCommands([this](const vk::raii::CommandBuffer& commandBuffer) {
-            vk::ImageMemoryBarrier2 imageMemoryBarrier{
-                .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-                .srcAccessMask = vk::AccessFlagBits2::eNone,
-                .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-                .oldLayout = vk::ImageLayout::eUndefined,
-                .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-                .image = *aoImage_.getImage(),
-                .subresourceRange{
-                                  .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                  .baseMipLevel = 0,
-                                  .levelCount = vk::RemainingMipLevels,
-                                  .baseArrayLayer = 0,
-                                  .layerCount = vk::RemainingArrayLayers
-                },
-            };
-
-            vk::DependencyInfo dependencyInfo{
-                .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &imageMemoryBarrier
-            };
-            commandBuffer.pipelineBarrier2(dependencyInfo);
-        });
     }
 
     void Viewport::createFrames() {
@@ -259,11 +212,10 @@ namespace yuubi {
             frame.commandBuffer = std::move(device_->getDevice().allocateCommandBuffers(allocInfo)[0]);
 
             frame.timestampQueryPool = vk::raii::QueryPool(
-                device_->getDevice(),
-                vk::QueryPoolCreateInfo{
-                    .queryType = vk::QueryType::eTimestamp,
-                    .queryCount = 2,
-                }
+                device_->getDevice(), vk::QueryPoolCreateInfo{
+                                          .queryType = vk::QueryType::eTimestamp,
+                                          .queryCount = 2,
+                                      }
             );
             frame.timestampQueryPool.reset(0, 2);
         }

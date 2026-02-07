@@ -20,8 +20,8 @@ namespace yuubi {
                          vk::BufferUsageFlagBits::eShaderDeviceAddress
             };
 
-            vma::AllocationCreateInfo vertexBufferAllocCreateInfo{
-                .usage = vma::MemoryUsage::eGpuOnly,
+            VmaAllocationCreateInfo vertexBufferAllocCreateInfo{
+                .usage = VMA_MEMORY_USAGE_GPU_ONLY,
             };
 
             vertexBuffer_ = std::make_shared<Buffer>(&allocator, vertexBufferCreateInfo, vertexBufferAllocCreateInfo);
@@ -40,7 +40,7 @@ namespace yuubi {
                 .usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst
             };
 
-            vma::AllocationCreateInfo indexBufferAllocCreateInfo{.usage = vma::MemoryUsage::eGpuOnly};
+            VmaAllocationCreateInfo indexBufferAllocCreateInfo{.usage = VMA_MEMORY_USAGE_GPU_ONLY};
 
             indexBuffer_ = std::make_shared<Buffer>(&allocator, indexBufferCreateInfo, indexBufferAllocCreateInfo);
 

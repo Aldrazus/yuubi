@@ -18,7 +18,7 @@ namespace yuubi {
         const vk::DescriptorImageInfo imageInfo{
             .sampler = *texture->sampler,
             .imageView = *texture->imageView,
-            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+            .imageLayout = vk::ImageLayout::eGeneral
         };
 
         device_->getDevice().updateDescriptorSets(
